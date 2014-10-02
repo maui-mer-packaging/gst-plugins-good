@@ -51,7 +51,6 @@ struct _GstMonoscope
   gint         rate;                /* sample rate             */
   guint        bps;                 /* bytes per sample        */
   guint        spf;                 /* samples per video frame */
-  GstBufferPool *pool;
 
   GstSegment   segment;
 

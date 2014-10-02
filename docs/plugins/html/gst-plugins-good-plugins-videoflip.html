@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>videoflip</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-videocrop.html" title="videocrop">
 <link rel="next" href="gst-plugins-good-plugins-videomixer.html" title="videomixer">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-videocrop.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-videomixer.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -49,12 +49,11 @@ enum                <a class="link" href="gst-plugins-good-plugins-videoflip.htm
 <a name="gst-plugins-good-plugins-videoflip.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
-                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstvideofilter.html#GstVideoFilter">GstVideoFilter</a>
-                                 +----GstVideoFlip
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstvideofilter.html#GstVideoFilter">GstVideoFilter</a>
+                           +----GstVideoFlip
 </pre>
 </div>
 <div class="refsect1">
@@ -71,13 +70,13 @@ Flips and rotates video.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp21514608"></a><h3>Example launch line</h3>
+<a name="idp20492112"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> videotestsrc <span class="gtkdoc opt">!</span> videoflip method<span class="gtkdoc opt">=</span>clockwise <span class="gtkdoc opt">!</span> videoconvert <span class="gtkdoc opt">!</span> ximagesink</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch videotestsrc <span class="gtkdoc opt">!</span> videoflip method<span class="gtkdoc opt">=</span>clockwise <span class="gtkdoc opt">!</span> ffmpegcolorspace <span class="gtkdoc opt">!</span> ximagesink</pre></td>
       </tr>
     </tbody>
   </table>
@@ -92,7 +91,7 @@ Last reviewed on 2010-04-18 (0.10.22)
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp22237216"></a><h3>Element Information</h3>
+<a name="idp22762512"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -115,7 +114,7 @@ Last reviewed on 2010-04-18 (0.10.22)
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp24054032"></a><h3>Element Pads</h3>
+<a name="idp23411136"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -133,7 +132,75 @@ Last reviewed on 2010-04-18 (0.10.22)
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw, format=(string){ AYUV, ARGB, BGRA, ABGR, RGBA, Y444, xRGB, RGBx, xBGR, BGRx, RGB, BGR, I420, YV12, IYUV, YUY2, UYVY, YVYU }, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td>video/x-raw-yuv, format=(fourcc)AYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)-16777216, green_mask=(int)16711680, blue_mask=(int)65280, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)Y444, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)-16777216, green_mask=(int)16711680, blue_mask=(int)65280, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianness=(int)4321, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)I420, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)YV12, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)IYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)YUY2, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)UYVY, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)YVYU, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 </tbody>
 </table></div>
@@ -154,7 +221,75 @@ Last reviewed on 2010-04-18 (0.10.22)
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw, format=(string){ AYUV, ARGB, BGRA, ABGR, RGBA, Y444, xRGB, RGBx, xBGR, BGRx, RGB, BGR, I420, YV12, IYUV, YUY2, UYVY, YVYU }, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td>video/x-raw-yuv, format=(fourcc)AYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)-16777216, green_mask=(int)16711680, blue_mask=(int)65280, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)Y444, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)-16777216, green_mask=(int)16711680, blue_mask=(int)65280, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianness=(int)4321, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)I420, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)YV12, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)IYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)YUY2, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)UYVY, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)YVYU, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 </tbody>
 </table></div>

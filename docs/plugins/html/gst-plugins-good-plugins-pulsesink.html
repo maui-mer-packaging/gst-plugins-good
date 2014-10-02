@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>pulsesink</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-progressreport.html" title="progressreport">
 <link rel="next" href="gst-plugins-good-plugins-pulsesrc.html" title="pulsesrc">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-progressreport.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-pulsesrc.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -50,12 +50,11 @@
 <a name="gst-plugins-good-plugins-pulsesink.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSink.html">GstBaseSink</a>
-                           +----GstAudioBaseSink
-                                 +----GstPulseSink
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSink.html">GstBaseSink</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstbaseaudiosink.html#GstBaseAudioSink">GstBaseAudioSink</a>
+                           +----GstPulseSink
 </pre>
 </div>
 <div class="refsect1">
@@ -74,7 +73,6 @@ GstPulseSink implements
   "<a class="link" href="gst-plugins-good-plugins-pulsesink.html#GstPulseSink--mute" title='The "mute" property'>mute</a>"                     <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-pulsesink.html#GstPulseSink--client" title='The "client" property'>client</a>"                   <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-pulsesink.html#GstPulseSink--stream-properties" title='The "stream-properties" property'>stream-properties</a>"        <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/gstreamer-GstStructure.html#GstStructure"><span class="type">GstStructure</span></a>*         : Read / Write
-  "<a class="link" href="gst-plugins-good-plugins-pulsesink.html#GstPulseSink--client-name" title='The "client-name" property'>client-name</a>"              <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write
 </pre>
 </div>
 <div class="refsect1">
@@ -82,7 +80,7 @@ GstPulseSink implements
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp17373632"></a><h3>Element Information</h3>
+<a name="idp11610048"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -105,7 +103,7 @@ GstPulseSink implements
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp12415616"></a><h3>Element Pads</h3>
+<a name="idp18308432"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -123,15 +121,35 @@ GstPulseSink implements
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string){ S16LE, S16BE, F32LE, F32BE, S32LE, S32BE, S24LE, S24BE, S24_32LE, S24_32BE, U8 }, layout=(string)interleaved, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+<td>audio/x-raw-int, endianness=(int){ 1234, 4321 }, signed=(boolean)true, width=(int)16, depth=(int)16, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> audio/x-alaw, layout=(string)interleaved, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+<td> audio/x-raw-float, endianness=(int){ 1234, 4321 }, width=(int)32, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> audio/x-mulaw, layout=(string)interleaved, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+<td> audio/x-raw-int, endianness=(int){ 1234, 4321 }, signed=(boolean)true, width=(int)32, depth=(int)32, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, signed=(boolean)false, width=(int)8, depth=(int)8, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-alaw, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-mulaw, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, endianness=(int){ 1234, 4321 }, signed=(boolean)true, width=(int)24, depth=(int)24, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, endianness=(int){ 1234, 4321 }, signed=(boolean)true, width=(int)32, depth=(int)24, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 32 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
@@ -207,20 +225,13 @@ GstPulseSink implements
 <a name="GstPulseSink--client"></a><h3>The <code class="literal">"client"</code> property</h3>
 <pre class="programlisting">  "client"                   <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write</pre>
 <p>The PulseAudio client name to use.</p>
-<p>Default value: "&lt;unknown&gt;"</p>
+<p>Default value: "lt-gst-plugins-good-plugins-scan"</p>
 </div>
 <hr>
 <div class="refsect2">
 <a name="GstPulseSink--stream-properties"></a><h3>The <code class="literal">"stream-properties"</code> property</h3>
 <pre class="programlisting">  "stream-properties"        <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/gstreamer-GstStructure.html#GstStructure"><span class="type">GstStructure</span></a>*         : Read / Write</pre>
 <p>list of pulseaudio stream properties.</p>
-</div>
-<hr>
-<div class="refsect2">
-<a name="GstPulseSink--client-name"></a><h3>The <code class="literal">"client-name"</code> property</h3>
-<pre class="programlisting">  "client-name"              <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write</pre>
-<p>The PulseAudio client name to use.</p>
-<p>Default value: "lt-gst-plugins-good-plugins-scan"</p>
 </div>
 </div>
 </div>

@@ -22,7 +22,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,7 +42,7 @@ typedef struct _GstRtpJPEGDepayClass GstRtpJPEGDepayClass;
 
 struct _GstRtpJPEGDepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   GstAdapter *adapter;
   gboolean    discont;
@@ -58,7 +58,7 @@ struct _GstRtpJPEGDepay
 
 struct _GstRtpJPEGDepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_jpeg_depay_get_type (void);

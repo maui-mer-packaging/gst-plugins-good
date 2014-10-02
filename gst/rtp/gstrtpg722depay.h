@@ -21,7 +21,7 @@
 #define __GST_RTP_G722_DEPAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -43,7 +43,7 @@ typedef struct _GstRtpG722DepayClass GstRtpG722DepayClass;
 /* Definition of structure storing data for this element. */
 struct _GstRtpG722Depay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   guint rate;
   guint channels;
@@ -52,7 +52,7 @@ struct _GstRtpG722Depay
 /* Standard definition defining a class for this element. */
 struct _GstRtpG722DepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_g722_depay_get_type (void);

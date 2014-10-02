@@ -21,10 +21,6 @@
  *  USA.
  */
 
-/* FIXME 0.11: suppress warnings for deprecated API such as GValueArray
- * with newer GLib versions (>= 2.31.0) */
-#define GLIB_DISABLE_DEPRECATION_WARNINGS
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -377,7 +373,6 @@ gst_pulseprobe_probe_property (GstPulseProbe * c, guint prop_id,
   }
 }
 
-#if 0
 GValueArray *
 gst_pulseprobe_get_values (GstPulseProbe * c, guint prop_id,
     const GParamSpec * pspec)
@@ -408,7 +403,6 @@ gst_pulseprobe_get_values (GstPulseProbe * c, guint prop_id,
 
   return array;
 }
-#endif
 
 void
 gst_pulseprobe_set_server (GstPulseProbe * c, const gchar * server)

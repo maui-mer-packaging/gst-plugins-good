@@ -22,7 +22,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,7 +42,7 @@ typedef struct _GstRtpMP4GDepayClass GstRtpMP4GDepayClass;
 
 struct _GstRtpMP4GDepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   gint profile_level_id;
   gint streamtype;
@@ -74,7 +74,7 @@ struct _GstRtpMP4GDepay
 
 struct _GstRtpMP4GDepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_mp4g_depay_get_type (void);

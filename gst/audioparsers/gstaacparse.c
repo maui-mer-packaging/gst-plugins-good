@@ -33,7 +33,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 filesrc location=abc.aac ! aacparse ! faad ! audioresample ! audioconvert ! alsasink
+ * gst-launch filesrc location=abc.aac ! aacparse ! faad ! audioresample ! audioconvert ! alsasink
  * ]|
  * </refsect2>
  */
@@ -44,7 +44,6 @@
 
 #include <string.h>
 
-#include <gst/base/gstbitreader.h>
 #include "gstaacparse.h"
 
 
@@ -53,7 +52,7 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("audio/mpeg, "
         "framed = (boolean) true, " "mpegversion = (int) { 2, 4 }, "
-        "stream-format = (string) { raw, adts, adif, loas };"));
+        "stream-format = (string) { raw, adts, adif };"));
 
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
@@ -66,33 +65,29 @@ GST_DEBUG_CATEGORY_STATIC (aacparse_debug);
 
 #define ADIF_MAX_SIZE 40        /* Should be enough */
 #define ADTS_MAX_SIZE 10        /* Should be enough */
-#define LOAS_MAX_SIZE 3         /* Should be enough */
 
 
 #define AAC_FRAME_DURATION(parse) (GST_SECOND/parse->frames_per_sec)
-
-static const gint loas_sample_rate_table[32] = {
-  96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050,
-  16000, 12000, 11025, 8000, 7350, 0, 0, 0
-};
-
-static const gint loas_channels_table[32] = {
-  0, 1, 2, 3, 4, 5, 6, 8,
-  0, 0, 0, 0, 0, 0, 0, 0
-};
 
 static gboolean gst_aac_parse_start (GstBaseParse * parse);
 static gboolean gst_aac_parse_stop (GstBaseParse * parse);
 
 static gboolean gst_aac_parse_sink_setcaps (GstBaseParse * parse,
     GstCaps * caps);
-static GstCaps *gst_aac_parse_sink_getcaps (GstBaseParse * parse,
-    GstCaps * filter);
+static GstCaps *gst_aac_parse_sink_getcaps (GstBaseParse * parse);
 
-static GstFlowReturn gst_aac_parse_handle_frame (GstBaseParse * parse,
-    GstBaseParseFrame * frame, gint * skipsize);
+static gboolean gst_aac_parse_check_valid_frame (GstBaseParse * parse,
+    GstBaseParseFrame * frame, guint * size, gint * skipsize);
 
-G_DEFINE_TYPE (GstAacParse, gst_aac_parse, GST_TYPE_BASE_PARSE);
+static GstFlowReturn gst_aac_parse_parse_frame (GstBaseParse * parse,
+    GstBaseParseFrame * frame);
+
+#define _do_init(bla) \
+    GST_DEBUG_CATEGORY_INIT (aacparse_debug, "aacparse", 0, \
+    "AAC audio stream parser");
+
+GST_BOILERPLATE_FULL (GstAacParse, gst_aac_parse, GstBaseParse,
+    GST_TYPE_BASE_PARSE, _do_init);
 
 static inline gint
 gst_aac_parse_get_sample_rate_from_index (guint sr_idx)
@@ -108,6 +103,26 @@ gst_aac_parse_get_sample_rate_from_index (guint sr_idx)
 }
 
 /**
+ * gst_aac_parse_base_init:
+ * @klass: #GstElementClass.
+ *
+ */
+static void
+gst_aac_parse_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &sink_template);
+  gst_element_class_add_static_pad_template (element_class, &src_template);
+
+  gst_element_class_set_details_simple (element_class,
+      "AAC audio stream parser", "Codec/Parser/Audio",
+      "Advanced Audio Coding parser", "Stefan Kost <stefan.kost@nokia.com>");
+}
+
+
+/**
  * gst_aac_parse_class_init:
  * @klass: #GstAacParseClass.
  *
@@ -115,26 +130,15 @@ gst_aac_parse_get_sample_rate_from_index (guint sr_idx)
 static void
 gst_aac_parse_class_init (GstAacParseClass * klass)
 {
-  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
   GstBaseParseClass *parse_class = GST_BASE_PARSE_CLASS (klass);
-
-  GST_DEBUG_CATEGORY_INIT (aacparse_debug, "aacparse", 0,
-      "AAC audio stream parser");
-
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&sink_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&src_template));
-
-  gst_element_class_set_static_metadata (element_class,
-      "AAC audio stream parser", "Codec/Parser/Audio",
-      "Advanced Audio Coding parser", "Stefan Kost <stefan.kost@nokia.com>");
 
   parse_class->start = GST_DEBUG_FUNCPTR (gst_aac_parse_start);
   parse_class->stop = GST_DEBUG_FUNCPTR (gst_aac_parse_stop);
   parse_class->set_sink_caps = GST_DEBUG_FUNCPTR (gst_aac_parse_sink_setcaps);
   parse_class->get_sink_caps = GST_DEBUG_FUNCPTR (gst_aac_parse_sink_getcaps);
-  parse_class->handle_frame = GST_DEBUG_FUNCPTR (gst_aac_parse_handle_frame);
+  parse_class->parse_frame = GST_DEBUG_FUNCPTR (gst_aac_parse_parse_frame);
+  parse_class->check_valid_frame =
+      GST_DEBUG_FUNCPTR (gst_aac_parse_check_valid_frame);
 }
 
 
@@ -145,7 +149,7 @@ gst_aac_parse_class_init (GstAacParseClass * klass)
  *
  */
 static void
-gst_aac_parse_init (GstAacParse * aacparse)
+gst_aac_parse_init (GstAacParse * aacparse, GstAacParseClass * klass)
 {
   GST_DEBUG ("initialized");
 }
@@ -173,7 +177,7 @@ gst_aac_parse_set_src_caps (GstAacParse * aacparse, GstCaps * sink_caps)
   if (sink_caps)
     src_caps = gst_caps_copy (sink_caps);
   else
-    src_caps = gst_caps_new_empty_simple ("audio/mpeg");
+    src_caps = gst_caps_new_simple ("audio/mpeg", NULL);
 
   gst_caps_set_simple (src_caps, "framed", G_TYPE_BOOLEAN, TRUE,
       "mpegversion", G_TYPE_INT, aacparse->mpegversion, NULL);
@@ -187,9 +191,6 @@ gst_aac_parse_set_src_caps (GstAacParse * aacparse, GstCaps * sink_caps)
       break;
     case DSPAAC_HEADER_ADIF:
       stream_format = "adif";
-      break;
-    case DSPAAC_HEADER_LOAS:
-      stream_format = "loas";
       break;
     default:
       stream_format = NULL;
@@ -243,19 +244,16 @@ gst_aac_parse_sink_setcaps (GstBaseParse * parse, GstCaps * caps)
     GstBuffer *buf = gst_value_get_buffer (value);
 
     if (buf) {
-      GstMapInfo map;
+      const guint8 *buffer = GST_BUFFER_DATA (buf);
       guint sr_idx;
 
-      gst_buffer_map (buf, &map, GST_MAP_READ);
-
-      sr_idx = ((map.data[0] & 0x07) << 1) | ((map.data[1] & 0x80) >> 7);
-      aacparse->object_type = (map.data[0] & 0xf8) >> 3;
+      sr_idx = ((buffer[0] & 0x07) << 1) | ((buffer[1] & 0x80) >> 7);
+      aacparse->object_type = (buffer[0] & 0xf8) >> 3;
       aacparse->sample_rate = gst_aac_parse_get_sample_rate_from_index (sr_idx);
-      aacparse->channels = (map.data[1] & 0x78) >> 3;
+      aacparse->channels = (buffer[1] & 0x78) >> 3;
       aacparse->header_type = DSPAAC_HEADER_NONE;
       aacparse->mpegversion = 4;
-      aacparse->frame_samples = (map.data[1] & 4) ? 960 : 1024;
-      gst_buffer_unmap (buf, &map);
+      aacparse->frame_samples = (buffer[1] & 4) ? 960 : 1024;
 
       GST_DEBUG ("codec_data: object_type=%d, sample_rate=%d, channels=%d, "
           "samples=%d", aacparse->object_type, aacparse->sample_rate,
@@ -271,9 +269,6 @@ gst_aac_parse_sink_setcaps (GstBaseParse * parse, GstCaps * caps)
     gst_structure_get_int (structure, "rate", &aacparse->sample_rate);
     gst_structure_get_int (structure, "channels", &aacparse->channels);
   } else {
-    aacparse->sample_rate = 0;
-    aacparse->channels = 0;
-    aacparse->header_type = DSPAAC_HEADER_NOT_PARSED;
     gst_base_parse_set_passthrough (parse, FALSE);
   }
 
@@ -332,8 +327,6 @@ gst_aac_parse_check_adts_frame (GstAacParse * aacparse,
     const guint8 * data, const guint avail, gboolean drain,
     guint * framesize, guint * needed_data)
 {
-  *needed_data = 0;
-
   if (G_UNLIKELY (avail < 2))
     return FALSE;
 
@@ -366,294 +359,6 @@ gst_aac_parse_check_adts_frame (GstAacParse * aacparse,
       GST_LOG ("ADTS frame found, len: %d bytes", *framesize);
       gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse),
           nextlen + ADTS_MAX_SIZE);
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-
-static gboolean
-gst_aac_parse_latm_get_value (GstAacParse * aacparse, GstBitReader * br,
-    guint32 * value)
-{
-  guint8 bytes, i, byte;
-
-  *value = 0;
-  if (!gst_bit_reader_get_bits_uint8 (br, &bytes, 2))
-    return FALSE;
-  for (i = 0; i < bytes; ++i) {
-    *value <<= 8;
-    if (!gst_bit_reader_get_bits_uint8 (br, &byte, 8))
-      return FALSE;
-    *value += byte;
-  }
-  return TRUE;
-}
-
-static gboolean
-gst_aac_parse_get_audio_object_type (GstAacParse * aacparse, GstBitReader * br,
-    guint8 * audio_object_type)
-{
-  if (!gst_bit_reader_get_bits_uint8 (br, audio_object_type, 5))
-    return FALSE;
-  if (*audio_object_type == 31) {
-    if (!gst_bit_reader_get_bits_uint8 (br, audio_object_type, 6))
-      return FALSE;
-    *audio_object_type += 32;
-  }
-  GST_LOG_OBJECT (aacparse, "audio object type %u", *audio_object_type);
-  return TRUE;
-}
-
-static gboolean
-gst_aac_parse_get_audio_sample_rate (GstAacParse * aacparse, GstBitReader * br,
-    gint * sample_rate)
-{
-  guint8 sampling_frequency_index;
-  if (!gst_bit_reader_get_bits_uint8 (br, &sampling_frequency_index, 4))
-    return FALSE;
-  GST_LOG_OBJECT (aacparse, "sampling_frequency_index: %u",
-      sampling_frequency_index);
-  if (sampling_frequency_index == 0xf) {
-    guint32 sampling_rate;
-    if (!gst_bit_reader_get_bits_uint32 (br, &sampling_rate, 24))
-      return FALSE;
-    *sample_rate = sampling_rate;
-  } else {
-    *sample_rate = loas_sample_rate_table[sampling_frequency_index];
-    if (!*sample_rate)
-      return FALSE;
-  }
-  return TRUE;
-}
-
-/* See table 1.13 in ISO/IEC 14496-3 */
-static gboolean
-gst_aac_parse_read_loas_audio_specific_config (GstAacParse * aacparse,
-    GstBitReader * br, gint * sample_rate, gint * channels, guint32 * bits)
-{
-  guint8 audio_object_type, channel_configuration;
-
-  if (!gst_aac_parse_get_audio_object_type (aacparse, br, &audio_object_type))
-    return FALSE;
-
-  if (!gst_aac_parse_get_audio_sample_rate (aacparse, br, sample_rate))
-    return FALSE;
-
-  if (!gst_bit_reader_get_bits_uint8 (br, &channel_configuration, 4))
-    return FALSE;
-  GST_LOG_OBJECT (aacparse, "channel_configuration: %d", channel_configuration);
-  *channels = loas_channels_table[channel_configuration];
-  if (!*channels)
-    return FALSE;
-
-  if (audio_object_type == 5) {
-    GST_LOG_OBJECT (aacparse,
-        "Audio object type 5, so rereading sampling rate...");
-    if (!gst_aac_parse_get_audio_sample_rate (aacparse, br, sample_rate))
-      return FALSE;
-  }
-
-  GST_INFO_OBJECT (aacparse, "Found LOAS config: %d Hz, %d channels",
-      *sample_rate, *channels);
-
-  /* There's LOTS of stuff next, but we ignore it for now as we have
-     what we want (sample rate and number of channels */
-  GST_DEBUG_OBJECT (aacparse,
-      "Need more code to parse humongous LOAS data, currently ignored");
-  if (bits)
-    *bits = 0;
-  return TRUE;
-}
-
-
-static gboolean
-gst_aac_parse_read_loas_config (GstAacParse * aacparse, const guint8 * data,
-    guint avail, gint * sample_rate, gint * channels, gint * version)
-{
-  GstBitReader br;
-  guint8 u8, v, vA;
-
-  /* No version in the bitstream, but the spec has LOAS in the MPEG-4 section */
-  if (version)
-    *version = 4;
-
-  gst_bit_reader_init (&br, data, avail);
-
-  /* skip sync word (11 bits) and size (13 bits) */
-  if (!gst_bit_reader_skip (&br, 11 + 13))
-    return FALSE;
-
-  /* First bit is "use last config" */
-  if (!gst_bit_reader_get_bits_uint8 (&br, &u8, 1))
-    return FALSE;
-  if (u8) {
-    GST_DEBUG_OBJECT (aacparse, "Frame uses previous config");
-    if (!aacparse->sample_rate || !aacparse->channels) {
-      GST_WARNING_OBJECT (aacparse, "No previous config to use");
-    }
-    *sample_rate = aacparse->sample_rate;
-    *channels = aacparse->channels;
-    return TRUE;
-  }
-
-  GST_DEBUG_OBJECT (aacparse, "Frame contains new config");
-
-  if (!gst_bit_reader_get_bits_uint8 (&br, &v, 1))
-    return FALSE;
-  if (v) {
-    if (!gst_bit_reader_get_bits_uint8 (&br, &vA, 1))
-      return FALSE;
-  } else
-    vA = 0;
-
-  GST_LOG_OBJECT (aacparse, "v %d, vA %d", v, vA);
-  if (vA == 0) {
-    guint8 same_time, subframes, num_program, prog;
-    if (v == 1) {
-      guint32 value;
-      if (!gst_aac_parse_latm_get_value (aacparse, &br, &value))
-        return FALSE;
-    }
-    if (!gst_bit_reader_get_bits_uint8 (&br, &same_time, 1))
-      return FALSE;
-    if (!gst_bit_reader_get_bits_uint8 (&br, &subframes, 6))
-      return FALSE;
-    if (!gst_bit_reader_get_bits_uint8 (&br, &num_program, 4))
-      return FALSE;
-    GST_LOG_OBJECT (aacparse, "same_time %d, subframes %d, num_program %d",
-        same_time, subframes, num_program);
-
-    for (prog = 0; prog <= num_program; ++prog) {
-      guint8 num_layer, layer;
-      if (!gst_bit_reader_get_bits_uint8 (&br, &num_layer, 3))
-        return FALSE;
-      GST_LOG_OBJECT (aacparse, "Program %d: %d layers", prog, num_layer);
-
-      for (layer = 0; layer <= num_layer; ++layer) {
-        guint8 use_same_config;
-        if (prog == 0 && layer == 0) {
-          use_same_config = 0;
-        } else {
-          if (!gst_bit_reader_get_bits_uint8 (&br, &use_same_config, 1))
-            return FALSE;
-        }
-        if (!use_same_config) {
-          if (v == 0) {
-            if (!gst_aac_parse_read_loas_audio_specific_config (aacparse, &br,
-                    sample_rate, channels, NULL))
-              return FALSE;
-          } else {
-            guint32 bits, asc_len;
-            if (!gst_aac_parse_latm_get_value (aacparse, &br, &asc_len))
-              return FALSE;
-            if (!gst_aac_parse_read_loas_audio_specific_config (aacparse, &br,
-                    sample_rate, channels, &bits))
-              return FALSE;
-            asc_len -= bits;
-            if (!gst_bit_reader_skip (&br, asc_len))
-              return FALSE;
-          }
-        }
-      }
-    }
-    GST_WARNING_OBJECT (aacparse, "More data ignored");
-  } else {
-    GST_WARNING_OBJECT (aacparse, "Spec says \"TBD\"...");
-  }
-  return TRUE;
-}
-
-/**
- * gst_aac_parse_loas_get_frame_len:
- * @data: block of data containing a LOAS header.
- *
- * This function calculates LOAS frame length from the given header.
- *
- * Returns: size of the LOAS frame.
- */
-static inline guint
-gst_aac_parse_loas_get_frame_len (const guint8 * data)
-{
-  return (((data[1] & 0x1f) << 8) | data[2]) + 3;
-}
-
-
-/**
- * gst_aac_parse_check_loas_frame:
- * @aacparse: #GstAacParse.
- * @data: Data to be checked.
- * @avail: Amount of data passed.
- * @framesize: If valid LOAS frame was found, this will be set to tell the
- *             found frame size in bytes.
- * @needed_data: If frame was not found, this may be set to tell how much
- *               more data is needed in the next round to detect the frame
- *               reliably. This may happen when a frame header candidate
- *               is found but it cannot be guaranteed to be the header without
- *               peeking the following data.
- *
- * Check if the given data contains contains LOAS frame. The algorithm
- * will examine LOAS frame header and calculate the frame size. Also, another
- * consecutive LOAS frame header need to be present after the found frame.
- * Otherwise the data is not considered as a valid LOAS frame. However, this
- * "extra check" is omitted when EOS has been received. In this case it is
- * enough when data[0] contains a valid LOAS header.
- *
- * This function may set the #needed_data to indicate that a possible frame
- * candidate has been found, but more data (#needed_data bytes) is needed to
- * be absolutely sure. When this situation occurs, FALSE will be returned.
- *
- * When a valid frame is detected, this function will use
- * gst_base_parse_set_min_frame_size() function from #GstBaseParse class
- * to set the needed bytes for next frame.This way next data chunk is already
- * of correct size.
- *
- * LOAS can have three different formats, if I read the spec correctly. Only
- * one of them is supported here, as the two samples I have use this one.
- *
- * Returns: TRUE if the given data contains a valid LOAS header.
- */
-static gboolean
-gst_aac_parse_check_loas_frame (GstAacParse * aacparse,
-    const guint8 * data, const guint avail, gboolean drain,
-    guint * framesize, guint * needed_data)
-{
-  *needed_data = 0;
-
-  /* 3 byte header */
-  if (G_UNLIKELY (avail < 3))
-    return FALSE;
-
-  if ((data[0] == 0x56) && ((data[1] & 0xe0) == 0xe0)) {
-    *framesize = gst_aac_parse_loas_get_frame_len (data);
-    GST_DEBUG_OBJECT (aacparse, "Found %u byte LOAS frame", *framesize);
-
-    /* In EOS mode this is enough. No need to examine the data further.
-       We also relax the check when we have sync, on the assumption that
-       if we're not looking at random data, we have a much higher chance
-       to get the correct sync, and this avoids losing two frames when
-       a single bit corruption happens. */
-    if (drain || !GST_BASE_PARSE_LOST_SYNC (aacparse)) {
-      return TRUE;
-    }
-
-    if (*framesize + LOAS_MAX_SIZE > avail) {
-      /* We have found a possible frame header candidate, but can't be
-         sure since we don't have enough data to check the next frame */
-      GST_DEBUG ("NEED MORE DATA: we need %d, available %d",
-          *framesize + LOAS_MAX_SIZE, avail);
-      *needed_data = *framesize + LOAS_MAX_SIZE;
-      gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse),
-          *framesize + LOAS_MAX_SIZE);
-      return FALSE;
-    }
-
-    if ((data[*framesize] == 0x56) && ((data[*framesize + 1] & 0xe0) == 0xe0)) {
-      guint nextlen = gst_aac_parse_loas_get_frame_len (data + (*framesize));
-
-      GST_LOG ("LOAS frame found, len: %d bytes", *framesize);
-      gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse),
-          nextlen + LOAS_MAX_SIZE);
       return TRUE;
     }
   }
@@ -705,7 +410,7 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
     guint * framesize, gint * skipsize)
 {
   gboolean found = FALSE;
-  guint need_data_adts = 0, need_data_loas;
+  guint need_data = 0;
   guint i = 0;
 
   GST_DEBUG_OBJECT (aacparse, "Parsing header data");
@@ -714,16 +419,12 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
      stream */
 
   /* Can we even parse the header? */
-  if (avail < MAX (ADTS_MAX_SIZE, LOAS_MAX_SIZE)) {
-    GST_DEBUG_OBJECT (aacparse, "Not enough data to check");
+  if (avail < ADTS_MAX_SIZE)
     return FALSE;
-  }
 
   for (i = 0; i < avail - 4; i++) {
     if (((data[i] == 0xff) && ((data[i + 1] & 0xf6) == 0xf0)) ||
-        ((data[0] == 0x56) && ((data[1] & 0xe0) == 0xe0)) ||
         strncmp ((char *) data + i, "ADIF", 4) == 0) {
-      GST_DEBUG_OBJECT (aacparse, "Found signature at offset %u", i);
       found = TRUE;
 
       if (i) {
@@ -743,20 +444,15 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
   }
 
   if (gst_aac_parse_check_adts_frame (aacparse, data, avail, drain,
-          framesize, &need_data_adts)) {
+          framesize, &need_data)) {
     gint rate, channels;
 
     GST_INFO ("ADTS ID: %d, framesize: %d", (data[1] & 0x08) >> 3, *framesize);
 
+    aacparse->header_type = DSPAAC_HEADER_ADTS;
     gst_aac_parse_parse_adts_header (aacparse, data, &rate, &channels,
         &aacparse->object_type, &aacparse->mpegversion);
 
-    if (!channels || !framesize) {
-      GST_DEBUG_OBJECT (aacparse, "impossible ADTS configuration");
-      return FALSE;
-    }
-
-    aacparse->header_type = DSPAAC_HEADER_ADTS;
     gst_base_parse_set_frame_rate (GST_BASE_PARSE (aacparse), rate,
         aacparse->frame_samples, 2, 2);
 
@@ -766,38 +462,7 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
     gst_base_parse_set_syncable (GST_BASE_PARSE (aacparse), TRUE);
 
     return TRUE;
-  }
-
-  if (gst_aac_parse_check_loas_frame (aacparse, data, avail, drain,
-          framesize, &need_data_loas)) {
-    gint rate, channels;
-
-    GST_INFO ("LOAS, framesize: %d", *framesize);
-
-    aacparse->header_type = DSPAAC_HEADER_LOAS;
-
-    if (!gst_aac_parse_read_loas_config (aacparse, data, avail, &rate,
-            &channels, &aacparse->mpegversion)) {
-      GST_WARNING_OBJECT (aacparse, "Error reading LOAS config");
-      return FALSE;
-    }
-
-    if (rate && channels) {
-      gst_base_parse_set_frame_rate (GST_BASE_PARSE (aacparse), rate,
-          aacparse->frame_samples, 2, 2);
-
-      GST_DEBUG ("LOAS: samplerate %d, channels %d, objtype %d, version %d",
-          rate, channels, aacparse->object_type, aacparse->mpegversion);
-      aacparse->sample_rate = rate;
-      aacparse->channels = channels;
-    }
-
-    gst_base_parse_set_syncable (GST_BASE_PARSE (aacparse), TRUE);
-
-    return TRUE;
-  }
-
-  if (need_data_adts || need_data_loas) {
+  } else if (need_data) {
     /* This tells the parent class not to skip any data */
     *skipsize = 0;
     return FALSE;
@@ -811,7 +476,6 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
     int skip_size = 0;
     int bitstream_type;
     int sr_idx;
-    GstCaps *sinkcaps;
 
     aacparse->header_type = DSPAAC_HEADER_ADIF;
     aacparse->mpegversion = 4;
@@ -874,10 +538,8 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
     gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse), 512);
 
     /* arrange for metadata and get out of the way */
-    sinkcaps = gst_pad_get_current_caps (GST_BASE_PARSE_SINK_PAD (aacparse));
-    gst_aac_parse_set_src_caps (aacparse, sinkcaps);
-    if (sinkcaps)
-      gst_caps_unref (sinkcaps);
+    gst_aac_parse_set_src_caps (aacparse,
+        GST_PAD_CAPS (GST_BASE_PARSE_SINK_PAD (aacparse)));
 
     /* not syncable, not easily seekable (unless we push data from start */
     gst_base_parse_set_syncable (GST_BASE_PARSE_CAST (aacparse), FALSE);
@@ -896,75 +558,48 @@ gst_aac_parse_detect_stream (GstAacParse * aacparse,
 /**
  * gst_aac_parse_check_valid_frame:
  * @parse: #GstBaseParse.
- * @frame: #GstBaseParseFrame.
+ * @buffer: #GstBuffer.
+ * @framesize: If the buffer contains a valid frame, its size will be put here
  * @skipsize: How much data parent class should skip in order to find the
  *            frame header.
  *
- * Implementation of "handle_frame" vmethod in #GstBaseParse class.
+ * Implementation of "check_valid_frame" vmethod in #GstBaseParse class.
  *
- * Also determines frame overhead.
- * ADTS streams have a 7 byte header in each frame. MP4 and ADIF streams don't have
- * a per-frame header. LOAS has 3 bytes.
- *
- * We're making a couple of simplifying assumptions:
- *
- * 1. We count Program Configuration Elements rather than searching for them
- *    in the streams to discount them - the overhead is negligible.
- *
- * 2. We ignore CRC. This has a worst-case impact of (num_raw_blocks + 1)*16
- *    bits, which should still not be significant enough to warrant the
- *    additional parsing through the headers
- *
- * Returns: a #GstFlowReturn.
+ * Returns: TRUE if buffer contains a valid frame.
  */
-static GstFlowReturn
-gst_aac_parse_handle_frame (GstBaseParse * parse,
-    GstBaseParseFrame * frame, gint * skipsize)
+static gboolean
+gst_aac_parse_check_valid_frame (GstBaseParse * parse,
+    GstBaseParseFrame * frame, guint * framesize, gint * skipsize)
 {
-  GstMapInfo map;
+  const guint8 *data;
   GstAacParse *aacparse;
   gboolean ret = FALSE;
   gboolean lost_sync;
   GstBuffer *buffer;
-  guint framesize;
-  gint rate, channels;
 
   aacparse = GST_AAC_PARSE (parse);
   buffer = frame->buffer;
+  data = GST_BUFFER_DATA (buffer);
 
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
-
-  *skipsize = -1;
   lost_sync = GST_BASE_PARSE_LOST_SYNC (parse);
 
   if (aacparse->header_type == DSPAAC_HEADER_ADIF ||
       aacparse->header_type == DSPAAC_HEADER_NONE) {
     /* There is nothing to parse */
-    framesize = map.size;
+    *framesize = GST_BUFFER_SIZE (buffer);
     ret = TRUE;
 
   } else if (aacparse->header_type == DSPAAC_HEADER_NOT_PARSED || lost_sync) {
 
-    ret = gst_aac_parse_detect_stream (aacparse, map.data, map.size,
-        GST_BASE_PARSE_DRAINING (parse), &framesize, skipsize);
+    ret = gst_aac_parse_detect_stream (aacparse, data, GST_BUFFER_SIZE (buffer),
+        GST_BASE_PARSE_DRAINING (parse), framesize, skipsize);
 
   } else if (aacparse->header_type == DSPAAC_HEADER_ADTS) {
     guint needed_data = 1024;
 
-    ret = gst_aac_parse_check_adts_frame (aacparse, map.data, map.size,
-        GST_BASE_PARSE_DRAINING (parse), &framesize, &needed_data);
-
-    if (!ret) {
-      GST_DEBUG ("buffer didn't contain valid frame");
-      gst_base_parse_set_min_frame_size (GST_BASE_PARSE (aacparse),
-          needed_data);
-    }
-
-  } else if (aacparse->header_type == DSPAAC_HEADER_LOAS) {
-    guint needed_data = 1024;
-
-    ret = gst_aac_parse_check_loas_frame (aacparse, map.data,
-        map.size, GST_BASE_PARSE_DRAINING (parse), &framesize, &needed_data);
+    ret = gst_aac_parse_check_adts_frame (aacparse, data,
+        GST_BUFFER_SIZE (buffer), GST_BASE_PARSE_DRAINING (parse),
+        framesize, &needed_data);
 
     if (!ret) {
       GST_DEBUG ("buffer didn't contain valid frame");
@@ -978,82 +613,70 @@ gst_aac_parse_handle_frame (GstBaseParse * parse,
         ADTS_MAX_SIZE);
   }
 
-  if (G_UNLIKELY (!ret))
-    goto exit;
+  return ret;
+}
 
-  if (aacparse->header_type == DSPAAC_HEADER_ADTS) {
-    /* see above */
-    frame->overhead = 7;
 
-    gst_aac_parse_parse_adts_header (aacparse, map.data,
-        &rate, &channels, NULL, NULL);
+/**
+ * gst_aac_parse_parse_frame:
+ * @parse: #GstBaseParse.
+ * @buffer: #GstBuffer.
+ *
+ * Implementation of "parse_frame" vmethod in #GstBaseParse class.
+ *
+ * Also determines frame overhead.
+ * ADTS streams have a 7 byte header in each frame. MP4 and ADIF streams don't have
+ * a per-frame header.
+ *
+ * We're making a couple of simplifying assumptions:
+ *
+ * 1. We count Program Configuration Elements rather than searching for them
+ *    in the streams to discount them - the overhead is negligible.
+ *
+ * 2. We ignore CRC. This has a worst-case impact of (num_raw_blocks + 1)*16
+ *    bits, which should still not be significant enough to warrant the
+ *    additional parsing through the headers
+ *
+ * Returns: GST_FLOW_OK if frame was successfully parsed and can be pushed
+ *          forward. Otherwise appropriate error is returned.
+ */
+static GstFlowReturn
+gst_aac_parse_parse_frame (GstBaseParse * parse, GstBaseParseFrame * frame)
+{
+  GstAacParse *aacparse;
+  GstBuffer *buffer;
+  GstFlowReturn ret = GST_FLOW_OK;
+  gint rate, channels;
 
-    GST_LOG_OBJECT (aacparse, "rate: %d, chans: %d", rate, channels);
+  aacparse = GST_AAC_PARSE (parse);
+  buffer = frame->buffer;
 
-    if (G_UNLIKELY (rate != aacparse->sample_rate
-            || channels != aacparse->channels)) {
-      aacparse->sample_rate = rate;
-      aacparse->channels = channels;
+  if (G_UNLIKELY (aacparse->header_type != DSPAAC_HEADER_ADTS))
+    return ret;
 
-      if (!gst_aac_parse_set_src_caps (aacparse, NULL)) {
-        /* If linking fails, we need to return appropriate error */
-        ret = GST_FLOW_NOT_LINKED;
-      }
+  /* see above */
+  frame->overhead = 7;
 
-      gst_base_parse_set_frame_rate (GST_BASE_PARSE (aacparse),
-          aacparse->sample_rate, aacparse->frame_samples, 2, 2);
+  gst_aac_parse_parse_adts_header (aacparse, GST_BUFFER_DATA (buffer),
+      &rate, &channels, NULL, NULL);
+  GST_LOG_OBJECT (aacparse, "rate: %d, chans: %d", rate, channels);
+
+  if (G_UNLIKELY (rate != aacparse->sample_rate
+          || channels != aacparse->channels)) {
+    aacparse->sample_rate = rate;
+    aacparse->channels = channels;
+
+    if (!gst_aac_parse_set_src_caps (aacparse,
+            GST_PAD_CAPS (GST_BASE_PARSE (aacparse)->sinkpad))) {
+      /* If linking fails, we need to return appropriate error */
+      ret = GST_FLOW_NOT_LINKED;
     }
-  } else if (aacparse->header_type == DSPAAC_HEADER_LOAS) {
-    gboolean setcaps = FALSE;
 
-    /* see above */
-    frame->overhead = 3;
-
-    if (!gst_aac_parse_read_loas_config (aacparse, map.data, map.size, &rate,
-            &channels, NULL)) {
-      GST_WARNING_OBJECT (aacparse, "Error reading LOAS config");
-    } else if (G_UNLIKELY (rate != aacparse->sample_rate
-            || channels != aacparse->channels)) {
-      aacparse->sample_rate = rate;
-      aacparse->channels = channels;
-      setcaps = TRUE;
-      GST_INFO_OBJECT (aacparse, "New LOAS config: %d Hz, %d channels", rate,
-          channels);
-    }
-
-    /* We want to set caps both at start, and when rate/channels change.
-       Since only some LOAS frames have that info, we may receive frames
-       before knowing about rate/channels. */
-    if (setcaps
-        || !gst_pad_has_current_caps (GST_BASE_PARSE_SRC_PAD (aacparse))) {
-      if (!gst_aac_parse_set_src_caps (aacparse, NULL)) {
-        /* If linking fails, we need to return appropriate error */
-        ret = GST_FLOW_NOT_LINKED;
-      }
-
-      gst_base_parse_set_frame_rate (GST_BASE_PARSE (aacparse),
-          aacparse->sample_rate, aacparse->frame_samples, 2, 2);
-    }
+    gst_base_parse_set_frame_rate (GST_BASE_PARSE (aacparse),
+        aacparse->sample_rate, aacparse->frame_samples, 2, 2);
   }
 
-exit:
-  gst_buffer_unmap (buffer, &map);
-
-  if (ret) {
-    /* found, skip if needed */
-    if (*skipsize > 0)
-      return GST_FLOW_OK;
-    *skipsize = 0;
-  } else {
-    if (*skipsize < 0)
-      *skipsize = 1;
-  }
-
-  if (ret && framesize <= map.size) {
-    return gst_base_parse_finish_frame (parse, frame, framesize);
-  }
-
-  return GST_FLOW_OK;
+  return ret;
 }
 
 
@@ -1094,12 +717,11 @@ gst_aac_parse_stop (GstBaseParse * parse)
 }
 
 static GstCaps *
-gst_aac_parse_sink_getcaps (GstBaseParse * parse, GstCaps * filter)
+gst_aac_parse_sink_getcaps (GstBaseParse * parse)
 {
-  GstCaps *peercaps, *templ;
+  GstCaps *peercaps;
   GstCaps *res;
 
-  templ = gst_pad_get_pad_template_caps (GST_BASE_PARSE_SINK_PAD (parse));
   peercaps = gst_pad_get_allowed_caps (GST_BASE_PARSE_SRC_PAD (parse));
   if (peercaps) {
     guint i, n;
@@ -1113,25 +735,15 @@ gst_aac_parse_sink_getcaps (GstBaseParse * parse, GstCaps * filter)
       gst_structure_remove_field (s, "framed");
     }
 
-    res = gst_caps_intersect_full (peercaps, templ, GST_CAPS_INTERSECT_FIRST);
+    res =
+        gst_caps_intersect_full (peercaps,
+        gst_pad_get_pad_template_caps (GST_BASE_PARSE_SRC_PAD (parse)),
+        GST_CAPS_INTERSECT_FIRST);
     gst_caps_unref (peercaps);
-
-    /* Append the template caps because we still want to accept
-     * caps without any fields in the case upstream does not
-     * know anything.
-     */
-    gst_caps_append (res, templ);
   } else {
-    res = templ;
-  }
-
-  if (filter) {
-    GstCaps *intersection;
-
-    intersection =
-        gst_caps_intersect_full (filter, res, GST_CAPS_INTERSECT_FIRST);
-    gst_caps_unref (res);
-    res = intersection;
+    res =
+        gst_caps_copy (gst_pad_get_pad_template_caps (GST_BASE_PARSE_SINK_PAD
+            (parse)));
   }
 
   return res;

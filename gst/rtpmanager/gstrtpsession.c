@@ -76,13 +76,13 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, ..." ! .recv_rtp_sink gstrtpsession .recv_rtp_src ! rtptheoradepay ! theoradec ! xvimagesink
+ * gst-launch udpsrc port=5000 caps="application/x-rtp, ..." ! .recv_rtp_sink gstrtpsession .recv_rtp_src ! rtptheoradepay ! theoradec ! xvimagesink
  * ]| Receive theora RTP packets from port 5000 and send them to the depayloader,
  * decoder and display. Note that the application/x-rtp caps on udpsrc should be
  * configured based on some negotiation process such as RTSP for this pipeline
  * to work correctly.
  * |[
- * gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, ..." ! .recv_rtp_sink gstrtpsession name=session \
+ * gst-launch udpsrc port=5000 caps="application/x-rtp, ..." ! .recv_rtp_sink gstrtpsession name=session \
  *        .recv_rtp_src ! rtptheoradepay ! theoradec ! xvimagesink \
  *     udpsrc port=5001 caps="application/x-rtcp" ! session.recv_rtcp_sink
  * ]| Receive theora RTP packets from port 5000 and send them to the depayloader,
@@ -92,11 +92,11 @@
  * configured based on some negotiation process such as RTSP for this pipeline
  * to work correctly.
  * |[
- * gst-launch-1.0 videotestsrc ! theoraenc ! rtptheorapay ! .send_rtp_sink gstrtpsession .send_rtp_src ! udpsink port=5000
+ * gst-launch videotestsrc ! theoraenc ! rtptheorapay ! .send_rtp_sink gstrtpsession .send_rtp_src ! udpsink port=5000
  * ]| Send theora RTP packets through the session manager and out on UDP port
  * 5000.
  * |[
- * gst-launch-1.0 videotestsrc ! theoraenc ! rtptheorapay ! .send_rtp_sink gstrtpsession name=session .send_rtp_src \
+ * gst-launch videotestsrc ! theoraenc ! rtptheorapay ! .send_rtp_sink gstrtpsession name=session .send_rtp_src \
  *     ! udpsink port=5000  session.send_rtcp_src ! udpsink port=5001
  * ]| Send theora RTP packets through the session manager and out on UDP port
  * 5000. Send RTCP packets on port 5001. Note that this pipeline will not preroll
@@ -192,6 +192,7 @@ enum
   LAST_SIGNAL
 };
 
+#define DEFAULT_NTP_NS_BASE          0
 #define DEFAULT_BANDWIDTH            RTP_STATS_BANDWIDTH
 #define DEFAULT_RTCP_FRACTION        (RTP_STATS_BANDWIDTH * RTP_STATS_RTCP_FRACTION)
 #define DEFAULT_RTCP_RR_BANDWIDTH    -1
@@ -201,11 +202,11 @@ enum
 #define DEFAULT_NUM_ACTIVE_SOURCES   0
 #define DEFAULT_USE_PIPELINE_CLOCK   FALSE
 #define DEFAULT_RTCP_MIN_INTERVAL    (RTP_STATS_MIN_INTERVAL * GST_SECOND)
-#define DEFAULT_PROBATION            RTP_DEFAULT_PROBATION
 
 enum
 {
   PROP_0,
+  PROP_NTP_NS_BASE,
   PROP_BANDWIDTH,
   PROP_RTCP_FRACTION,
   PROP_RTCP_RR_BANDWIDTH,
@@ -216,19 +217,18 @@ enum
   PROP_INTERNAL_SESSION,
   PROP_USE_PIPELINE_CLOCK,
   PROP_RTCP_MIN_INTERVAL,
-  PROP_PROBATION,
   PROP_LAST
 };
 
 #define GST_RTP_SESSION_GET_PRIVATE(obj)  \
 	   (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_RTP_SESSION, GstRtpSessionPrivate))
 
-#define GST_RTP_SESSION_LOCK(sess)   g_mutex_lock (&(sess)->priv->lock)
-#define GST_RTP_SESSION_UNLOCK(sess) g_mutex_unlock (&(sess)->priv->lock)
+#define GST_RTP_SESSION_LOCK(sess)   g_mutex_lock ((sess)->priv->lock)
+#define GST_RTP_SESSION_UNLOCK(sess) g_mutex_unlock ((sess)->priv->lock)
 
 struct _GstRtpSessionPrivate
 {
-  GMutex lock;
+  GMutex *lock;
   GstClock *sysclock;
 
   RTPSession *session;
@@ -242,6 +242,8 @@ struct _GstRtpSessionPrivate
   /* caps mapping */
   GHashTable *ptmap;
 
+  /* NTP base time */
+  guint64 ntpnsbase;
   gboolean use_pipeline_clock;
 };
 
@@ -284,13 +286,8 @@ static void gst_rtp_session_get_property (GObject * object, guint prop_id,
 static GstStateChangeReturn gst_rtp_session_change_state (GstElement * element,
     GstStateChange transition);
 static GstPad *gst_rtp_session_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * name, const GstCaps * caps);
+    GstPadTemplate * templ, const gchar * name);
 static void gst_rtp_session_release_pad (GstElement * element, GstPad * pad);
-
-static gboolean gst_rtp_session_sink_setcaps (GstPad * pad,
-    GstRtpSession * rtpsession, GstCaps * caps);
-static gboolean gst_rtp_session_setcaps_send_rtp (GstPad * pad,
-    GstRtpSession * rtpsession, GstCaps * caps);
 
 static void gst_rtp_session_clear_pt_map (GstRtpSession * rtpsession);
 
@@ -370,8 +367,35 @@ on_sender_timeout (RTPSession * session, RTPSource * src, GstRtpSession * sess)
       src->ssrc);
 }
 
-#define gst_rtp_session_parent_class parent_class
-G_DEFINE_TYPE (GstRtpSession, gst_rtp_session, GST_TYPE_ELEMENT);
+GST_BOILERPLATE (GstRtpSession, gst_rtp_session, GstElement, GST_TYPE_ELEMENT);
+
+static void
+gst_rtp_session_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  /* sink pads */
+  gst_element_class_add_static_pad_template (element_class,
+      &rtpsession_recv_rtp_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &rtpsession_recv_rtcp_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &rtpsession_send_rtp_sink_template);
+
+  /* src pads */
+  gst_element_class_add_static_pad_template (element_class,
+      &rtpsession_recv_rtp_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &rtpsession_sync_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &rtpsession_send_rtp_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &rtpsession_send_rtcp_src_template);
+
+  gst_element_class_set_details_simple (element_class, "RTP Session",
+      "Filter/Network/RTP",
+      "Implement an RTP session", "Wim Taymans <wim.taymans@gmail.com>");
+}
 
 static void
 gst_rtp_session_class_init (GstRtpSessionClass * klass)
@@ -516,6 +540,12 @@ gst_rtp_session_class_init (GstRtpSessionClass * klass)
           on_sender_timeout), NULL, NULL, g_cclosure_marshal_VOID__UINT,
       G_TYPE_NONE, 1, G_TYPE_UINT);
 
+  g_object_class_install_property (gobject_class, PROP_NTP_NS_BASE,
+      g_param_spec_uint64 ("ntp-ns-base", "NTP base time",
+          "The NTP base time corresponding to running_time 0 (deprecated)", 0,
+          G_MAXUINT64, DEFAULT_NTP_NS_BASE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_BANDWIDTH,
       g_param_spec_double ("bandwidth", "Bandwidth",
           "The bandwidth of the session in bytes per second (0 for auto-discover)",
@@ -574,12 +604,6 @@ gst_rtp_session_class_init (GstRtpSessionClass * klass)
           0, G_MAXUINT64, DEFAULT_RTCP_MIN_INTERVAL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_PROBATION,
-      g_param_spec_uint ("probation", "Number of probations",
-          "Consecutive packet sequence numbers to accept the source",
-          0, G_MAXUINT, DEFAULT_PROBATION,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_rtp_session_change_state);
   gstelement_class->request_new_pad =
@@ -589,37 +613,15 @@ gst_rtp_session_class_init (GstRtpSessionClass * klass)
 
   klass->clear_pt_map = GST_DEBUG_FUNCPTR (gst_rtp_session_clear_pt_map);
 
-  /* sink pads */
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&rtpsession_recv_rtp_sink_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&rtpsession_recv_rtcp_sink_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&rtpsession_send_rtp_sink_template));
-
-  /* src pads */
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&rtpsession_recv_rtp_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&rtpsession_sync_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&rtpsession_send_rtp_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&rtpsession_send_rtcp_src_template));
-
-  gst_element_class_set_static_metadata (gstelement_class, "RTP Session",
-      "Filter/Network/RTP",
-      "Implement an RTP session", "Wim Taymans <wim.taymans@gmail.com>");
-
   GST_DEBUG_CATEGORY_INIT (gst_rtp_session_debug,
       "rtpsession", 0, "RTP Session");
 }
 
 static void
-gst_rtp_session_init (GstRtpSession * rtpsession)
+gst_rtp_session_init (GstRtpSession * rtpsession, GstRtpSessionClass * klass)
 {
   rtpsession->priv = GST_RTP_SESSION_GET_PRIVATE (rtpsession);
-  g_mutex_init (&rtpsession->priv->lock);
+  rtpsession->priv->lock = g_mutex_new ();
   rtpsession->priv->sysclock = gst_system_clock_obtain ();
   rtpsession->priv->session = rtp_session_new ();
   rtpsession->priv->use_pipeline_clock = DEFAULT_USE_PIPELINE_CLOCK;
@@ -662,7 +664,7 @@ gst_rtp_session_finalize (GObject * object)
   rtpsession = GST_RTP_SESSION (object);
 
   g_hash_table_destroy (rtpsession->priv->ptmap);
-  g_mutex_clear (&rtpsession->priv->lock);
+  g_mutex_free (rtpsession->priv->lock);
   g_object_unref (rtpsession->priv->sysclock);
   g_object_unref (rtpsession->priv->session);
 
@@ -680,6 +682,13 @@ gst_rtp_session_set_property (GObject * object, guint prop_id,
   priv = rtpsession->priv;
 
   switch (prop_id) {
+    case PROP_NTP_NS_BASE:
+      GST_OBJECT_LOCK (rtpsession);
+      priv->ntpnsbase = g_value_get_uint64 (value);
+      GST_DEBUG_OBJECT (rtpsession, "setting NTP base to %" GST_TIME_FORMAT,
+          GST_TIME_ARGS (priv->ntpnsbase));
+      GST_OBJECT_UNLOCK (rtpsession);
+      break;
     case PROP_BANDWIDTH:
       g_object_set_property (G_OBJECT (priv->session), "bandwidth", value);
       break;
@@ -704,9 +713,6 @@ gst_rtp_session_set_property (GObject * object, guint prop_id,
       g_object_set_property (G_OBJECT (priv->session), "rtcp-min-interval",
           value);
       break;
-    case PROP_PROBATION:
-      g_object_set_property (G_OBJECT (priv->session), "probation", value);
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -724,6 +730,11 @@ gst_rtp_session_get_property (GObject * object, guint prop_id,
   priv = rtpsession->priv;
 
   switch (prop_id) {
+    case PROP_NTP_NS_BASE:
+      GST_OBJECT_LOCK (rtpsession);
+      g_value_set_uint64 (value, priv->ntpnsbase);
+      GST_OBJECT_UNLOCK (rtpsession);
+      break;
     case PROP_BANDWIDTH:
       g_object_get_property (G_OBJECT (priv->session), "bandwidth", value);
       break;
@@ -757,9 +768,6 @@ gst_rtp_session_get_property (GObject * object, guint prop_id,
     case PROP_RTCP_MIN_INTERVAL:
       g_object_get_property (G_OBJECT (priv->session), "rtcp-min-interval",
           value);
-      break;
-    case PROP_PROBATION:
-      g_object_get_property (G_OBJECT (priv->session), "probation", value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -902,8 +910,13 @@ start_rtcp_thread (GstRtpSession * rtpsession)
       g_thread_join (rtpsession->priv->thread);
     /* only create a new thread if the old one was stopped. Otherwise we can
      * just reuse the currently running one. */
+#if !GLIB_CHECK_VERSION (2, 31, 0)
+    rtpsession->priv->thread =
+        g_thread_create ((GThreadFunc) rtcp_thread, rtpsession, TRUE, &error);
+#else
     rtpsession->priv->thread = g_thread_try_new ("rtpsession-rtcp-thread",
         (GThreadFunc) rtcp_thread, rtpsession, &error);
+#endif
     rtpsession->priv->thread_stopped = FALSE;
   }
   GST_RTP_SESSION_UNLOCK (rtpsession);
@@ -975,7 +988,7 @@ gst_rtp_session_change_state (GstElement * element, GstStateChange transition)
       break;
   }
 
-  res = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
+  res = parent_class->change_state (element, transition);
 
   switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
@@ -1096,15 +1109,17 @@ gst_rtp_session_send_rtcp (RTPSession * sess, RTPSource * src,
   if ((rtcp_src = rtpsession->send_rtcp_src)) {
     GstCaps *caps;
 
+    /* set rtcp caps on output pad */
+    if (!(caps = GST_PAD_CAPS (rtcp_src))) {
+      caps = gst_caps_new_simple ("application/x-rtcp", NULL);
+      gst_pad_set_caps (rtcp_src, caps);
+    } else
+      gst_caps_ref (caps);
+    gst_buffer_set_caps (buffer, caps);
+    gst_caps_unref (caps);
+
     gst_object_ref (rtcp_src);
     GST_RTP_SESSION_UNLOCK (rtpsession);
-
-    /* set rtcp caps on output pad */
-    if (!(caps = gst_pad_get_current_caps (rtcp_src))) {
-      caps = gst_caps_new_empty_simple ("application/x-rtcp");
-      gst_pad_set_caps (rtcp_src, caps);
-    }
-    gst_caps_unref (caps);
 
     GST_LOG_OBJECT (rtpsession, "sending RTCP");
     result = gst_pad_push (rtcp_src, buffer);
@@ -1153,15 +1168,17 @@ gst_rtp_session_sync_rtcp (RTPSession * sess, RTPSource * src,
   if ((sync_src = rtpsession->sync_src)) {
     GstCaps *caps;
 
+    /* set rtcp caps on output pad */
+    if (!(caps = GST_PAD_CAPS (sync_src))) {
+      caps = gst_caps_new_simple ("application/x-rtcp", NULL);
+      gst_pad_set_caps (sync_src, caps);
+    } else
+      gst_caps_ref (caps);
+    gst_buffer_set_caps (buffer, caps);
+    gst_caps_unref (caps);
+
     gst_object_ref (sync_src);
     GST_RTP_SESSION_UNLOCK (rtpsession);
-
-    /* set rtcp caps on output pad */
-    if (!(caps = gst_pad_get_current_caps (sync_src))) {
-      caps = gst_caps_new_empty_simple ("application/x-rtcp");
-      gst_pad_set_caps (sync_src, caps);
-    }
-    gst_caps_unref (caps);
 
     GST_LOG_OBJECT (rtpsession, "sending Sync RTCP");
     result = gst_pad_push (sync_src, buffer);
@@ -1313,47 +1330,52 @@ gst_rtp_session_reconsider (RTPSession * sess, gpointer user_data)
 }
 
 static gboolean
-gst_rtp_session_event_recv_rtp_sink (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_rtp_session_event_recv_rtp_sink (GstPad * pad, GstEvent * event)
 {
   GstRtpSession *rtpsession;
   gboolean ret = FALSE;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
+  if (G_UNLIKELY (rtpsession == NULL)) {
+    gst_event_unref (event);
+    return FALSE;
+  }
 
   GST_DEBUG_OBJECT (rtpsession, "received event %s",
       GST_EVENT_TYPE_NAME (event));
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
-
-      /* process */
-      gst_event_parse_caps (event, &caps);
-      gst_rtp_session_sink_setcaps (pad, rtpsession, caps);
-      ret = gst_pad_push_event (rtpsession->recv_rtp_src, event);
-      break;
-    }
     case GST_EVENT_FLUSH_STOP:
       gst_segment_init (&rtpsession->recv_rtp_seg, GST_FORMAT_UNDEFINED);
       ret = gst_pad_push_event (rtpsession->recv_rtp_src, event);
       break;
-    case GST_EVENT_SEGMENT:
+    case GST_EVENT_NEWSEGMENT:
     {
-      GstSegment *segment, in_segment;
+      gboolean update;
+      gdouble rate, arate;
+      GstFormat format;
+      gint64 start, stop, time;
+      GstSegment *segment;
 
       segment = &rtpsession->recv_rtp_seg;
 
       /* the newsegment event is needed to convert the RTP timestamp to
        * running_time, which is needed to generate a mapping from RTP to NTP
        * timestamps in SR reports */
-      gst_event_copy_segment (event, &in_segment);
-      GST_DEBUG_OBJECT (rtpsession, "received segment %" GST_SEGMENT_FORMAT,
-          &in_segment);
+      gst_event_parse_new_segment_full (event, &update, &rate, &arate, &format,
+          &start, &stop, &time);
 
-      /* accept upstream */
-      gst_segment_copy_into (&in_segment, segment);
+      GST_DEBUG_OBJECT (rtpsession,
+          "configured NEWSEGMENT update %d, rate %lf, applied rate %lf, "
+          "format GST_FORMAT_TIME, "
+          "%" GST_TIME_FORMAT " -- %" GST_TIME_FORMAT
+          ", time %" GST_TIME_FORMAT ", accum %" GST_TIME_FORMAT,
+          update, rate, arate, GST_TIME_ARGS (segment->start),
+          GST_TIME_ARGS (segment->stop), GST_TIME_ARGS (segment->time),
+          GST_TIME_ARGS (segment->accum));
+
+      gst_segment_set_newsegment_full (segment, update, rate,
+          arate, format, start, stop, time);
 
       /* push event forward */
       ret = gst_pad_push_event (rtpsession->recv_rtp_src, event);
@@ -1363,6 +1385,7 @@ gst_rtp_session_event_recv_rtp_sink (GstPad * pad, GstObject * parent,
       ret = gst_pad_push_event (rtpsession->recv_rtp_src, event);
       break;
   }
+  gst_object_unref (rtpsession);
 
   return ret;
 
@@ -1401,8 +1424,7 @@ gst_rtp_session_request_remote_key_unit (GstRtpSession * rtpsession,
 }
 
 static gboolean
-gst_rtp_session_event_recv_rtp_src (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_rtp_session_event_recv_rtp_src (GstPad * pad, GstEvent * event)
 {
   GstRtpSession *rtpsession;
   gboolean forward = TRUE;
@@ -1411,7 +1433,11 @@ gst_rtp_session_event_recv_rtp_src (GstPad * pad, GstObject * parent,
   guint32 ssrc;
   guint pt;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
+  if (G_UNLIKELY (rtpsession == NULL)) {
+    gst_event_unref (event);
+    return FALSE;
+  }
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_CUSTOM_UPSTREAM:
@@ -1437,18 +1463,22 @@ gst_rtp_session_event_recv_rtp_src (GstPad * pad, GstObject * parent,
   if (forward)
     ret = gst_pad_push_event (rtpsession->recv_rtp_sink, event);
 
+  gst_object_unref (rtpsession);
+
   return ret;
 }
 
 
 static GstIterator *
-gst_rtp_session_iterate_internal_links (GstPad * pad, GstObject * parent)
+gst_rtp_session_iterate_internal_links (GstPad * pad)
 {
   GstRtpSession *rtpsession;
   GstPad *otherpad = NULL;
   GstIterator *it = NULL;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
+  if (G_UNLIKELY (rtpsession == NULL))
+    return NULL;
 
   GST_RTP_SESSION_LOCK (rtpsession);
   if (pad == rtpsession->recv_rtp_src) {
@@ -1463,25 +1493,28 @@ gst_rtp_session_iterate_internal_links (GstPad * pad, GstObject * parent)
   GST_RTP_SESSION_UNLOCK (rtpsession);
 
   if (otherpad) {
-    GValue val = { 0, };
-
-    g_value_init (&val, GST_TYPE_PAD);
-    g_value_set_object (&val, otherpad);
-    it = gst_iterator_new_single (GST_TYPE_PAD, &val);
-    g_value_unset (&val);
+    it = gst_iterator_new_single (GST_TYPE_PAD, otherpad,
+        (GstCopyFunction) gst_object_ref, (GFreeFunc) gst_object_unref);
     gst_object_unref (otherpad);
   }
+
+  gst_object_unref (rtpsession);
 
   return it;
 }
 
 static gboolean
-gst_rtp_session_sink_setcaps (GstPad * pad, GstRtpSession * rtpsession,
-    GstCaps * caps)
+gst_rtp_session_sink_setcaps (GstPad * pad, GstCaps * caps)
 {
+  GstRtpSession *rtpsession;
+
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
+
   GST_RTP_SESSION_LOCK (rtpsession);
   gst_rtp_session_cache_caps (rtpsession, caps);
   GST_RTP_SESSION_UNLOCK (rtpsession);
+
+  gst_object_unref (rtpsession);
 
   return TRUE;
 }
@@ -1490,8 +1523,7 @@ gst_rtp_session_sink_setcaps (GstPad * pad, GstRtpSession * rtpsession,
  * forward the packet on the rtp_src pad
  */
 static GstFlowReturn
-gst_rtp_session_chain_recv_rtp (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer)
+gst_rtp_session_chain_recv_rtp (GstPad * pad, GstBuffer * buffer)
 {
   GstRtpSession *rtpsession;
   GstRtpSessionPrivate *priv;
@@ -1499,7 +1531,7 @@ gst_rtp_session_chain_recv_rtp (GstPad * pad, GstObject * parent,
   GstClockTime current_time, running_time;
   GstClockTime timestamp;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
   priv = rtpsession->priv;
 
   GST_LOG_OBJECT (rtpsession, "received RTP packet");
@@ -1522,6 +1554,7 @@ gst_rtp_session_chain_recv_rtp (GstPad * pad, GstObject * parent,
     goto push_error;
 
 done:
+  gst_object_unref (rtpsession);
 
   return ret;
 
@@ -1535,13 +1568,12 @@ push_error:
 }
 
 static gboolean
-gst_rtp_session_event_recv_rtcp_sink (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_rtp_session_event_recv_rtcp_sink (GstPad * pad, GstEvent * event)
 {
   GstRtpSession *rtpsession;
   gboolean ret = FALSE;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
 
   GST_DEBUG_OBJECT (rtpsession, "received event %s",
       GST_EVENT_TYPE_NAME (event));
@@ -1551,6 +1583,7 @@ gst_rtp_session_event_recv_rtcp_sink (GstPad * pad, GstObject * parent,
       ret = gst_pad_push_event (rtpsession->sync_src, event);
       break;
   }
+  gst_object_unref (rtpsession);
 
   return ret;
 }
@@ -1559,15 +1592,14 @@ gst_rtp_session_event_recv_rtcp_sink (GstPad * pad, GstObject * parent,
  * forward the SR packets to the sync_src pad.
  */
 static GstFlowReturn
-gst_rtp_session_chain_recv_rtcp (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer)
+gst_rtp_session_chain_recv_rtcp (GstPad * pad, GstBuffer * buffer)
 {
   GstRtpSession *rtpsession;
   GstRtpSessionPrivate *priv;
   GstClockTime current_time;
   guint64 ntpnstime;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
   priv = rtpsession->priv;
 
   GST_LOG_OBJECT (rtpsession, "received RTCP packet");
@@ -1577,17 +1609,18 @@ gst_rtp_session_chain_recv_rtcp (GstPad * pad, GstObject * parent,
 
   rtp_session_process_rtcp (priv->session, buffer, current_time, ntpnstime);
 
+  gst_object_unref (rtpsession);
+
   return GST_FLOW_OK;           /* always return OK */
 }
 
 static gboolean
-gst_rtp_session_query_send_rtcp_src (GstPad * pad, GstObject * parent,
-    GstQuery * query)
+gst_rtp_session_query_send_rtcp_src (GstPad * pad, GstQuery * query)
 {
   GstRtpSession *rtpsession;
   gboolean ret = FALSE;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
 
   GST_DEBUG_OBJECT (rtpsession, "received QUERY");
 
@@ -1602,17 +1635,22 @@ gst_rtp_session_query_send_rtcp_src (GstPad * pad, GstObject * parent,
       break;
   }
 
+  gst_object_unref (rtpsession);
+
   return ret;
 }
 
 static gboolean
-gst_rtp_session_event_send_rtcp_src (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_rtp_session_event_send_rtcp_src (GstPad * pad, GstEvent * event)
 {
   GstRtpSession *rtpsession;
   gboolean ret = TRUE;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
+  if (G_UNLIKELY (rtpsession == NULL)) {
+    gst_event_unref (event);
+    return FALSE;
+  }
   GST_DEBUG_OBJECT (rtpsession, "received EVENT");
 
   switch (GST_EVENT_TYPE (event)) {
@@ -1628,50 +1666,52 @@ gst_rtp_session_event_send_rtcp_src (GstPad * pad, GstObject * parent,
       break;
   }
 
+  gst_object_unref (rtpsession);
   return ret;
 }
 
 
 static gboolean
-gst_rtp_session_event_send_rtp_sink (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_rtp_session_event_send_rtp_sink (GstPad * pad, GstEvent * event)
 {
   GstRtpSession *rtpsession;
   gboolean ret = FALSE;
 
-  rtpsession = GST_RTP_SESSION (parent);
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
 
   GST_DEBUG_OBJECT (rtpsession, "received event");
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
-
-      /* process */
-      gst_event_parse_caps (event, &caps);
-      gst_rtp_session_setcaps_send_rtp (pad, rtpsession, caps);
-      ret = gst_pad_push_event (rtpsession->send_rtp_src, event);
-      break;
-    }
     case GST_EVENT_FLUSH_STOP:
       gst_segment_init (&rtpsession->send_rtp_seg, GST_FORMAT_UNDEFINED);
       ret = gst_pad_push_event (rtpsession->send_rtp_src, event);
       break;
-    case GST_EVENT_SEGMENT:{
-      GstSegment *segment, in_segment;
+    case GST_EVENT_NEWSEGMENT:{
+      gboolean update;
+      gdouble rate, arate;
+      GstFormat format;
+      gint64 start, stop, time;
+      GstSegment *segment;
 
       segment = &rtpsession->send_rtp_seg;
 
       /* the newsegment event is needed to convert the RTP timestamp to
        * running_time, which is needed to generate a mapping from RTP to NTP
        * timestamps in SR reports */
-      gst_event_copy_segment (event, &in_segment);
-      GST_DEBUG_OBJECT (rtpsession, "received segment %" GST_SEGMENT_FORMAT,
-          &in_segment);
+      gst_event_parse_new_segment_full (event, &update, &rate, &arate, &format,
+          &start, &stop, &time);
 
-      /* accept upstream */
-      gst_segment_copy_into (&in_segment, segment);
+      GST_DEBUG_OBJECT (rtpsession,
+          "configured NEWSEGMENT update %d, rate %lf, applied rate %lf, "
+          "format GST_FORMAT_TIME, "
+          "%" GST_TIME_FORMAT " -- %" GST_TIME_FORMAT
+          ", time %" GST_TIME_FORMAT ", accum %" GST_TIME_FORMAT,
+          update, rate, arate, GST_TIME_ARGS (segment->start),
+          GST_TIME_ARGS (segment->stop), GST_TIME_ARGS (segment->time),
+          GST_TIME_ARGS (segment->accum));
+
+      gst_segment_set_newsegment_full (segment, update, rate,
+          arate, format, start, stop, time);
 
       /* push event forward */
       ret = gst_pad_push_event (rtpsession->send_rtp_src, event);
@@ -1705,19 +1745,21 @@ gst_rtp_session_event_send_rtp_sink (GstPad * pad, GstObject * parent,
       break;
     }
   }
+  gst_object_unref (rtpsession);
 
   return ret;
 }
 
 static GstCaps *
-gst_rtp_session_getcaps_send_rtp (GstPad * pad, GstRtpSession * rtpsession,
-    GstCaps * filter)
+gst_rtp_session_getcaps_send_rtp (GstPad * pad)
 {
+  GstRtpSession *rtpsession;
   GstRtpSessionPrivate *priv;
   GstCaps *result;
   GstStructure *s1, *s2;
   guint ssrc;
 
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
   priv = rtpsession->priv;
 
   ssrc = rtp_session_get_internal_ssrc (priv->session);
@@ -1726,65 +1768,35 @@ gst_rtp_session_getcaps_send_rtp (GstPad * pad, GstRtpSession * rtpsession,
    * internal SSRC so that we don't have to patch it. Create a structure with
    * the SSRC and another one without. */
   s1 = gst_structure_new ("application/x-rtp", "ssrc", G_TYPE_UINT, ssrc, NULL);
-  s2 = gst_structure_new_empty ("application/x-rtp");
+  s2 = gst_structure_new ("application/x-rtp", NULL);
 
   result = gst_caps_new_full (s1, s2, NULL);
 
-  if (filter) {
-    GstCaps *caps = result;
-
-    result = gst_caps_intersect_full (filter, caps, GST_CAPS_INTERSECT_FIRST);
-    gst_caps_unref (caps);
-  }
-
   GST_DEBUG_OBJECT (rtpsession, "getting caps %" GST_PTR_FORMAT, result);
+
+  gst_object_unref (rtpsession);
 
   return result;
 }
 
 static gboolean
-gst_rtp_session_query_send_rtp (GstPad * pad, GstObject * parent,
-    GstQuery * query)
+gst_rtp_session_setcaps_send_rtp (GstPad * pad, GstCaps * caps)
 {
-  gboolean res = FALSE;
   GstRtpSession *rtpsession;
-
-  rtpsession = GST_RTP_SESSION (parent);
-
-  switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CAPS:
-    {
-      GstCaps *filter, *caps;
-
-      gst_query_parse_caps (query, &filter);
-      caps = gst_rtp_session_getcaps_send_rtp (pad, rtpsession, filter);
-      gst_query_set_caps_result (query, caps);
-      gst_caps_unref (caps);
-      res = TRUE;
-      break;
-    }
-    default:
-      res = gst_pad_query_default (pad, parent, query);
-      break;
-  }
-
-  return res;
-}
-
-static gboolean
-gst_rtp_session_setcaps_send_rtp (GstPad * pad, GstRtpSession * rtpsession,
-    GstCaps * caps)
-{
   GstRtpSessionPrivate *priv;
   GstStructure *s = gst_caps_get_structure (caps, 0);
   guint ssrc;
 
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
   priv = rtpsession->priv;
 
   if (gst_structure_get_uint (s, "ssrc", &ssrc)) {
     GST_DEBUG_OBJECT (rtpsession, "setting internal SSRC to %08x", ssrc);
     rtp_session_set_internal_ssrc (priv->session, ssrc);
   }
+
+  gst_object_unref (rtpsession);
+
   return TRUE;
 }
 
@@ -1792,14 +1804,16 @@ gst_rtp_session_setcaps_send_rtp (GstPad * pad, GstRtpSession * rtpsession,
  * send to RTP session manager and forward to send_rtp_src.
  */
 static GstFlowReturn
-gst_rtp_session_chain_send_rtp_common (GstRtpSession * rtpsession,
-    gpointer data, gboolean is_list)
+gst_rtp_session_chain_send_rtp_common (GstPad * pad, gpointer data,
+    gboolean is_list)
 {
+  GstRtpSession *rtpsession;
   GstRtpSessionPrivate *priv;
   GstFlowReturn ret;
   GstClockTime timestamp, running_time;
   GstClockTime current_time;
 
+  rtpsession = GST_RTP_SESSION (gst_pad_get_parent (pad));
   priv = rtpsession->priv;
 
   GST_LOG_OBJECT (rtpsession, "received RTP %s", is_list ? "list" : "packet");
@@ -1810,7 +1824,7 @@ gst_rtp_session_chain_send_rtp_common (GstRtpSession * rtpsession,
 
     /* All groups in an list have the same timestamp.
      * So, just take it from the first group. */
-    buffer = gst_buffer_list_get (GST_BUFFER_LIST_CAST (data), 0);
+    buffer = gst_buffer_list_get (GST_BUFFER_LIST_CAST (data), 0, 0);
     if (buffer)
       timestamp = GST_BUFFER_TIMESTAMP (buffer);
     else
@@ -1836,6 +1850,7 @@ gst_rtp_session_chain_send_rtp_common (GstRtpSession * rtpsession,
     goto push_error;
 
 done:
+  gst_object_unref (rtpsession);
 
   return ret;
 
@@ -1849,21 +1864,15 @@ push_error:
 }
 
 static GstFlowReturn
-gst_rtp_session_chain_send_rtp (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer)
+gst_rtp_session_chain_send_rtp (GstPad * pad, GstBuffer * buffer)
 {
-  GstRtpSession *rtpsession = GST_RTP_SESSION (parent);
-
-  return gst_rtp_session_chain_send_rtp_common (rtpsession, buffer, FALSE);
+  return gst_rtp_session_chain_send_rtp_common (pad, buffer, FALSE);
 }
 
 static GstFlowReturn
-gst_rtp_session_chain_send_rtp_list (GstPad * pad, GstObject * parent,
-    GstBufferList * list)
+gst_rtp_session_chain_send_rtp_list (GstPad * pad, GstBufferList * list)
 {
-  GstRtpSession *rtpsession = GST_RTP_SESSION (parent);
-
-  return gst_rtp_session_chain_send_rtp_common (rtpsession, list, TRUE);
+  return gst_rtp_session_chain_send_rtp_common (pad, list, TRUE);
 }
 
 /* Create sinkpad to receive RTP packets from senders. This will also create a
@@ -1881,6 +1890,8 @@ create_recv_rtp_sink (GstRtpSession * rtpsession)
       gst_rtp_session_chain_recv_rtp);
   gst_pad_set_event_function (rtpsession->recv_rtp_sink,
       (GstPadEventFunction) gst_rtp_session_event_recv_rtp_sink);
+  gst_pad_set_setcaps_function (rtpsession->recv_rtp_sink,
+      gst_rtp_session_sink_setcaps);
   gst_pad_set_iterate_internal_links_function (rtpsession->recv_rtp_sink,
       gst_rtp_session_iterate_internal_links);
   gst_pad_set_active (rtpsession->recv_rtp_sink, TRUE);
@@ -1991,8 +2002,10 @@ create_send_rtp_sink (GstRtpSession * rtpsession)
       gst_rtp_session_chain_send_rtp);
   gst_pad_set_chain_list_function (rtpsession->send_rtp_sink,
       gst_rtp_session_chain_send_rtp_list);
-  gst_pad_set_query_function (rtpsession->send_rtp_sink,
-      gst_rtp_session_query_send_rtp);
+  gst_pad_set_getcaps_function (rtpsession->send_rtp_sink,
+      gst_rtp_session_getcaps_send_rtp);
+  gst_pad_set_setcaps_function (rtpsession->send_rtp_sink,
+      gst_rtp_session_setcaps_send_rtp);
   gst_pad_set_event_function (rtpsession->send_rtp_sink,
       (GstPadEventFunction) gst_rtp_session_event_send_rtp_sink);
   gst_pad_set_iterate_internal_links_function (rtpsession->send_rtp_sink,
@@ -2069,7 +2082,7 @@ remove_send_rtcp_src (GstRtpSession * rtpsession)
 
 static GstPad *
 gst_rtp_session_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * name, const GstCaps * caps)
+    GstPadTemplate * templ, const gchar * name)
 {
   GstRtpSession *rtpsession;
   GstElementClass *klass;

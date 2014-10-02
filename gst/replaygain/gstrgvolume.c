@@ -49,7 +49,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 filesrc location=filename.ext ! decodebin ! audioconvert \
+ * gst-launch filesrc location=filename.ext ! decodebin ! audioconvert \
  *     ! rgvolume ! audioconvert ! audioresample ! alsasink
  * ]| Playback of a file
  * </refsect2>
@@ -61,7 +61,6 @@
 
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
-#include <gst/audio/audio.h>
 #include <math.h>
 
 #include "gstrgvolume.h"
@@ -97,26 +96,31 @@ enum
 
 /* Same template caps as GstVolume, for I don't like having just ANY caps. */
 
-#define FORMAT "{ "GST_AUDIO_NE(F32)","GST_AUDIO_NE(S16)" }"
-
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
-    GST_PAD_SINK,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("audio/x-raw, "
-        "format = (string) " FORMAT ", "
-        "layout = (string) { interleaved, non-interleaved }, "
-        "rate = (int) [ 1, MAX ], " "channels = (int) [ 1, MAX ]"));
+    GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS ("audio/x-raw-float, "
+        "rate = (int) [ 1, MAX ], "
+        "channels = (int) [ 1, MAX ], "
+        "endianness = (int) BYTE_ORDER, "
+        "width = (int) 32; "
+        "audio/x-raw-int, "
+        "channels = (int) [ 1, MAX ], "
+        "rate = (int) [ 1,  MAX ], "
+        "endianness = (int) BYTE_ORDER, "
+        "width = (int) 16, " "depth = (int) 16, " "signed = (bool) TRUE"));
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("audio/x-raw, "
-        "format = (string) " FORMAT ", "
-        "layout = (string) { interleaved, non-interleaved }, "
-        "rate = (int) [ 1, MAX ], " "channels = (int) [ 1, MAX ]"));
+    GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS ("audio/x-raw-float, "
+        "rate = (int) [ 1, MAX ], "
+        "channels = (int) [ 1, MAX ], "
+        "endianness = (int) BYTE_ORDER, "
+        "width = (int) 32; "
+        "audio/x-raw-int, "
+        "channels = (int) [ 1, MAX ], "
+        "rate = (int) [ 1,  MAX ], "
+        "endianness = (int) BYTE_ORDER, "
+        "width = (int) 16, " "depth = (int) 16, " "signed = (bool) TRUE"));
 
-#define gst_rg_volume_parent_class parent_class
-G_DEFINE_TYPE (GstRgVolume, gst_rg_volume, GST_TYPE_BIN);
+GST_BOILERPLATE (GstRgVolume, gst_rg_volume, GstBin, GST_TYPE_BIN);
 
 static void gst_rg_volume_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -126,14 +130,30 @@ static void gst_rg_volume_dispose (GObject * object);
 
 static GstStateChangeReturn gst_rg_volume_change_state (GstElement * element,
     GstStateChange transition);
-static gboolean gst_rg_volume_sink_event (GstPad * pad, GstObject * parent,
-    GstEvent * event);
+static gboolean gst_rg_volume_sink_event (GstPad * pad, GstEvent * event);
 
 static GstEvent *gst_rg_volume_tag_event (GstRgVolume * self, GstEvent * event);
 static void gst_rg_volume_reset (GstRgVolume * self);
 static void gst_rg_volume_update_gain (GstRgVolume * self);
 static inline void gst_rg_volume_determine_gain (GstRgVolume * self,
     gdouble * target_gain, gdouble * result_gain);
+
+static void
+gst_rg_volume_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = g_class;
+
+  gst_element_class_add_static_pad_template (element_class, &src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &sink_template);
+  gst_element_class_set_details_simple (element_class, "ReplayGain volume",
+      "Filter/Effect/Audio",
+      "Apply ReplayGain volume adjustment",
+      "Ren\xc3\xa9 Stadler <mail@renestadler.de>");
+
+  GST_DEBUG_CATEGORY_INIT (gst_rg_volume_debug, "rgvolume", 0,
+      "ReplayGain volume element");
+}
 
 static void
 gst_rg_volume_class_init (GstRgVolumeClass * klass)
@@ -182,7 +202,7 @@ gst_rg_volume_class_init (GstRgVolumeClass * klass)
    * This element internally uses a volume element, which also supports
    * operating on integer audio formats.  These formats do not allow exceeding
    * digital full scale.  If extra headroom is used, make sure that the raw
-   * audio data format is floating point (F32).  Otherwise,
+   * audio data format is floating point (audio/x-raw-float).  Otherwise,
    * clipping distortion might be introduced as part of the volume adjustment
    * itself.
    */
@@ -277,22 +297,10 @@ gst_rg_volume_class_init (GstRgVolumeClass * klass)
    * mess with our internals. */
   bin_class->add_element = NULL;
   bin_class->remove_element = NULL;
-
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&src_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&sink_template));
-  gst_element_class_set_static_metadata (element_class, "ReplayGain volume",
-      "Filter/Effect/Audio",
-      "Apply ReplayGain volume adjustment",
-      "Ren\xc3\xa9 Stadler <mail@renestadler.de>");
-
-  GST_DEBUG_CATEGORY_INIT (gst_rg_volume_debug, "rgvolume", 0,
-      "ReplayGain volume element");
 }
 
 static void
-gst_rg_volume_init (GstRgVolume * self)
+gst_rg_volume_init (GstRgVolume * self, GstRgVolumeClass * gclass)
 {
   GObjectClass *volume_class;
   GstPad *volume_pad, *ghost_pad;
@@ -445,14 +453,14 @@ gst_rg_volume_change_state (GstElement * element, GstStateChange transition)
 
 /* Event function for the ghost sink pad. */
 static gboolean
-gst_rg_volume_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
+gst_rg_volume_sink_event (GstPad * pad, GstEvent * event)
 {
   GstRgVolume *self;
   GstPad *volume_sink_pad;
   GstEvent *send_event = event;
   gboolean res;
 
-  self = GST_RG_VOLUME (parent);
+  self = GST_RG_VOLUME (gst_pad_get_parent_element (pad));
   volume_sink_pad = gst_ghost_pad_get_target (GST_GHOST_PAD (pad));
 
   switch (GST_EVENT_TYPE (event)) {
@@ -482,7 +490,7 @@ gst_rg_volume_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
     res = TRUE;
 
   gst_object_unref (volume_sink_pad);
-
+  gst_object_unref (self);
   return res;
 }
 

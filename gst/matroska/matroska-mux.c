@@ -2,7 +2,6 @@
  * (c) 2003 Ronald Bultje <rbultje@ronald.bitfreak.net>
  * (c) 2005 Michal Benes <michal.benes@xeris.cz>
  * (c) 2008 Sebastian Dröge <sebastian.droege@collabora.co.uk>
- * (c) 2011 Mark Nauwelaerts <mark.nauwelaerts@collabora.co.uk>
  *
  * matroska-mux.c: matroska file/stream muxer
  *
@@ -34,10 +33,10 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v filesrc location=/path/to/mp3 ! mp3parse ! matroskamux name=mux ! filesink location=test.mkv  filesrc location=/path/to/theora.ogg ! oggdemux ! theoraparse ! mux.
+ * gst-launch -v filesrc location=/path/to/mp3 ! mp3parse ! matroskamux name=mux ! filesink location=test.mkv  filesrc location=/path/to/theora.ogg ! oggdemux ! theoraparse ! mux.
  * ]| This pipeline muxes an MP3 file and a Ogg Theora video into a Matroska file.
  * |[
- * gst-launch-1.0 -v audiotestsrc num-buffers=100 ! audioconvert ! vorbisenc ! matroskamux ! filesink location=test.mka
+ * gst-launch -v audiotestsrc num-buffers=100 ! audioconvert ! vorbisenc ! matroskamux ! filesink location=test.mka
  * ]| This pipeline muxes a 440Hz sine wave encoded with the Vorbis codec into a Matroska file.
  * </refsect2>
  */
@@ -50,14 +49,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <gst/audio/audio.h>
 #include <gst/riff/riff-media.h>
 #include <gst/tag/tag.h>
 
 #include "matroska-mux.h"
 #include "matroska-ids.h"
-
-#define GST_MATROSKA_MUX_CHAPLANG "und"
 
 GST_DEBUG_CATEGORY_STATIC (matroskamux_debug);
 #define GST_CAT_DEFAULT matroskamux_debug
@@ -82,7 +78,7 @@ enum
 static GstStaticPadTemplate src_templ = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("video/x-matroska; video/x-matroska-3d; audio/x-matroska")
+    GST_STATIC_CAPS ("video/x-matroska")
     );
 
 #define COMMON_VIDEO_CAPS \
@@ -99,7 +95,7 @@ static GstStaticPadTemplate src_templ = GST_STATIC_PAD_TEMPLATE ("src",
  */
 
 static GstStaticPadTemplate videosink_templ =
-    GST_STATIC_PAD_TEMPLATE ("video_%u",
+    GST_STATIC_PAD_TEMPLATE ("video_%d",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
     GST_STATIC_CAPS ("video/mpeg, "
@@ -109,6 +105,8 @@ static GstStaticPadTemplate videosink_templ =
         "video/x-h264, stream-format=avc, alignment=au, "
         COMMON_VIDEO_CAPS "; "
         "video/x-divx, "
+        COMMON_VIDEO_CAPS "; "
+        "video/x-xvid, "
         COMMON_VIDEO_CAPS "; "
         "video/x-huffyuv, "
         COMMON_VIDEO_CAPS "; "
@@ -128,8 +126,8 @@ static GstStaticPadTemplate videosink_templ =
         COMMON_VIDEO_CAPS "; "
         "video/x-vp8, "
         COMMON_VIDEO_CAPS "; "
-        "video/x-raw, "
-        "format = (string) { YUY2, I420, YV12, UYVY, AYUV }, "
+        "video/x-raw-yuv, "
+        "format = (fourcc) { YUY2, I420, YV12, UYVY, AYUV }, "
         COMMON_VIDEO_CAPS "; "
         "video/x-wmv, " "wmvversion = (int) [ 1, 3 ], " COMMON_VIDEO_CAPS)
     );
@@ -142,7 +140,7 @@ static GstStaticPadTemplate videosink_templ =
  * * require codec data, etc as needed
  */
 static GstStaticPadTemplate audiosink_templ =
-    GST_STATIC_PAD_TEMPLATE ("audio_%u",
+    GST_STATIC_PAD_TEMPLATE ("audio_%d",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
     GST_STATIC_CAPS ("audio/mpeg, "
@@ -165,9 +163,32 @@ static GstStaticPadTemplate audiosink_templ =
         COMMON_AUDIO_CAPS "; "
         "audio/x-speex, "
         COMMON_AUDIO_CAPS "; "
-        "audio/x-raw, "
-        "format = (string) { U8, S16BE, S16LE, S24BE, S24LE, S32BE, S32LE, F32LE, F64LE }, "
-        "layout = (string) interleaved, "
+        "audio/x-raw-int, "
+        "width = (int) 8, "
+        "depth = (int) 8, "
+        "signed = (boolean) false, "
+        COMMON_AUDIO_CAPS ";"
+        "audio/x-raw-int, "
+        "width = (int) 16, "
+        "depth = (int) 16, "
+        "endianness = (int) { BIG_ENDIAN, LITTLE_ENDIAN }, "
+        "signed = (boolean) true, "
+        COMMON_AUDIO_CAPS ";"
+        "audio/x-raw-int, "
+        "width = (int) 24, "
+        "depth = (int) 24, "
+        "endianness = (int) { BIG_ENDIAN, LITTLE_ENDIAN }, "
+        "signed = (boolean) true, "
+        COMMON_AUDIO_CAPS ";"
+        "audio/x-raw-int, "
+        "width = (int) 32, "
+        "depth = (int) 32, "
+        "endianness = (int) { BIG_ENDIAN, LITTLE_ENDIAN }, "
+        "signed = (boolean) true, "
+        COMMON_AUDIO_CAPS ";"
+        "audio/x-raw-float, "
+        "width = (int) [ 32, 64 ], "
+        "endianness = (int) LITTLE_ENDIAN, "
         COMMON_AUDIO_CAPS ";"
         "audio/x-tta, "
         "width = (int) { 8, 16, 24 }, "
@@ -184,38 +205,31 @@ static GstStaticPadTemplate audiosink_templ =
     );
 
 static GstStaticPadTemplate subtitlesink_templ =
-    GST_STATIC_PAD_TEMPLATE ("subtitle_%d",
+GST_STATIC_PAD_TEMPLATE ("subtitle_%d",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS ("subtitle/x-kate; "
-        "text/x-raw, format=utf8; application/x-ssa; application/x-ass; "
-        "application/x-usf; subpicture/x-dvd; "
-        "application/x-subtitle-unknown")
-    );
+    GST_STATIC_CAPS ("subtitle/x-kate"));
 
 static GArray *used_uids;
 G_LOCK_DEFINE_STATIC (used_uids);
 
-#define parent_class gst_matroska_mux_parent_class
-G_DEFINE_TYPE_WITH_CODE (GstMatroskaMux, gst_matroska_mux, GST_TYPE_ELEMENT,
-    G_IMPLEMENT_INTERFACE (GST_TYPE_TAG_SETTER, NULL)
-    G_IMPLEMENT_INTERFACE (GST_TYPE_TOC_SETTER, NULL)
-    );
+static void gst_matroska_mux_add_interfaces (GType type);
+
+GST_BOILERPLATE_FULL (GstMatroskaMux, gst_matroska_mux, GstElement,
+    GST_TYPE_ELEMENT, gst_matroska_mux_add_interfaces);
 
 /* Matroska muxer destructor */
 static void gst_matroska_mux_finalize (GObject * object);
 
 /* Pads collected callback */
-static GstFlowReturn gst_matroska_mux_handle_buffer (GstCollectPads * pads,
-    GstCollectData * data, GstBuffer * buf, gpointer user_data);
-static gboolean gst_matroska_mux_handle_sink_event (GstCollectPads * pads,
-    GstCollectData * data, GstEvent * event, gpointer user_data);
+static GstFlowReturn
+gst_matroska_mux_collected (GstCollectPads * pads, gpointer user_data);
 
 /* pad functions */
 static gboolean gst_matroska_mux_handle_src_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
+    GstEvent * event);
 static GstPad *gst_matroska_mux_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * name, const GstCaps * caps);
+    GstPadTemplate * templ, const gchar * name);
 static void gst_matroska_mux_release_pad (GstElement * element, GstPad * pad);
 
 /* gst internal change state handler */
@@ -249,6 +263,19 @@ gst_matroska_mux_write_simple_tag (const GstTagList * list, const gchar * tag,
     gpointer data);
 
 static void
+gst_matroska_mux_add_interfaces (GType type)
+{
+  static const GInterfaceInfo tag_setter_info = { NULL, NULL, NULL };
+
+  g_type_add_interface_static (type, GST_TYPE_TAG_SETTER, &tag_setter_info);
+}
+
+static void
+gst_matroska_mux_base_init (gpointer g_class)
+{
+}
+
+static void
 gst_matroska_mux_class_init (GstMatroskaMuxClass * klass)
 {
   GObjectClass *gobject_class;
@@ -257,15 +284,14 @@ gst_matroska_mux_class_init (GstMatroskaMuxClass * klass)
   gobject_class = (GObjectClass *) klass;
   gstelement_class = (GstElementClass *) klass;
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&videosink_templ));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&audiosink_templ));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&subtitlesink_templ));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_templ));
-  gst_element_class_set_static_metadata (gstelement_class, "Matroska muxer",
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &videosink_templ);
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &audiosink_templ);
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &subtitlesink_templ);
+  gst_element_class_add_static_pad_template (gstelement_class, &src_templ);
+  gst_element_class_set_details_simple (gstelement_class, "Matroska muxer",
       "Codec/Muxer",
       "Muxes video/audio/subtitle streams into a matroska stream",
       "GStreamer maintainers <gstreamer-devel@lists.sourceforge.net>");
@@ -413,25 +439,21 @@ gst_matroskamux_pad_init (GstMatroskamuxPad * pad)
  * Matroska muxer constructor.
  */
 static void
-gst_matroska_mux_init (GstMatroskaMux * mux)
+gst_matroska_mux_init (GstMatroskaMux * mux, GstMatroskaMuxClass * g_class)
 {
   GstPadTemplate *templ;
 
   templ =
-      gst_element_class_get_pad_template (GST_ELEMENT_GET_CLASS (mux), "src");
+      gst_element_class_get_pad_template (GST_ELEMENT_CLASS (g_class), "src");
   mux->srcpad = gst_pad_new_from_template (templ, "src");
 
   gst_pad_set_event_function (mux->srcpad, gst_matroska_mux_handle_src_event);
   gst_element_add_pad (GST_ELEMENT (mux), mux->srcpad);
-  gst_pad_use_fixed_caps (mux->srcpad);
 
   mux->collect = gst_collect_pads_new ();
-  gst_collect_pads_set_clip_function (mux->collect,
-      GST_DEBUG_FUNCPTR (gst_collect_pads_clip_running_time), mux);
-  gst_collect_pads_set_buffer_function (mux->collect,
-      GST_DEBUG_FUNCPTR (gst_matroska_mux_handle_buffer), mux);
-  gst_collect_pads_set_event_function (mux->collect,
-      GST_DEBUG_FUNCPTR (gst_matroska_mux_handle_sink_event), mux);
+  gst_collect_pads_set_function (mux->collect,
+      (GstCollectPadsFunction) GST_DEBUG_FUNCPTR (gst_matroska_mux_collected),
+      mux);
 
   mux->ebml_write = gst_ebml_write_new (mux->srcpad);
   mux->doctype = GST_MATROSKA_DOCTYPE_MATROSKA;
@@ -548,6 +570,12 @@ gst_matroska_pad_reset (GstMatroskaPad * collect_pad, gboolean full)
     collect_pad->track = NULL;
   }
 
+  /* free cached buffer */
+  if (collect_pad->buffer != NULL) {
+    gst_buffer_unref (collect_pad->buffer);
+    collect_pad->buffer = NULL;
+  }
+
   if (!full && type != 0) {
     GstMatroskaTrackContext *context;
 
@@ -575,6 +603,7 @@ gst_matroska_pad_reset (GstMatroskaPad * collect_pad, gboolean full)
     /* TODO: check default values for the context */
     context->flags = GST_MATROSKA_TRACK_ENABLED | GST_MATROSKA_TRACK_DEFAULT;
     collect_pad->track = context;
+    collect_pad->buffer = NULL;
     collect_pad->duration = 0;
     collect_pad->start_ts = GST_CLOCK_TIME_NONE;
     collect_pad->end_ts = GST_CLOCK_TIME_NONE;
@@ -588,9 +617,9 @@ gst_matroska_pad_reset (GstMatroskaPad * collect_pad, gboolean full)
  * Release resources of a matroska collect pad.
  */
 static void
-gst_matroska_pad_free (GstPad * collect_pad)
+gst_matroska_pad_free (GstMatroskaPad * collect_pad)
 {
-  gst_matroska_pad_reset ((GstMatroskaPad *) collect_pad, TRUE);
+  gst_matroska_pad_reset (collect_pad, TRUE);
 }
 
 
@@ -641,13 +670,6 @@ gst_matroska_mux_reset (GstElement * element)
 
   /* reset tags */
   gst_tag_setter_reset_tags (GST_TAG_SETTER (mux));
-
-  mux->tags_pos = 0;
-
-  /* reset chapters */
-  gst_toc_setter_reset (GST_TOC_SETTER (mux));
-
-  mux->chapters_pos = 0;
 }
 
 /**
@@ -660,8 +682,7 @@ gst_matroska_mux_reset (GstElement * element)
  * Returns: #TRUE on success.
  */
 static gboolean
-gst_matroska_mux_handle_src_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_matroska_mux_handle_src_event (GstPad * pad, GstEvent * event)
 {
   GstEventType type;
 
@@ -675,57 +696,8 @@ gst_matroska_mux_handle_src_event (GstPad * pad, GstObject * parent,
       break;
   }
 
-  return gst_pad_event_default (pad, parent, event);
+  return gst_pad_event_default (pad, event);
 }
-
-
-static void
-gst_matroska_mux_free_codec_priv (GstMatroskaTrackContext * context)
-{
-  if (context->codec_priv != NULL) {
-    g_free (context->codec_priv);
-    context->codec_priv = NULL;
-    context->codec_priv_size = 0;
-  }
-}
-
-static void
-gst_matroska_mux_build_vobsub_private (GstMatroskaTrackContext * context,
-    const guint * clut)
-{
-  gchar *clutv[17];
-  gchar *sclut;
-  gint i;
-  guint32 col;
-  gdouble y, u, v;
-  guint8 r, g, b;
-
-  /* produce comma-separated list in hex format */
-  for (i = 0; i < 16; ++i) {
-    col = clut[i];
-    /* replicate vobsub's slightly off RGB conversion calculation */
-    y = (((col >> 16) & 0xff) - 16) * 255 / 219;
-    u = ((col >> 8) & 0xff) - 128;
-    v = (col & 0xff) - 128;
-    r = CLAMP (1.0 * y + 1.4022 * u, 0, 255);
-    g = CLAMP (1.0 * y - 0.3456 * u - 0.7145 * v, 0, 255);
-    b = CLAMP (1.0 * y + 1.7710 * v, 0, 255);
-    clutv[i] = g_strdup_printf ("%02x%02x%02x", r, g, b);
-  }
-  clutv[i] = NULL;
-  sclut = g_strjoinv (",", clutv);
-
-  /* build codec private; only palette for now */
-  gst_matroska_mux_free_codec_priv (context);
-  context->codec_priv = (guint8 *) g_strdup_printf ("palette: %s", sclut);
-  /* include terminating 0 */
-  context->codec_priv_size = strlen ((gchar *) context->codec_priv) + 1;
-  g_free (sclut);
-  for (i = 0; i < 16; ++i) {
-    g_free (clutv[i]);
-  }
-}
-
 
 /**
  * gst_matroska_mux_handle_sink_event:
@@ -737,39 +709,27 @@ gst_matroska_mux_build_vobsub_private (GstMatroskaTrackContext * context,
  * Returns: #TRUE on success.
  */
 static gboolean
-gst_matroska_mux_handle_sink_event (GstCollectPads * pads,
-    GstCollectData * data, GstEvent * event, gpointer user_data)
+gst_matroska_mux_handle_sink_event (GstPad * pad, GstEvent * event)
 {
-  GstMatroskaPad *collect_pad;
   GstMatroskaTrackContext *context;
+  GstMatroskaPad *collect_pad;
   GstMatroskaMux *mux;
-  GstPad *pad;
   GstTagList *list;
   gboolean ret = TRUE;
 
-  mux = GST_MATROSKA_MUX (user_data);
-  collect_pad = (GstMatroskaPad *) data;
-  pad = data->pad;
-  context = collect_pad->track;
-  g_assert (context);
+  mux = GST_MATROSKA_MUX (gst_pad_get_parent (pad));
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:{
-      GstCaps *caps;
-
-      collect_pad = (GstMatroskaPad *) gst_pad_get_element_private (pad);
-      gst_event_parse_caps (event, &caps);
-
-      ret = collect_pad->capsfunc (pad, caps);
-      gst_event_unref (event);
-      event = NULL;
-      break;
-    }
     case GST_EVENT_TAG:{
       gchar *lang = NULL;
 
       GST_DEBUG_OBJECT (mux, "received tag event");
       gst_event_parse_tag (event, &list);
+
+      collect_pad = (GstMatroskaPad *) gst_pad_get_element_private (pad);
+      g_assert (collect_pad);
+      context = collect_pad->track;
+      g_assert (context);
 
       /* Matroska wants ISO 639-2B code, taglist most likely contains 639-1 */
       if (gst_tag_list_get_string (list, GST_TAG_LANGUAGE_CODE, &lang)) {
@@ -792,33 +752,18 @@ gst_matroska_mux_handle_sink_event (GstCollectPads * pads,
       gst_event_unref (event);
       /* handled this, don't want collectpads to forward it downstream */
       event = NULL;
-      ret = TRUE;
       break;
     }
-    case GST_EVENT_TOC:{
-      GstToc *toc, *old_toc;
+    case GST_EVENT_NEWSEGMENT:{
+      GstFormat format;
 
-      if (mux->chapters_pos > 0)
-        break;
-
-      GST_DEBUG_OBJECT (mux, "received toc event");
-      gst_event_parse_toc (event, &toc, NULL);
-
-      if (toc != NULL) {
-        old_toc = gst_toc_setter_get_toc (GST_TOC_SETTER (mux));
-        if (old_toc != NULL) {
-          if (old_toc != toc)
-            GST_INFO_OBJECT (pad, "Replacing TOC with a new one");
-          gst_toc_unref (old_toc);
-        }
-
-        gst_toc_setter_set_toc (GST_TOC_SETTER (mux), toc);
-        gst_toc_unref (toc);
+      gst_event_parse_new_segment (event, NULL, NULL, &format, NULL, NULL,
+          NULL);
+      if (format != GST_FORMAT_TIME) {
+        ret = FALSE;
+        gst_event_unref (event);
+        event = NULL;
       }
-
-      gst_event_unref (event);
-      /* handled this, don't want collectpads to forward it downstream */
-      event = NULL;
       break;
     }
     case GST_EVENT_CUSTOM_DOWNSTREAM:{
@@ -829,53 +774,22 @@ gst_matroska_mux_handle_sink_event (GstCollectPads * pads,
         gst_event_replace (&mux->force_key_unit_event, NULL);
         mux->force_key_unit_event = event;
         event = NULL;
-      } else if (gst_structure_has_name (structure, "application/x-gst-dvd") &&
-          !strcmp ("dvd-spu-clut-change",
-              gst_structure_get_string (structure, "event"))) {
-        gchar name[16];
-        gint i, value;
-        guint clut[16];
-
-        GST_DEBUG_OBJECT (pad, "New DVD colour table received");
-        if (context->type != GST_MATROSKA_TRACK_TYPE_SUBTITLE) {
-          GST_DEBUG_OBJECT (pad, "... discarding");
-          break;
-        }
-        /* first transform event data into table form */
-        for (i = 0; i < 16; i++) {
-          g_snprintf (name, sizeof (name), "clut%02d", i);
-          if (!gst_structure_get_int (structure, name, &value)) {
-            GST_ERROR_OBJECT (mux, "dvd-spu-clut-change event did not "
-                "contain %s field", name);
-            break;
-          }
-          clut[i] = value;
-        }
-
-        /* transform into private data for stream; text form */
-        gst_matroska_mux_build_vobsub_private (context, clut);
       }
+      break;
     }
-      /* fall through */
     default:
       break;
   }
 
-  if (event != NULL)
-    return gst_collect_pads_event_default (pads, data, event, FALSE);
+  /* now GstCollectPads can take care of the rest, e.g. EOS */
+  if (event)
+    ret = mux->collect_event (pad, event);
+
+  gst_object_unref (mux);
 
   return ret;
 }
 
-static void
-gst_matroska_mux_set_codec_id (GstMatroskaTrackContext * context,
-    const char *id)
-{
-  g_assert (context && id);
-  if (context->codec_id)
-    g_free (context->codec_id);
-  context->codec_id = g_strdup (id);
-}
 
 /**
  * gst_matroska_mux_video_pad_setcaps:
@@ -895,11 +809,11 @@ gst_matroska_mux_video_pad_setcaps (GstPad * pad, GstCaps * caps)
   GstMatroskaPad *collect_pad;
   GstStructure *structure;
   const gchar *mimetype;
-  const gchar *interlace_mode;
   const GValue *value = NULL;
-  GstBuffer *codec_buf = NULL;
+  const GstBuffer *codec_buf = NULL;
   gint width, height, pixel_width, pixel_height;
   gint fps_d, fps_n;
+  gboolean interlaced = FALSE;
 
   mux = GST_MATROSKA_MUX (GST_PAD_PARENT (pad));
 
@@ -916,8 +830,8 @@ gst_matroska_mux_video_pad_setcaps (GstPad * pad, GstCaps * caps)
 
   mimetype = gst_structure_get_name (structure);
 
-  interlace_mode = gst_structure_get_string (structure, "interlace-mode");
-  if (interlace_mode != NULL && strcmp (interlace_mode, "progressive") != 0)
+  if (gst_structure_get_boolean (structure, "interlaced", &interlaced)
+      && interlaced)
     context->flags |= GST_MATROSKA_VIDEOTRACK_INTERLACED;
 
   if (!strcmp (mimetype, "video/x-theora")) {
@@ -980,20 +894,15 @@ skip_details:
   /* extract codec_data, may turn out needed */
   value = gst_structure_get_value (structure, "codec_data");
   if (value)
-    codec_buf = (GstBuffer *) gst_value_get_buffer (value);
+    codec_buf = gst_value_get_buffer (value);
 
   /* find type */
-  if (!strcmp (mimetype, "video/x-raw")) {
-    const gchar *fstr;
-    gst_matroska_mux_set_codec_id (context,
-        GST_MATROSKA_CODEC_ID_VIDEO_UNCOMPRESSED);
-    fstr = gst_structure_get_string (structure, "format");
-    if (fstr && strlen (fstr) == 4)
-      videocontext->fourcc = GST_STR_FOURCC (fstr);
-  } else if (!strcmp (mimetype, "image/jpeg")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_VIDEO_MJPEG);
-  } else if (!strcmp (mimetype, "video/x-huffyuv")      /* MS/VfW compatibility cases */
-      ||!strcmp (mimetype, "video/x-divx")
+  if (!strcmp (mimetype, "video/x-raw-yuv")) {
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_UNCOMPRESSED);
+    gst_structure_get_fourcc (structure, "format", &videocontext->fourcc);
+  } else if (!strcmp (mimetype, "video/x-xvid") /* MS/VfW compatibility cases */
+      ||!strcmp (mimetype, "video/x-huffyuv")
+      || !strcmp (mimetype, "video/x-divx")
       || !strcmp (mimetype, "video/x-dv")
       || !strcmp (mimetype, "video/x-h263")
       || !strcmp (mimetype, "video/x-msmpeg")
@@ -1003,7 +912,9 @@ skip_details:
     gint size = sizeof (gst_riff_strf_vids);
     guint32 fourcc = 0;
 
-    if (!strcmp (mimetype, "video/x-huffyuv"))
+    if (!strcmp (mimetype, "video/x-xvid"))
+      fourcc = GST_MAKE_FOURCC ('X', 'V', 'I', 'D');
+    else if (!strcmp (mimetype, "video/x-huffyuv"))
       fourcc = GST_MAKE_FOURCC ('H', 'F', 'Y', 'U');
     else if (!strcmp (mimetype, "video/x-dv"))
       fourcc = GST_MAKE_FOURCC ('D', 'V', 'S', 'D');
@@ -1041,11 +952,9 @@ skip_details:
       }
     } else if (!strcmp (mimetype, "video/x-wmv")) {
       gint wmvversion;
-      const gchar *fstr;
-
-      fstr = gst_structure_get_string (structure, "format");
-      if (fstr && strlen (fstr) == 4) {
-        fourcc = GST_STR_FOURCC (fstr);
+      guint32 format;
+      if (gst_structure_get_fourcc (structure, "format", &format)) {
+        fourcc = format;
       } else if (gst_structure_get_int (structure, "wmvversion", &wmvversion)) {
         if (wmvversion == 2) {
           fourcc = GST_MAKE_FOURCC ('W', 'M', 'V', '2');
@@ -1074,34 +983,42 @@ skip_details:
 
     /* process codec private/initialization data, if any */
     if (codec_buf) {
-      size += gst_buffer_get_size (codec_buf);
+      size += GST_BUFFER_SIZE (codec_buf);
       bih = g_realloc (bih, size);
       GST_WRITE_UINT32_LE (&bih->size, size);
-      gst_buffer_extract (codec_buf, 0,
-          (guint8 *) bih + sizeof (gst_riff_strf_vids), -1);
+      memcpy ((guint8 *) bih + sizeof (gst_riff_strf_vids),
+          GST_BUFFER_DATA (codec_buf), GST_BUFFER_SIZE (codec_buf));
     }
 
-    gst_matroska_mux_set_codec_id (context,
-        GST_MATROSKA_CODEC_ID_VIDEO_VFW_FOURCC);
-    gst_matroska_mux_free_codec_priv (context);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_VFW_FOURCC);
     context->codec_priv = (gpointer) bih;
     context->codec_priv_size = size;
   } else if (!strcmp (mimetype, "video/x-h264")) {
-    gst_matroska_mux_set_codec_id (context,
-        GST_MATROSKA_CODEC_ID_VIDEO_MPEG4_AVC);
-    gst_matroska_mux_free_codec_priv (context);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_MPEG4_AVC);
+
+    if (context->codec_priv != NULL) {
+      g_free (context->codec_priv);
+      context->codec_priv = NULL;
+      context->codec_priv_size = 0;
+    }
+
     /* Create avcC header */
     if (codec_buf != NULL) {
-      context->codec_priv_size = gst_buffer_get_size (codec_buf);
+      context->codec_priv_size = GST_BUFFER_SIZE (codec_buf);
       context->codec_priv = g_malloc0 (context->codec_priv_size);
-      gst_buffer_extract (codec_buf, 0, context->codec_priv, -1);
+      memcpy (context->codec_priv, GST_BUFFER_DATA (codec_buf),
+          context->codec_priv_size);
     }
   } else if (!strcmp (mimetype, "video/x-theora")) {
     const GValue *streamheader;
 
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_VIDEO_THEORA);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_THEORA);
 
-    gst_matroska_mux_free_codec_priv (context);
+    if (context->codec_priv != NULL) {
+      g_free (context->codec_priv);
+      context->codec_priv = NULL;
+      context->codec_priv_size = 0;
+    }
 
     streamheader = gst_structure_get_value (structure, "streamheader");
     if (!theora_streamheader_to_codecdata (streamheader, context)) {
@@ -1110,25 +1027,22 @@ skip_details:
       goto refuse_caps;
     }
   } else if (!strcmp (mimetype, "video/x-dirac")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_VIDEO_DIRAC);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_DIRAC);
   } else if (!strcmp (mimetype, "video/x-vp8")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_VIDEO_VP8);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_VP8);
   } else if (!strcmp (mimetype, "video/mpeg")) {
     gint mpegversion;
 
     gst_structure_get_int (structure, "mpegversion", &mpegversion);
     switch (mpegversion) {
       case 1:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_VIDEO_MPEG1);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_MPEG1);
         break;
       case 2:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_VIDEO_MPEG2);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_MPEG2);
         break;
       case 4:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_VIDEO_MPEG4_ASP);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_MPEG4_ASP);
         break;
       default:
         goto refuse_caps;
@@ -1136,10 +1050,10 @@ skip_details:
 
     /* global headers may be in codec data */
     if (codec_buf != NULL) {
-      gst_matroska_mux_free_codec_priv (context);
-      context->codec_priv_size = gst_buffer_get_size (codec_buf);
+      context->codec_priv_size = GST_BUFFER_SIZE (codec_buf);
       context->codec_priv = g_malloc0 (context->codec_priv_size);
-      gst_buffer_extract (codec_buf, 0, context->codec_priv, -1);
+      memcpy (context->codec_priv, GST_BUFFER_DATA (codec_buf),
+          context->codec_priv_size);
     }
   } else if (!strcmp (mimetype, "video/x-msmpeg")) {
   msmpeg43:
@@ -1152,20 +1066,16 @@ skip_details:
     gst_structure_get_int (structure, "rmversion", &rmversion);
     switch (rmversion) {
       case 1:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO1);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO1);
         break;
       case 2:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO2);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO2);
         break;
       case 3:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO3);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO3);
         break;
       case 4:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO4);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_VIDEO_REALVIDEO4);
         break;
       default:
         goto refuse_caps;
@@ -1178,12 +1088,11 @@ skip_details:
 
       GstBuffer *codec_data_buf = g_value_peek_pointer (mdpr_data);
 
-      priv_data_size = gst_buffer_get_size (codec_data_buf);
+      priv_data_size = GST_BUFFER_SIZE (codec_data_buf);
       priv_data = g_malloc0 (priv_data_size);
 
-      gst_buffer_extract (codec_data_buf, 0, priv_data, -1);
+      memcpy (priv_data, GST_BUFFER_DATA (codec_data_buf), priv_data_size);
 
-      gst_matroska_mux_free_codec_priv (context);
       context->codec_priv = priv_data;
       context->codec_priv_size = priv_data_size;
     }
@@ -1240,12 +1149,12 @@ xiphN_streamheader_to_codecdata (const GValue * streamheader,
   priv_data_size = 1;
   if (bufarr->len > 0) {
     for (i = 0; i < bufarr->len - 1; i++) {
-      priv_data_size += gst_buffer_get_size (buf[i]) / 0xff + 1;
+      priv_data_size += GST_BUFFER_SIZE (buf[i]) / 0xff + 1;
     }
   }
 
   for (i = 0; i < bufarr->len; ++i) {
-    priv_data_size += gst_buffer_get_size (buf[i]);
+    priv_data_size += GST_BUFFER_SIZE (buf[i]);
   }
 
   priv_data = g_malloc0 (priv_data_size);
@@ -1255,19 +1164,19 @@ xiphN_streamheader_to_codecdata (const GValue * streamheader,
 
   if (bufarr->len > 0) {
     for (bufi = 0; bufi < bufarr->len - 1; bufi++) {
-      for (i = 0; i < gst_buffer_get_size (buf[bufi]) / 0xff; ++i) {
+      for (i = 0; i < GST_BUFFER_SIZE (buf[bufi]) / 0xff; ++i) {
         priv_data[offset++] = 0xff;
       }
-      priv_data[offset++] = gst_buffer_get_size (buf[bufi]) % 0xff;
+      priv_data[offset++] = GST_BUFFER_SIZE (buf[bufi]) % 0xff;
     }
   }
 
   for (i = 0; i < bufarr->len; ++i) {
-    gst_buffer_extract (buf[i], 0, priv_data + offset, -1);
-    offset += gst_buffer_get_size (buf[i]);
+    memcpy (priv_data + offset, GST_BUFFER_DATA (buf[i]),
+        GST_BUFFER_SIZE (buf[i]));
+    offset += GST_BUFFER_SIZE (buf[i]);
   }
 
-  gst_matroska_mux_free_codec_priv (context);
   context->codec_priv = priv_data;
   context->codec_priv_size = priv_data_size;
 
@@ -1311,20 +1220,17 @@ vorbis_streamheader_to_codecdata (const GValue * streamheader,
   if (!xiphN_streamheader_to_codecdata (streamheader, context, &buf0, 3))
     return FALSE;
 
-  if (buf0 == NULL || gst_buffer_get_size (buf0) < 1 + 6 + 4) {
+  if (buf0 == NULL || GST_BUFFER_SIZE (buf0) < 1 + 6 + 4) {
     GST_WARNING ("First vorbis header too small, ignoring");
   } else {
-    if (gst_buffer_memcmp (buf0, 1, "vorbis", 6) == 0) {
+    if (memcmp (GST_BUFFER_DATA (buf0) + 1, "vorbis", 6) == 0) {
       GstMatroskaTrackAudioContext *audiocontext;
-      GstMapInfo map;
       guint8 *hdr;
 
-      gst_buffer_map (buf0, &map, GST_MAP_READ);
-      hdr = map.data + 1 + 6 + 4;
+      hdr = GST_BUFFER_DATA (buf0) + 1 + 6 + 4;
       audiocontext = (GstMatroskaTrackAudioContext *) context;
       audiocontext->channels = GST_READ_UINT8 (hdr);
       audiocontext->samplerate = GST_READ_UINT32_LE (hdr + 1);
-      gst_buffer_unmap (buf0, &map);
     }
   }
 
@@ -1343,18 +1249,16 @@ theora_streamheader_to_codecdata (const GValue * streamheader,
   if (!xiphN_streamheader_to_codecdata (streamheader, context, &buf0, 3))
     return FALSE;
 
-  if (buf0 == NULL || gst_buffer_get_size (buf0) < 1 + 6 + 26) {
+  if (buf0 == NULL || GST_BUFFER_SIZE (buf0) < 1 + 6 + 26) {
     GST_WARNING ("First theora header too small, ignoring");
-  } else if (gst_buffer_memcmp (buf0, 0, "\200theora\003\002", 9) != 0) {
+  } else if (memcmp (GST_BUFFER_DATA (buf0), "\200theora\003\002", 9) != 0) {
     GST_WARNING ("First header not a theora identification header, ignoring");
   } else {
     GstMatroskaTrackVideoContext *videocontext;
     guint fps_num, fps_denom, par_num, par_denom;
-    GstMapInfo map;
     guint8 *hdr;
 
-    gst_buffer_map (buf0, &map, GST_MAP_READ);
-    hdr = map.data + 1 + 6 + 3 + 2 + 2;
+    hdr = GST_BUFFER_DATA (buf0) + 1 + 6 + 3 + 2 + 2;
 
     videocontext = (GstMatroskaTrackVideoContext *) context;
     videocontext->pixel_width = GST_READ_UINT32_BE (hdr) >> 8;
@@ -1385,8 +1289,6 @@ theora_streamheader_to_codecdata (const GValue * streamheader,
       videocontext->display_height = 0;
     }
     hdr += 3 + 3;
-
-    gst_buffer_unmap (buf0, &map);
   }
 
   if (buf0)
@@ -1404,9 +1306,9 @@ kate_streamheader_to_codecdata (const GValue * streamheader,
   if (!xiphN_streamheader_to_codecdata (streamheader, context, &buf0, -1))
     return FALSE;
 
-  if (buf0 == NULL || gst_buffer_get_size (buf0) < 64) {        /* Kate ID header is 64 bytes */
+  if (buf0 == NULL || GST_BUFFER_SIZE (buf0) < 64) {    /* Kate ID header is 64 bytes */
     GST_WARNING ("First kate header too small, ignoring");
-  } else if (gst_buffer_memcmp (buf0, 0, "\200kate\0\0\0", 8) != 0) {
+  } else if (memcmp (GST_BUFFER_DATA (buf0), "\200kate\0\0\0", 8) != 0) {
     GST_WARNING ("First header not a kate identification header, ignoring");
   }
 
@@ -1447,37 +1349,38 @@ flac_streamheader_to_codecdata (const GValue * streamheader,
   buffer = g_value_peek_pointer (bufval);
 
   /* Need at least OggFLAC mapping header, fLaC marker and STREAMINFO block */
-  if (gst_buffer_get_size (buffer) < 9 + 4 + 4 + 34
-      || gst_buffer_memcmp (buffer, 1, "FLAC", 4) != 0
-      || gst_buffer_memcmp (buffer, 9, "fLaC", 4) != 0) {
+  if (GST_BUFFER_SIZE (buffer) < 9 + 4 + 4 + 34
+      || memcmp (GST_BUFFER_DATA (buffer) + 1, "FLAC", 4) != 0
+      || memcmp (GST_BUFFER_DATA (buffer) + 9, "fLaC", 4) != 0) {
     GST_WARNING ("Invalid streamheader for FLAC");
     return FALSE;
   }
 
-  gst_matroska_mux_free_codec_priv (context);
-  context->codec_priv_size = gst_buffer_get_size (buffer) - 9;
-  context->codec_priv = g_malloc (context->codec_priv_size);
-  gst_buffer_extract (buffer, 9, context->codec_priv, -1);
+  context->codec_priv = g_malloc (GST_BUFFER_SIZE (buffer) - 9);
+  context->codec_priv_size = GST_BUFFER_SIZE (buffer) - 9;
+  memcpy (context->codec_priv, GST_BUFFER_DATA (buffer) + 9,
+      GST_BUFFER_SIZE (buffer) - 9);
 
   for (i = 1; i < bufarr->len; i++) {
-    guint old_size;
     bufval = &g_array_index (bufarr, GValue, i);
 
     if (G_VALUE_TYPE (bufval) != GST_TYPE_BUFFER) {
-      gst_matroska_mux_free_codec_priv (context);
+      g_free (context->codec_priv);
+      context->codec_priv = NULL;
+      context->codec_priv_size = 0;
       GST_WARNING ("streamheaders array does not contain GstBuffers");
       return FALSE;
     }
 
     buffer = g_value_peek_pointer (bufval);
 
-    old_size = context->codec_priv_size;
-    context->codec_priv_size += gst_buffer_get_size (buffer);
-
-    context->codec_priv = g_realloc (context->codec_priv,
-        context->codec_priv_size);
-    gst_buffer_extract (buffer, 0,
-        (guint8 *) context->codec_priv + old_size, -1);
+    context->codec_priv =
+        g_realloc (context->codec_priv,
+        context->codec_priv_size + GST_BUFFER_SIZE (buffer));
+    memcpy ((guint8 *) context->codec_priv + context->codec_priv_size,
+        GST_BUFFER_DATA (buffer), GST_BUFFER_SIZE (buffer));
+    context->codec_priv_size =
+        context->codec_priv_size + GST_BUFFER_SIZE (buffer);
   }
 
   return TRUE;
@@ -1490,7 +1393,6 @@ speex_streamheader_to_codecdata (const GValue * streamheader,
   GArray *bufarr;
   GValue *bufval;
   GstBuffer *buffer;
-  guint old_size;
 
   if (streamheader == NULL || G_VALUE_TYPE (streamheader) != GST_TYPE_ARRAY) {
     GST_WARNING ("No or invalid streamheader field in the caps");
@@ -1513,47 +1415,51 @@ speex_streamheader_to_codecdata (const GValue * streamheader,
 
   buffer = g_value_peek_pointer (bufval);
 
-  if (gst_buffer_get_size (buffer) < 80
-      || gst_buffer_memcmp (buffer, 0, "Speex   ", 8) != 0) {
+  if (GST_BUFFER_SIZE (buffer) < 80
+      || memcmp (GST_BUFFER_DATA (buffer), "Speex   ", 8) != 0) {
     GST_WARNING ("Invalid streamheader for Speex");
     return FALSE;
   }
 
-  gst_matroska_mux_free_codec_priv (context);
-  context->codec_priv_size = gst_buffer_get_size (buffer);
-  context->codec_priv = g_malloc (context->codec_priv_size);
-  gst_buffer_extract (buffer, 0, context->codec_priv, -1);
+  context->codec_priv = g_malloc (GST_BUFFER_SIZE (buffer));
+  context->codec_priv_size = GST_BUFFER_SIZE (buffer);
+  memcpy (context->codec_priv, GST_BUFFER_DATA (buffer),
+      GST_BUFFER_SIZE (buffer));
 
   bufval = &g_array_index (bufarr, GValue, 1);
 
   if (G_VALUE_TYPE (bufval) != GST_TYPE_BUFFER) {
-    gst_matroska_mux_free_codec_priv (context);
+    g_free (context->codec_priv);
+    context->codec_priv = NULL;
+    context->codec_priv_size = 0;
     GST_WARNING ("streamheaders array does not contain GstBuffers");
     return FALSE;
   }
 
   buffer = g_value_peek_pointer (bufval);
 
-  old_size = context->codec_priv_size;
-  context->codec_priv_size += gst_buffer_get_size (buffer);
-  context->codec_priv = g_realloc (context->codec_priv,
-      context->codec_priv_size);
-  gst_buffer_extract (buffer, 0, (guint8 *) context->codec_priv + old_size, -1);
+  context->codec_priv =
+      g_realloc (context->codec_priv,
+      context->codec_priv_size + GST_BUFFER_SIZE (buffer));
+  memcpy ((guint8 *) context->codec_priv + context->codec_priv_size,
+      GST_BUFFER_DATA (buffer), GST_BUFFER_SIZE (buffer));
+  context->codec_priv_size =
+      context->codec_priv_size + GST_BUFFER_SIZE (buffer);
 
   return TRUE;
 }
 
 static const gchar *
-aac_codec_data_to_codec_id (GstBuffer * buf)
+aac_codec_data_to_codec_id (const GstBuffer * buf)
 {
   const gchar *result;
-  guint8 profile;
+  gint profile;
 
   /* default to MAIN */
   profile = 1;
 
-  if (gst_buffer_get_size (buf) >= 2) {
-    gst_buffer_extract (buf, 0, &profile, 1);
+  if (GST_BUFFER_SIZE (buf) >= 2) {
+    profile = GST_READ_UINT8 (GST_BUFFER_DATA (buf));
     profile >>= 3;
   }
 
@@ -1599,7 +1505,7 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
   gint samplerate = 0, channels = 0;
   GstStructure *structure;
   const GValue *codec_data = NULL;
-  GstBuffer *buf = NULL;
+  const GstBuffer *buf = NULL;
   const gchar *stream_format = NULL;
 
   mux = GST_MATROSKA_MUX (GST_PAD_PARENT (pad));
@@ -1665,16 +1571,13 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
 
         switch (layer) {
           case 1:
-            gst_matroska_mux_set_codec_id (context,
-                GST_MATROSKA_CODEC_ID_AUDIO_MPEG1_L1);
+            context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_MPEG1_L1);
             break;
           case 2:
-            gst_matroska_mux_set_codec_id (context,
-                GST_MATROSKA_CODEC_ID_AUDIO_MPEG1_L2);
+            context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_MPEG1_L2);
             break;
           case 3:
-            gst_matroska_mux_set_codec_id (context,
-                GST_MATROSKA_CODEC_ID_AUDIO_MPEG1_L3);
+            context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_MPEG1_L3);
             break;
           default:
             goto refuse_caps;
@@ -1714,53 +1617,62 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
       default:
         goto refuse_caps;
     }
-  } else if (!strcmp (mimetype, "audio/x-raw")) {
-    GstAudioInfo info;
+  } else if (!strcmp (mimetype, "audio/x-raw-int")) {
+    gint width, depth;
+    gint endianness = G_LITTLE_ENDIAN;
+    gboolean signedness = TRUE;
 
-    gst_audio_info_init (&info);
-    if (!gst_audio_info_from_caps (&info, caps)) {
-      GST_DEBUG_OBJECT (mux,
-          "broken caps, rejected by gst_audio_info_from_caps");
+    if (!gst_structure_get_int (structure, "width", &width) ||
+        !gst_structure_get_int (structure, "depth", &depth) ||
+        !gst_structure_get_boolean (structure, "signed", &signedness)) {
+      GST_DEBUG_OBJECT (mux, "broken caps, width/depth/signed field missing");
       goto refuse_caps;
     }
 
-    switch (GST_AUDIO_INFO_FORMAT (&info)) {
-      case GST_AUDIO_FORMAT_U8:
-      case GST_AUDIO_FORMAT_S16BE:
-      case GST_AUDIO_FORMAT_S16LE:
-      case GST_AUDIO_FORMAT_S24BE:
-      case GST_AUDIO_FORMAT_S24LE:
-      case GST_AUDIO_FORMAT_S32BE:
-      case GST_AUDIO_FORMAT_S32LE:
-        if (GST_AUDIO_INFO_WIDTH (&info) != GST_AUDIO_INFO_DEPTH (&info)) {
-          GST_DEBUG_OBJECT (mux, "width must be same as depth!");
-          goto refuse_caps;
-        }
-        if (GST_AUDIO_INFO_IS_BIG_ENDIAN (&info))
-          gst_matroska_mux_set_codec_id (context,
-              GST_MATROSKA_CODEC_ID_AUDIO_PCM_INT_BE);
-        else
-          gst_matroska_mux_set_codec_id (context,
-              GST_MATROSKA_CODEC_ID_AUDIO_PCM_INT_LE);
-        break;
-      case GST_AUDIO_FORMAT_F32LE:
-      case GST_AUDIO_FORMAT_F64LE:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_AUDIO_PCM_FLOAT);
-        break;
-
-      default:
-        GST_DEBUG_OBJECT (mux, "wrong format in raw audio caps");
-        goto refuse_caps;
+    if (depth > 8 &&
+        !gst_structure_get_int (structure, "endianness", &endianness)) {
+      GST_DEBUG_OBJECT (mux, "broken caps, no endianness specified");
+      goto refuse_caps;
     }
 
-    audiocontext->bitdepth = GST_AUDIO_INFO_WIDTH (&info);
+    if (width != depth) {
+      GST_DEBUG_OBJECT (mux, "width must be same as depth!");
+      goto refuse_caps;
+    }
+
+    /* FIXME: where is this spec'ed out? (tpm) */
+    if ((width == 8 && signedness) || (width >= 16 && !signedness)) {
+      GST_DEBUG_OBJECT (mux, "8-bit PCM must be unsigned, 16-bit PCM signed");
+      goto refuse_caps;
+    }
+
+    audiocontext->bitdepth = depth;
+    if (endianness == G_BIG_ENDIAN)
+      context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_PCM_INT_BE);
+    else
+      context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_PCM_INT_LE);
+
+  } else if (!strcmp (mimetype, "audio/x-raw-float")) {
+    gint width;
+
+    if (!gst_structure_get_int (structure, "width", &width)) {
+      GST_DEBUG_OBJECT (mux, "broken caps, width field missing");
+      goto refuse_caps;
+    }
+
+    audiocontext->bitdepth = width;
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_PCM_FLOAT);
+
   } else if (!strcmp (mimetype, "audio/x-vorbis")) {
     const GValue *streamheader;
 
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_VORBIS);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_VORBIS);
 
-    gst_matroska_mux_free_codec_priv (context);
+    if (context->codec_priv != NULL) {
+      g_free (context->codec_priv);
+      context->codec_priv = NULL;
+      context->codec_priv_size = 0;
+    }
 
     streamheader = gst_structure_get_value (structure, "streamheader");
     if (!vorbis_streamheader_to_codecdata (streamheader, context)) {
@@ -1771,9 +1683,12 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
   } else if (!strcmp (mimetype, "audio/x-flac")) {
     const GValue *streamheader;
 
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_FLAC);
-
-    gst_matroska_mux_free_codec_priv (context);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_FLAC);
+    if (context->codec_priv != NULL) {
+      g_free (context->codec_priv);
+      context->codec_priv = NULL;
+      context->codec_priv_size = 0;
+    }
 
     streamheader = gst_structure_get_value (structure, "streamheader");
     if (!flac_streamheader_to_codecdata (streamheader, context)) {
@@ -1784,8 +1699,12 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
   } else if (!strcmp (mimetype, "audio/x-speex")) {
     const GValue *streamheader;
 
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_SPEEX);
-    gst_matroska_mux_free_codec_priv (context);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_SPEEX);
+    if (context->codec_priv != NULL) {
+      g_free (context->codec_priv);
+      context->codec_priv = NULL;
+      context->codec_priv_size = 0;
+    }
 
     streamheader = gst_structure_get_value (structure, "streamheader");
     if (!speex_streamheader_to_codecdata (streamheader, context)) {
@@ -1794,11 +1713,11 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
       goto refuse_caps;
     }
   } else if (!strcmp (mimetype, "audio/x-ac3")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_AC3);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_AC3);
   } else if (!strcmp (mimetype, "audio/x-eac3")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_EAC3);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_EAC3);
   } else if (!strcmp (mimetype, "audio/x-dts")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_DTS);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_DTS);
   } else if (!strcmp (mimetype, "audio/x-tta")) {
     gint width;
 
@@ -1807,7 +1726,7 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
 
     gst_structure_get_int (structure, "width", &width);
     audiocontext->bitdepth = width;
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_TTA);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_TTA);
 
   } else if (!strcmp (mimetype, "audio/x-pn-realaudio")) {
     gint raversion;
@@ -1816,16 +1735,13 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
     gst_structure_get_int (structure, "raversion", &raversion);
     switch (raversion) {
       case 1:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_AUDIO_REAL_14_4);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_REAL_14_4);
         break;
       case 2:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_AUDIO_REAL_28_8);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_REAL_28_8);
         break;
       case 8:
-        gst_matroska_mux_set_codec_id (context,
-            GST_MATROSKA_CODEC_ID_AUDIO_REAL_COOK);
+        context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_REAL_COOK);
         break;
       default:
         goto refuse_caps;
@@ -1838,12 +1754,10 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
 
       GstBuffer *codec_data_buf = g_value_peek_pointer (mdpr_data);
 
-      priv_data_size = gst_buffer_get_size (codec_data_buf);
+      priv_data_size = GST_BUFFER_SIZE (codec_data_buf);
       priv_data = g_malloc0 (priv_data_size);
 
-      gst_buffer_extract (codec_data_buf, 0, priv_data, -1);
-
-      gst_matroska_mux_free_codec_priv (context);
+      memcpy (priv_data, GST_BUFFER_DATA (codec_data_buf), priv_data_size);
 
       context->codec_priv = priv_data;
       context->codec_priv_size = priv_data_size;
@@ -1907,7 +1821,7 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
 
     codec_priv_size = WAVEFORMATEX_SIZE;
     if (buf)
-      codec_priv_size += gst_buffer_get_size (buf);
+      codec_priv_size += GST_BUFFER_SIZE (buf);
 
     /* serialize waveformatex structure */
     codec_priv = g_malloc0 (codec_priv_size);
@@ -1918,18 +1832,17 @@ gst_matroska_mux_audio_pad_setcaps (GstPad * pad, GstCaps * caps)
     GST_WRITE_UINT16_LE (codec_priv + 12, block_align);
     GST_WRITE_UINT16_LE (codec_priv + 14, 0);
     if (buf)
-      GST_WRITE_UINT16_LE (codec_priv + 16, gst_buffer_get_size (buf));
+      GST_WRITE_UINT16_LE (codec_priv + 16, GST_BUFFER_SIZE (buf));
     else
       GST_WRITE_UINT16_LE (codec_priv + 16, 0);
 
     /* process codec private/initialization data, if any */
     if (buf) {
-      gst_buffer_extract (buf, 0,
-          (guint8 *) codec_priv + WAVEFORMATEX_SIZE, -1);
+      memcpy ((guint8 *) codec_priv + WAVEFORMATEX_SIZE,
+          GST_BUFFER_DATA (buf), GST_BUFFER_SIZE (buf));
     }
 
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_AUDIO_ACM);
-    gst_matroska_mux_free_codec_priv (context);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_AUDIO_ACM);
     context->codec_priv = (gpointer) codec_priv;
     context->codec_priv_size = codec_priv_size;
   }
@@ -1945,10 +1858,6 @@ refuse_caps:
   }
 }
 
-/* we probably don't have the data at start,
- * so have to reserve (a maximum) space to write this at the end.
- * bit spacy, but some formats can hold quite some */
-#define SUBTITLE_MAX_CODEC_PRIVATE   2048       /* must be > 128 */
 
 /**
  * gst_matroska_mux_subtitle_pad_setcaps:
@@ -1962,6 +1871,11 @@ refuse_caps:
 static gboolean
 gst_matroska_mux_subtitle_pad_setcaps (GstPad * pad, GstCaps * caps)
 {
+  /* FIXME:
+   * Consider this as boilerplate code for now. There is
+   * no single subtitle creation element in GStreamer,
+   * neither do I know how subtitling works at all. */
+
   /* There is now (at least) one such alement (kateenc), and I'm going
      to handle it here and claim it works when it can be piped back
      through GStreamer and VLC */
@@ -1972,9 +1886,6 @@ gst_matroska_mux_subtitle_pad_setcaps (GstPad * pad, GstCaps * caps)
   GstMatroskaPad *collect_pad;
   const gchar *mimetype;
   GstStructure *structure;
-  const GValue *value = NULL;
-  GstBuffer *buf = NULL;
-  gboolean ret = TRUE;
 
   mux = GST_MATROSKA_MUX (GST_PAD_PARENT (pad));
 
@@ -1994,71 +1905,29 @@ gst_matroska_mux_subtitle_pad_setcaps (GstPad * pad, GstCaps * caps)
   scontext->invalid_utf8 = 0;
   context->default_duration = 0;
 
+  /* TODO: - other format than Kate */
+
   if (!strcmp (mimetype, "subtitle/x-kate")) {
     const GValue *streamheader;
 
-    gst_matroska_mux_set_codec_id (context,
-        GST_MATROSKA_CODEC_ID_SUBTITLE_KATE);
+    context->codec_id = g_strdup (GST_MATROSKA_CODEC_ID_SUBTITLE_KATE);
 
-    gst_matroska_mux_free_codec_priv (context);
+    if (context->codec_priv != NULL) {
+      g_free (context->codec_priv);
+      context->codec_priv = NULL;
+      context->codec_priv_size = 0;
+    }
 
     streamheader = gst_structure_get_value (structure, "streamheader");
     if (!kate_streamheader_to_codecdata (streamheader, context)) {
       GST_ELEMENT_ERROR (mux, STREAM, MUX, (NULL),
           ("kate stream headers missing or malformed"));
-      ret = FALSE;
-      goto exit;
+      return FALSE;
     }
-  } else if (!strcmp (mimetype, "text/x-raw")) {
-    gst_matroska_mux_set_codec_id (context,
-        GST_MATROSKA_CODEC_ID_SUBTITLE_UTF8);
-  } else if (!strcmp (mimetype, "application/x-ssa")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_SUBTITLE_SSA);
-  } else if (!strcmp (mimetype, "application/x-ass")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_SUBTITLE_ASS);
-  } else if (!strcmp (mimetype, "application/x-usf")) {
-    gst_matroska_mux_set_codec_id (context, GST_MATROSKA_CODEC_ID_SUBTITLE_USF);
-  } else if (!strcmp (mimetype, "subpicture/x-dvd")) {
-    gst_matroska_mux_set_codec_id (context,
-        GST_MATROSKA_CODEC_ID_SUBTITLE_VOBSUB);
-  } else {
-    ret = FALSE;
-    goto exit;
+    return TRUE;
   }
 
-  /* maybe some private data, e.g. vobsub */
-  value = gst_structure_get_value (structure, "codec_data");
-  if (value)
-    buf = gst_value_get_buffer (value);
-  if (buf != NULL) {
-    GstMapInfo map;
-    guint8 *priv_data = NULL;
-
-    gst_buffer_map (buf, &map, GST_MAP_READ);
-
-    if (map.size > SUBTITLE_MAX_CODEC_PRIVATE) {
-      GST_WARNING_OBJECT (mux, "pad %" GST_PTR_FORMAT " subtitle private data"
-          " exceeded maximum (%d); discarding", pad,
-          SUBTITLE_MAX_CODEC_PRIVATE);
-      gst_buffer_unmap (buf, &map);
-      return TRUE;
-    }
-
-    gst_matroska_mux_free_codec_priv (context);
-
-    priv_data = g_malloc0 (map.size);
-    memcpy (priv_data, map.data, map.size);
-    context->codec_priv = priv_data;
-    context->codec_priv_size = map.size;
-    gst_buffer_unmap (buf, &map);
-  }
-
-  GST_DEBUG_OBJECT (pad, "codec_id %s, codec data size %" G_GSIZE_FORMAT,
-      GST_STR_NULL (context->codec_id), context->codec_priv_size);
-
-exit:
-
-  return ret;
+  return FALSE;
 }
 
 
@@ -2074,7 +1943,7 @@ exit:
  */
 static GstPad *
 gst_matroska_mux_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps)
+    GstPadTemplate * templ, const gchar * req_name)
 {
   GstElementClass *klass = GST_ELEMENT_GET_CLASS (element);
   GstMatroskaMux *mux = GST_MATROSKA_MUX (element);
@@ -2082,57 +1951,52 @@ gst_matroska_mux_request_new_pad (GstElement * element,
   GstMatroskamuxPad *newpad;
   gchar *name = NULL;
   const gchar *pad_name = NULL;
-  GstMatroskaCapsFunc capsfunc = NULL;
+  GstPadSetCapsFunction setcapsfunc = NULL;
   GstMatroskaTrackContext *context = NULL;
   gint pad_id;
-  gboolean locked = TRUE;
-  gchar *id = NULL;
 
-  if (templ == gst_element_class_get_pad_template (klass, "audio_%u")) {
+  if (templ == gst_element_class_get_pad_template (klass, "audio_%d")) {
     /* don't mix named and unnamed pads, if the pad already exists we fail when
      * trying to add it */
-    if (req_name != NULL && sscanf (req_name, "audio_%u", &pad_id) == 1) {
+    if (req_name != NULL && sscanf (req_name, "audio_%d", &pad_id) == 1) {
       pad_name = req_name;
     } else {
-      name = g_strdup_printf ("audio_%u", mux->num_a_streams++);
+      name = g_strdup_printf ("audio_%d", mux->num_a_streams++);
       pad_name = name;
     }
-    capsfunc = GST_DEBUG_FUNCPTR (gst_matroska_mux_audio_pad_setcaps);
+    setcapsfunc = GST_DEBUG_FUNCPTR (gst_matroska_mux_audio_pad_setcaps);
     context = (GstMatroskaTrackContext *)
         g_new0 (GstMatroskaTrackAudioContext, 1);
     context->type = GST_MATROSKA_TRACK_TYPE_AUDIO;
     context->name = g_strdup ("Audio");
-  } else if (templ == gst_element_class_get_pad_template (klass, "video_%u")) {
+  } else if (templ == gst_element_class_get_pad_template (klass, "video_%d")) {
     /* don't mix named and unnamed pads, if the pad already exists we fail when
      * trying to add it */
-    if (req_name != NULL && sscanf (req_name, "video_%u", &pad_id) == 1) {
+    if (req_name != NULL && sscanf (req_name, "video_%d", &pad_id) == 1) {
       pad_name = req_name;
     } else {
-      name = g_strdup_printf ("video_%u", mux->num_v_streams++);
+      name = g_strdup_printf ("video_%d", mux->num_v_streams++);
       pad_name = name;
     }
-    capsfunc = GST_DEBUG_FUNCPTR (gst_matroska_mux_video_pad_setcaps);
+    setcapsfunc = GST_DEBUG_FUNCPTR (gst_matroska_mux_video_pad_setcaps);
     context = (GstMatroskaTrackContext *)
         g_new0 (GstMatroskaTrackVideoContext, 1);
     context->type = GST_MATROSKA_TRACK_TYPE_VIDEO;
     context->name = g_strdup ("Video");
-  } else if (templ == gst_element_class_get_pad_template (klass, "subtitle_%u")) {
+  } else if (templ == gst_element_class_get_pad_template (klass, "subtitle_%d")) {
     /* don't mix named and unnamed pads, if the pad already exists we fail when
      * trying to add it */
-    if (req_name != NULL && sscanf (req_name, "subtitle_%u", &pad_id) == 1) {
+    if (req_name != NULL && sscanf (req_name, "subtitle_%d", &pad_id) == 1) {
       pad_name = req_name;
     } else {
-      name = g_strdup_printf ("subtitle_%u", mux->num_t_streams++);
+      name = g_strdup_printf ("subtitle_%d", mux->num_t_streams++);
       pad_name = name;
     }
-    capsfunc = GST_DEBUG_FUNCPTR (gst_matroska_mux_subtitle_pad_setcaps);
+    setcapsfunc = GST_DEBUG_FUNCPTR (gst_matroska_mux_subtitle_pad_setcaps);
     context = (GstMatroskaTrackContext *)
         g_new0 (GstMatroskaTrackSubtitleContext, 1);
     context->type = GST_MATROSKA_TRACK_TYPE_SUBTITLE;
     context->name = g_strdup ("Subtitle");
-    /* setcaps may only provide proper one a lot later */
-    id = g_strdup ("S_SUB_UNKNOWN");
-    locked = FALSE;
   } else {
     GST_WARNING_OBJECT (mux, "This is not our template!");
     return NULL;
@@ -2144,15 +2008,26 @@ gst_matroska_mux_request_new_pad (GstElement * element,
 
   gst_matroskamux_pad_init (newpad);
   collect_pad = (GstMatroskaPad *)
-      gst_collect_pads_add_pad (mux->collect, GST_PAD (newpad),
+      gst_collect_pads_add_pad_full (mux->collect, GST_PAD (newpad),
       sizeof (GstMatroskamuxPad),
-      (GstCollectDataDestroyNotify) gst_matroska_pad_free, locked);
+      (GstCollectDataDestroyNotify) gst_matroska_pad_free);
 
   collect_pad->track = context;
   gst_matroska_pad_reset (collect_pad, FALSE);
-  collect_pad->track->codec_id = id;
 
-  collect_pad->capsfunc = capsfunc;
+  /* FIXME: hacked way to override/extend the event function of
+   * GstCollectPads; because it sets its own event function giving the
+   * element no access to events.
+   * TODO GstCollectPads should really give its 'users' a clean chance to
+   * properly handle events that are not meant for collectpads itself.
+   * Perhaps a callback or so, though rejected (?) in #340060.
+   * This would allow (clean) transcoding of info from demuxer/streams
+   * to another muxer */
+  mux->collect_event = (GstPadEventFunction) GST_PAD_EVENTFUNC (newpad);
+  gst_pad_set_event_function (GST_PAD (newpad),
+      GST_DEBUG_FUNCPTR (gst_matroska_mux_handle_sink_event));
+
+  gst_pad_set_setcaps_function (GST_PAD (newpad), setcapsfunc);
   gst_pad_set_active (GST_PAD (newpad), TRUE);
   if (!gst_element_add_pad (element, GST_PAD (newpad)))
     goto pad_add_failed;
@@ -2246,14 +2121,6 @@ gst_matroska_mux_track_header (GstMatroskaMux * mux,
         context->language);
   }
 
-  /* FIXME: until we have a nice way of getting the codecname
-   * out of the caps, I'm not going to enable this. Too much
-   * (useless, double, boring) work... */
-  /* TODO: Use value from tags if any */
-  /*gst_ebml_write_utf8 (ebml, GST_MATROSKA_ID_CODECNAME,
-     context->codec_name); */
-  gst_ebml_write_utf8 (ebml, GST_MATROSKA_ID_TRACKNAME, context->name);
-
   /* type-specific stuff */
   switch (context->type) {
     case GST_MATROSKA_TRACK_TYPE_VIDEO:{
@@ -2304,24 +2171,6 @@ gst_matroska_mux_track_header (GstMatroskaMux * mux,
       break;
     }
 
-      /* this is what we write for now and must be filled
-       * and remainder void'ed later on */
-#define SUBTITLE_DUMMY_SIZE   (1 + 1 + 14 + 1 + 2 + SUBTITLE_MAX_CODEC_PRIVATE)
-
-    case GST_MATROSKA_TRACK_TYPE_SUBTITLE:{
-      gpointer buf;
-
-      context->pos = ebml->pos;
-      /* CodecID is mandatory ... */
-      gst_ebml_write_ascii (ebml, GST_MATROSKA_ID_CODECID, "S_SUB_UNKNOWN");
-      /* reserve space */
-      buf = g_malloc0 (SUBTITLE_MAX_CODEC_PRIVATE);
-      gst_ebml_write_binary (ebml, GST_EBML_ID_VOID, buf,
-          SUBTITLE_MAX_CODEC_PRIVATE);
-      g_free (buf);
-      /* real data has to be written at finish */
-      return;
-    }
     default:
       /* doesn't need type-specific data */
       break;
@@ -2331,114 +2180,15 @@ gst_matroska_mux_track_header (GstMatroskaMux * mux,
   if (context->codec_priv)
     gst_ebml_write_binary (ebml, GST_MATROSKA_ID_CODECPRIVATE,
         context->codec_priv, context->codec_priv_size);
+  /* FIXME: until we have a nice way of getting the codecname
+   * out of the caps, I'm not going to enable this. Too much
+   * (useless, double, boring) work... */
+  /* TODO: Use value from tags if any */
+  /*gst_ebml_write_utf8 (ebml, GST_MATROSKA_ID_CODECNAME,
+     context->codec_name); */
+  gst_ebml_write_utf8 (ebml, GST_MATROSKA_ID_TRACKNAME, context->name);
 }
 
-#if 0
-static void
-gst_matroska_mux_write_chapter_title (const gchar * title, GstEbmlWrite * ebml)
-{
-  guint64 title_master;
-
-  title_master =
-      gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_CHAPTERDISPLAY);
-
-  gst_ebml_write_utf8 (ebml, GST_MATROSKA_ID_CHAPSTRING, title);
-  gst_ebml_write_ascii (ebml, GST_MATROSKA_ID_CHAPLANGUAGE,
-      GST_MATROSKA_MUX_CHAPLANG);
-
-  gst_ebml_write_master_finish (ebml, title_master);
-}
-
-static void
-gst_matroska_mux_write_chapter (GstMatroskaMux * mux, GstTocEntry * edition,
-    GstTocEntry * entry, GstEbmlWrite * ebml, guint64 * master_chapters,
-    guint64 * master_edition)
-{
-  guint64 uid, master_chapteratom;
-  GList *cur;
-  GstTocEntry *cur_entry;
-  guint count, i;
-  gchar *title;
-  gint64 start, stop;
-
-  if (G_UNLIKELY (master_chapters != NULL && *master_chapters == 0))
-    *master_chapters =
-        gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_CHAPTERS);
-
-  if (G_UNLIKELY (master_edition != NULL && *master_edition == 0)) {
-    /* create uid for the parent */
-    uid = gst_matroska_mux_create_uid ();
-    g_free (edition->uid);
-    edition->uid = g_strdup_printf ("%" G_GUINT64_FORMAT, uid);
-
-    *master_edition =
-        gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_EDITIONENTRY);
-
-    gst_ebml_write_uint (ebml, GST_MATROSKA_ID_EDITIONUID, uid);
-    gst_ebml_write_uint (ebml, GST_MATROSKA_ID_EDITIONFLAGHIDDEN, 0);
-    gst_ebml_write_uint (ebml, GST_MATROSKA_ID_EDITIONFLAGDEFAULT, 0);
-    gst_ebml_write_uint (ebml, GST_MATROSKA_ID_EDITIONFLAGORDERED, 0);
-  }
-
-  uid = gst_matroska_mux_create_uid ();
-  gst_toc_entry_get_start_stop_times (entry, &start, &stop);
-
-  master_chapteratom =
-      gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_CHAPTERATOM);
-  g_free (entry->uid);
-  entry->uid = g_strdup_printf ("%" G_GUINT64_FORMAT, uid);
-  gst_ebml_write_uint (ebml, GST_MATROSKA_ID_CHAPTERUID, uid);
-  gst_ebml_write_uint (ebml, GST_MATROSKA_ID_CHAPTERTIMESTART, start);
-  gst_ebml_write_uint (ebml, GST_MATROSKA_ID_CHAPTERTIMESTOP, stop);
-  gst_ebml_write_uint (ebml, GST_MATROSKA_ID_CHAPTERFLAGHIDDEN, 0);
-  gst_ebml_write_uint (ebml, GST_MATROSKA_ID_CHAPTERFLAGENABLED, 1);
-
-  cur = entry->subentries;
-  while (cur != NULL) {
-    cur_entry = cur->data;
-    gst_matroska_mux_write_chapter (mux, NULL, cur_entry, ebml, NULL, NULL);
-
-    cur = cur->next;
-  }
-
-  if (G_LIKELY (entry->tags != NULL)) {
-    count = gst_tag_list_get_tag_size (entry->tags, GST_TAG_TITLE);
-
-    for (i = 0; i < count; ++i) {
-      gst_tag_list_get_string_index (entry->tags, GST_TAG_TITLE, i, &title);
-      gst_matroska_mux_write_chapter_title (title, ebml);
-      g_free (title);
-    }
-
-    /* remove title tag */
-    if (G_LIKELY (count > 0))
-      gst_tag_list_remove_tag (entry->tags, GST_TAG_TITLE);
-  }
-
-  gst_ebml_write_master_finish (ebml, master_chapteratom);
-}
-
-static void
-gst_matroska_mux_write_chapter_edition (GstMatroskaMux * mux,
-    GstTocEntry * entry, GstEbmlWrite * ebml, guint64 * master_chapters)
-{
-  guint64 master_edition = 0;
-  GList *cur;
-  GstTocEntry *subentry;
-
-  cur = gst_toc_entry_get_sub_entries (entry);
-  while (cur != NULL) {
-    subentry = cur->data;
-    gst_matroska_mux_write_chapter (mux, entry, subentry, ebml, master_chapters,
-        &master_edition);
-
-    cur = cur->next;
-  }
-
-  if (G_LIKELY (master_edition != 0))
-    gst_ebml_write_master_finish (ebml, master_edition);
-}
-#endif
 
 /**
  * gst_matroska_mux_start:
@@ -2453,13 +2203,10 @@ gst_matroska_mux_start (GstMatroskaMux * mux)
   const gchar *doctype;
   guint32 seekhead_id[] = { GST_MATROSKA_ID_SEGMENTINFO,
     GST_MATROSKA_ID_TRACKS,
-    GST_MATROSKA_ID_CHAPTERS,
     GST_MATROSKA_ID_CUES,
     GST_MATROSKA_ID_TAGS,
     0
   };
-  const gchar *media_type;
-  gboolean audio_only;
   guint64 master, child;
   GSList *collected;
   int i;
@@ -2467,42 +2214,12 @@ gst_matroska_mux_start (GstMatroskaMux * mux)
   GstClockTime duration = 0;
   guint32 segment_uid[4];
   GTimeVal time = { 0, 0 };
-#if 0
-  GstToc *toc;
-#endif
 
-  /* if not streaming, check if downstream is seekable */
-  if (!mux->streamable) {
-    gboolean seekable;
-    GstQuery *query;
-
-    query = gst_query_new_seeking (GST_FORMAT_BYTES);
-    if (gst_pad_peer_query (mux->srcpad, query)) {
-      gst_query_parse_seeking (query, NULL, &seekable, NULL, NULL);
-      GST_INFO_OBJECT (mux, "downstream is %sseekable", seekable ? "" : "not ");
-    } else {
-      /* have to assume seeking is supported if query not handled downstream */
-      GST_WARNING_OBJECT (mux, "downstream did not handle seeking query");
-      seekable = FALSE;
-    }
-    if (!seekable) {
-      mux->streamable = TRUE;
-      g_object_notify (G_OBJECT (mux), "streamable");
-      GST_WARNING_OBJECT (mux, "downstream is not seekable, but "
-          "streamable=false. Will ignore that and create streamable output "
-          "instead");
-    }
-    gst_query_unref (query);
-  }
-
-  audio_only = mux->num_v_streams == 0 && mux->num_a_streams > 0;
   if (!strcmp (mux->doctype, GST_MATROSKA_DOCTYPE_WEBM)) {
-    media_type = (audio_only) ? "audio/webm" : "video/webm";
+    ebml->caps = gst_caps_new_simple ("video/webm", NULL);
   } else {
-    media_type = (audio_only) ? "audio/x-matroska" : "video/x-matroska";
+    ebml->caps = gst_caps_new_simple ("video/x-matroska", NULL);
   }
-  ebml->caps = gst_caps_new_empty_simple (media_type);
-  gst_pad_set_caps (mux->srcpad, ebml->caps);
   /* we start with a EBML header */
   doctype = mux->doctype;
   GST_INFO_OBJECT (ebml, "DocType: %s, Version: %d",
@@ -2539,7 +2256,7 @@ gst_matroska_mux_start (GstMatroskaMux * mux)
     if (tags != NULL && !gst_tag_list_is_empty (tags)) {
       guint64 master_tags, master_tag;
 
-      GST_DEBUG_OBJECT (mux, "Writing tags");
+      GST_DEBUG ("Writing tags");
 
       /* TODO: maybe limit via the TARGETS id by looking at the source pad */
       mux->tags_pos = ebml->pos;
@@ -2566,6 +2283,7 @@ gst_matroska_mux_start (GstMatroskaMux * mux)
     for (collected = mux->collect->data; collected;
         collected = g_slist_next (collected)) {
       GstMatroskaPad *collect_pad;
+      GstFormat format = GST_FORMAT_TIME;
       GstPad *thepad;
       gint64 trackduration;
 
@@ -2574,7 +2292,7 @@ gst_matroska_mux_start (GstMatroskaMux * mux)
 
       /* Query the total length of the track. */
       GST_DEBUG_OBJECT (thepad, "querying peer duration");
-      if (gst_pad_peer_query_duration (thepad, GST_FORMAT_TIME, &trackduration)) {
+      if (gst_pad_query_peer_duration (thepad, &format, &trackduration)) {
         GST_DEBUG_OBJECT (thepad, "duration: %" GST_TIME_FORMAT,
             GST_TIME_ARGS (trackduration));
         if (trackduration != GST_CLOCK_TIME_NONE && trackduration > duration) {
@@ -2613,7 +2331,7 @@ gst_matroska_mux_start (GstMatroskaMux * mux)
       child = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TRACKENTRY);
       gst_matroska_mux_track_header (mux, collect_pad->track);
       gst_ebml_write_master_finish (ebml, child);
-      /* some remaining pad/track setup */
+      /* some remaing pad/track setup */
       collect_pad->default_duration_scaled =
           gst_util_uint64_scale (collect_pad->track->default_duration,
           1, mux->time_scale);
@@ -2621,77 +2339,8 @@ gst_matroska_mux_start (GstMatroskaMux * mux)
   }
   gst_ebml_write_master_finish (ebml, master);
 
-  /* FIXME: Check if we get a TOC that is supported by Matroska
-   * and clean up the code below */
-#if 0
-  /* chapters */
-  toc = gst_toc_setter_get_toc (GST_TOC_SETTER (mux));
-  if (toc != NULL && !mux->streamable) {
-    guint64 master_chapters = 0;
-    GstTocEntry *toc_entry;
-    GList *cur, *to_write = NULL;
-    gint64 start, stop;
-
-    GST_DEBUG ("Writing chapters");
-
-    /* check whether we have editions or chapters at the root level */
-    toc_entry = toc->entries->data;
-
-    if (toc_entry->type != GST_TOC_ENTRY_TYPE_EDITION) {
-      toc_entry = gst_toc_entry_new (GST_TOC_ENTRY_TYPE_EDITION, "");
-      gst_toc_entry_set_start_stop_times (toc_entry, -1, -1);
-
-      /* aggregate all chapters without root edition */
-      cur = gst_toc_get_entries (toc);
-      while (cur != NULL) {
-        toc_entry->subentries =
-            g_list_prepend (toc_entry->subentries, cur->data);
-        cur = cur->next;
-      }
-
-      gst_toc_entry_get_start_stop_times (((GstTocEntry *)
-              toc_entry->subentries->data), &start, NULL);
-      toc_entry->subentries = g_list_reverse (toc_entry->subentries);
-      gst_toc_entry_get_start_stop_times (((GstTocEntry *)
-              toc_entry->subentries->data), NULL, &stop);
-      gst_toc_entry_set_start_stop_times (toc_entry, start, stop);
-
-      to_write = g_list_append (to_write, toc_entry);
-    } else {
-      toc_entry = NULL;
-      to_write = toc->entries;
-    }
-
-    /* finally write chapters */
-    mux->chapters_pos = ebml->pos;
-
-    cur = to_write;
-    while (cur != NULL) {
-      gst_matroska_mux_write_chapter_edition (mux, cur->data, ebml,
-          &master_chapters);
-      cur = cur->next;
-    }
-
-    /* close master element if any edition was written */
-    if (G_LIKELY (master_chapters != 0))
-      gst_ebml_write_master_finish (ebml, master_chapters);
-
-    if (toc_entry != NULL) {
-      g_list_free (toc_entry->subentries);
-      toc_entry->subentries = NULL;
-      gst_toc_entry_unref (toc_entry);
-      g_list_free (to_write);
-    }
-  }
-#endif
-
   /* lastly, flush the cache */
   gst_ebml_write_flush_cache (ebml, FALSE, 0);
-
-#if 0
-  if (toc != NULL)
-    gst_toc_unref (toc);
-#endif
 }
 
 static void
@@ -2753,46 +2402,6 @@ gst_matroska_mux_write_simple_tag (const GstTagList * list, const gchar * tag,
   }
 }
 
-#if 0
-static void
-gst_matroska_mux_write_toc_entry_tags (GstMatroskaMux * mux,
-    const GstTocEntry * entry, guint64 * master_tags)
-{
-  guint64 master_tag, master_targets;
-  GstEbmlWrite *ebml;
-  GList *cur;
-
-  ebml = mux->ebml_write;
-
-  if (G_UNLIKELY (entry->tags != NULL && !gst_tag_list_is_empty (entry->tags))) {
-    if (*master_tags == 0) {
-      mux->tags_pos = ebml->pos;
-      *master_tags = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TAGS);
-    }
-
-    master_tag = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TAG);
-    master_targets =
-        gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TARGETS);
-
-    if (entry->type == GST_TOC_ENTRY_TYPE_EDITION)
-      gst_ebml_write_uint (ebml, GST_MATROSKA_ID_TARGETEDITIONUID,
-          g_ascii_strtoull (entry->uid, NULL, 10));
-    else
-      gst_ebml_write_uint (ebml, GST_MATROSKA_ID_TARGETCHAPTERUID,
-          g_ascii_strtoull (entry->uid, NULL, 10));
-
-    gst_ebml_write_master_finish (ebml, master_targets);
-    gst_tag_list_foreach (entry->tags, gst_matroska_mux_write_simple_tag, ebml);
-    gst_ebml_write_master_finish (ebml, master_tag);
-  }
-
-  cur = entry->subentries;
-  while (cur != NULL) {
-    gst_matroska_mux_write_toc_entry_tags (mux, cur->data, master_tags);
-    cur = cur->next;
-  }
-}
-#endif
 
 /**
  * gst_matroska_mux_finish:
@@ -2846,51 +2455,22 @@ gst_matroska_mux_finish (GstMatroskaMux * mux)
   /* tags */
   tags = gst_tag_setter_get_tag_list (GST_TAG_SETTER (mux));
 
-  if ((tags != NULL && !gst_tag_list_is_empty (tags))
-      || gst_toc_setter_get_toc (GST_TOC_SETTER (mux)) != NULL) {
-    guint64 master_tags = 0, master_tag;
-#if 0
-    const GstToc *toc;
-#endif
+  if (tags != NULL && !gst_tag_list_is_empty (tags)) {
+    guint64 master_tags, master_tag;
 
-    GST_DEBUG_OBJECT (mux, "Writing tags");
+    GST_DEBUG ("Writing tags");
 
-#if 0
-    toc = gst_toc_setter_get_toc (GST_TOC_SETTER (mux));
-#endif
-
-    if (tags != NULL) {
-      /* TODO: maybe limit via the TARGETS id by looking at the source pad */
-      mux->tags_pos = ebml->pos;
-      master_tags = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TAGS);
-      master_tag = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TAG);
-
-      if (tags != NULL)
-        gst_tag_list_foreach (tags, gst_matroska_mux_write_simple_tag, ebml);
-#if 0
-      if (toc != NULL)
-        gst_tag_list_foreach (toc->tags, gst_matroska_mux_write_simple_tag,
-            ebml);
-#endif
-
-      gst_ebml_write_master_finish (ebml, master_tag);
-    }
-#if 0
-    if (toc != NULL) {
-      cur = toc->entries;
-      while (cur != NULL) {
-        gst_matroska_mux_write_toc_entry_tags (mux, cur->data, &master_tags);
-        cur = cur->next;
-      }
-    }
-#endif
-
-    if (master_tags != 0)
-      gst_ebml_write_master_finish (ebml, master_tags);
+    /* TODO: maybe limit via the TARGETS id by looking at the source pad */
+    mux->tags_pos = ebml->pos;
+    master_tags = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TAGS);
+    master_tag = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_TAG);
+    gst_tag_list_foreach (tags, gst_matroska_mux_write_simple_tag, ebml);
+    gst_ebml_write_master_finish (ebml, master_tag);
+    gst_ebml_write_master_finish (ebml, master_tags);
   }
 
   /* update seekhead. We know that:
-   * - a seekhead contains 5 entries.
+   * - a seekhead contains 4 entries.
    * - order of entries is as above.
    * - a seekhead has a 4-byte header + 8-byte length
    * - each entry is 2-byte master, 2-byte ID pointer,
@@ -2903,10 +2483,9 @@ gst_matroska_mux_finish (GstMatroskaMux * mux)
       mux->info_pos - mux->segment_master);
   gst_ebml_replace_uint (ebml, mux->seekhead_pos + 60,
       mux->tracks_pos - mux->segment_master);
-  if (gst_toc_setter_get_toc (GST_TOC_SETTER (mux)) != NULL
-      && mux->chapters_pos > 0) {
+  if (mux->index != NULL) {
     gst_ebml_replace_uint (ebml, mux->seekhead_pos + 88,
-        mux->chapters_pos - mux->segment_master);
+        mux->cues_pos - mux->segment_master);
   } else {
     /* void'ify */
     guint64 my_pos = ebml->pos;
@@ -2915,9 +2494,9 @@ gst_matroska_mux_finish (GstMatroskaMux * mux)
     gst_ebml_write_buffer_header (ebml, GST_EBML_ID_VOID, 26);
     gst_ebml_write_seek (ebml, my_pos);
   }
-  if (mux->index != NULL) {
+  if (tags != NULL) {
     gst_ebml_replace_uint (ebml, mux->seekhead_pos + 116,
-        mux->cues_pos - mux->segment_master);
+        mux->tags_pos - mux->segment_master);
   } else {
     /* void'ify */
     guint64 my_pos = ebml->pos;
@@ -2927,35 +2506,16 @@ gst_matroska_mux_finish (GstMatroskaMux * mux)
     gst_ebml_write_seek (ebml, my_pos);
   }
 
-  if (tags != NULL) {
-    gst_ebml_replace_uint (ebml, mux->seekhead_pos + 144,
-        mux->tags_pos - mux->segment_master);
-  } else {
-    /* void'ify */
-    guint64 my_pos = ebml->pos;
-
-    gst_ebml_write_seek (ebml, mux->seekhead_pos + 124);
-    gst_ebml_write_buffer_header (ebml, GST_EBML_ID_VOID, 26);
-    gst_ebml_write_seek (ebml, my_pos);
-  }
-
-  /* loop tracks:
-   * - first get the overall duration
-   *   (a released track may have left a duration in here)
-   * - write some track header data for subtitles
-   */
+  /* update duration */
+  /* first get the overall duration */
+  /* a released track may have left a duration in here */
   duration = mux->duration;
-  pos = ebml->pos;
   for (collected = mux->collect->data; collected;
       collected = g_slist_next (collected)) {
     GstMatroskaPad *collect_pad;
     GstClockTime min_duration;  /* observed minimum duration */
-    GstMatroskaTrackContext *context;
-    gint voidleft = 0, fill = 0;
-    gpointer codec_id;
 
     collect_pad = (GstMatroskaPad *) collected->data;
-    context = collect_pad->track;
 
     GST_DEBUG_OBJECT (mux,
         "Pad %" GST_PTR_FORMAT " start ts %" GST_TIME_FORMAT
@@ -2977,41 +2537,7 @@ gst_matroska_mux_finish (GstMatroskaMux * mux)
     if (GST_CLOCK_TIME_IS_VALID (collect_pad->duration) &&
         duration < collect_pad->duration)
       duration = collect_pad->duration;
-
-    if (context->type != GST_MATROSKA_TRACK_TYPE_SUBTITLE || !context->pos)
-      continue;
-
-  again:
-    /* write subtitle type and possible private data */
-    gst_ebml_write_seek (ebml, context->pos);
-    /* complex way to write ascii to account for extra filling */
-    codec_id = g_malloc0 (strlen (context->codec_id) + 1 + fill);
-    strcpy (codec_id, context->codec_id);
-    gst_ebml_write_binary (ebml, GST_MATROSKA_ID_CODECID,
-        codec_id, strlen (context->codec_id) + 1 + fill);
-    g_free (codec_id);
-    if (context->codec_priv)
-      gst_ebml_write_binary (ebml, GST_MATROSKA_ID_CODECPRIVATE,
-          context->codec_priv, context->codec_priv_size);
-    voidleft = SUBTITLE_DUMMY_SIZE - (ebml->pos - context->pos);
-    /* void'ify; sigh, variable sized length field */
-    if (voidleft == 1) {
-      fill = 1;
-      goto again;
-    } else if (voidleft && voidleft <= 128)
-      gst_ebml_write_buffer_header (ebml, GST_EBML_ID_VOID, voidleft - 2);
-    else if (voidleft >= 130)
-      gst_ebml_write_buffer_header (ebml, GST_EBML_ID_VOID, voidleft - 3);
-    else if (voidleft == 129) {
-      gst_ebml_write_buffer_header (ebml, GST_EBML_ID_VOID, 64);
-      gst_ebml_write_buffer_header (ebml, GST_EBML_ID_VOID, 63);
-    }
   }
-
-  /* seek back (optional, but do anyway) */
-  gst_ebml_write_seek (ebml, pos);
-
-  /* update duration */
   if (duration != 0) {
     GST_DEBUG_OBJECT (mux, "final total duration: %" GST_TIME_FORMAT,
         GST_TIME_ARGS (duration));
@@ -3034,6 +2560,77 @@ gst_matroska_mux_finish (GstMatroskaMux * mux)
   gst_ebml_write_master_finish (ebml, mux->segment_pos);
 }
 
+
+/**
+ * gst_matroska_mux_best_pad:
+ * @mux: #GstMatroskaMux
+ * @popped: True if at least one buffer was popped from #GstCollectPads
+ *
+ * Find a pad with the oldest data
+ * (data from this pad should be written first).
+ *
+ * Returns: Selected pad.
+ */
+static GstMatroskaPad *
+gst_matroska_mux_best_pad (GstMatroskaMux * mux, gboolean * popped)
+{
+  GSList *collected;
+  GstMatroskaPad *best = NULL;
+
+  *popped = FALSE;
+  for (collected = mux->collect->data; collected;
+      collected = g_slist_next (collected)) {
+    GstMatroskaPad *collect_pad;
+
+    collect_pad = (GstMatroskaPad *) collected->data;
+    /* fetch a new buffer if needed */
+    if (collect_pad->buffer == NULL) {
+      collect_pad->buffer = gst_collect_pads_pop (mux->collect,
+          (GstCollectData *) collect_pad);
+
+      if (collect_pad->buffer != NULL) {
+        GstClockTime time;
+
+        *popped = TRUE;
+        /* convert to running time */
+        time = GST_BUFFER_TIMESTAMP (collect_pad->buffer);
+        /* invalid should pass */
+        if (G_LIKELY (GST_CLOCK_TIME_IS_VALID (time))) {
+          time = gst_segment_to_running_time (&collect_pad->collect.segment,
+              GST_FORMAT_TIME, time);
+          if (G_UNLIKELY (!GST_CLOCK_TIME_IS_VALID (time))) {
+            GST_DEBUG_OBJECT (mux, "clipping buffer on pad %s outside segment",
+                GST_PAD_NAME (collect_pad->collect.pad));
+            gst_buffer_unref (collect_pad->buffer);
+            collect_pad->buffer = NULL;
+            return NULL;
+          } else {
+            GST_LOG_OBJECT (mux, "buffer ts %" GST_TIME_FORMAT " -> %"
+                GST_TIME_FORMAT " running time",
+                GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (collect_pad->buffer)),
+                GST_TIME_ARGS (time));
+            collect_pad->buffer =
+                gst_buffer_make_metadata_writable (collect_pad->buffer);
+            GST_BUFFER_TIMESTAMP (collect_pad->buffer) = time;
+          }
+        }
+      }
+    }
+
+    /* if we have a buffer check if it is better then the current best one */
+    if (collect_pad->buffer != NULL) {
+      if (best == NULL || !GST_BUFFER_TIMESTAMP_IS_VALID (collect_pad->buffer)
+          || (GST_BUFFER_TIMESTAMP_IS_VALID (best->buffer)
+              && GST_BUFFER_TIMESTAMP (collect_pad->buffer) <
+              GST_BUFFER_TIMESTAMP (best->buffer))) {
+        best = collect_pad;
+      }
+    }
+  }
+
+  return best;
+}
+
 /**
  * gst_matroska_mux_buffer_header:
  * @track: Track context.
@@ -3049,16 +2646,15 @@ gst_matroska_mux_create_buffer_header (GstMatroskaTrackContext * track,
     gint16 relative_timestamp, int flags)
 {
   GstBuffer *hdr;
-  guint8 *data = g_malloc (4);
 
-  hdr = gst_buffer_new_wrapped (data, 4);
+  hdr = gst_buffer_new_and_alloc (4);
   /* track num - FIXME: what if num >= 0x80 (unlikely)? */
-  data[0] = track->num | 0x80;
+  GST_BUFFER_DATA (hdr)[0] = track->num | 0x80;
   /* time relative to clustertime */
-  GST_WRITE_UINT16_BE (data + 1, relative_timestamp);
+  GST_WRITE_UINT16_BE (GST_BUFFER_DATA (hdr) + 1, relative_timestamp);
 
   /* flags */
-  data[3] = flags;
+  GST_BUFFER_DATA (hdr)[3] = flags;
 
   return hdr;
 }
@@ -3073,20 +2669,14 @@ gst_matroska_mux_handle_dirac_packet (GstMatroskaMux * mux,
 {
   GstMatroskaTrackVideoContext *ctx =
       (GstMatroskaTrackVideoContext *) collect_pad->track;
-  GstMapInfo map;
-  guint8 *data;
-  gsize size;
+  const guint8 *data = GST_BUFFER_DATA (buf);
+  guint size = GST_BUFFER_SIZE (buf);
   guint8 parse_code;
   guint32 next_parse_offset;
   GstBuffer *ret = NULL;
   gboolean is_muxing_unit = FALSE;
 
-  gst_buffer_map (buf, &map, GST_MAP_READ);
-  data = map.data;
-  size = map.size;
-
-  if (size < 13) {
-    gst_buffer_unmap (buf, &map);
+  if (GST_BUFFER_SIZE (buf) < 13) {
     gst_buffer_unref (buf);
     return ret;
   }
@@ -3094,7 +2684,6 @@ gst_matroska_mux_handle_dirac_packet (GstMatroskaMux * mux,
   /* Check if this buffer contains a picture or end-of-sequence packet */
   while (size >= 13) {
     if (GST_READ_UINT32_BE (data) != 0x42424344 /* 'BBCD' */ ) {
-      gst_buffer_unmap (buf, &map);
       gst_buffer_unref (buf);
       return ret;
     }
@@ -3121,17 +2710,16 @@ gst_matroska_mux_handle_dirac_packet (GstMatroskaMux * mux,
   }
 
   if (ctx->dirac_unit)
-    ctx->dirac_unit = gst_buffer_append (ctx->dirac_unit, gst_buffer_ref (buf));
+    ctx->dirac_unit = gst_buffer_join (ctx->dirac_unit, gst_buffer_ref (buf));
   else
     ctx->dirac_unit = gst_buffer_ref (buf);
 
-  gst_buffer_unmap (buf, &map);
-
   if (is_muxing_unit) {
-    ret = gst_buffer_make_writable (ctx->dirac_unit);
+    ret = gst_buffer_make_metadata_writable (ctx->dirac_unit);
     ctx->dirac_unit = NULL;
-    gst_buffer_copy_into (ret, buf,
-        GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS, 0, -1);
+    gst_buffer_copy_metadata (ret, buf,
+        GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS |
+        GST_BUFFER_COPY_CAPS);
     gst_buffer_unref (buf);
   } else {
     gst_buffer_unref (buf);
@@ -3152,11 +2740,15 @@ gst_matroska_mux_stop_streamheader (GstMatroskaMux * mux)
   GstEbmlWrite *ebml = mux->ebml_write;
 
   streamheader_buffer = gst_ebml_stop_streamheader (ebml);
-  caps = gst_caps_copy (mux->ebml_write->caps);
+  if (!strcmp (mux->doctype, GST_MATROSKA_DOCTYPE_WEBM)) {
+    caps = gst_caps_new_simple ("video/webm", NULL);
+  } else {
+    caps = gst_caps_new_simple ("video/x-matroska", NULL);
+  }
   s = gst_caps_get_structure (caps, 0);
   g_value_init (&streamheader, GST_TYPE_ARRAY);
   g_value_init (&bufval, GST_TYPE_BUFFER);
-  GST_BUFFER_FLAG_SET (streamheader_buffer, GST_BUFFER_FLAG_HEADER);
+  GST_BUFFER_FLAG_SET (streamheader_buffer, GST_BUFFER_FLAG_IN_CAPS);
   gst_value_set_buffer (&bufval, streamheader_buffer);
   gst_value_array_append_value (&streamheader, &bufval);
   g_value_unset (&bufval);
@@ -3164,7 +2756,6 @@ gst_matroska_mux_stop_streamheader (GstMatroskaMux * mux)
   g_value_unset (&streamheader);
   gst_caps_replace (&ebml->caps, caps);
   gst_buffer_unref (streamheader_buffer);
-  gst_pad_set_caps (mux->srcpad, caps);
   gst_caps_unref (caps);
 }
 
@@ -3178,11 +2769,10 @@ gst_matroska_mux_stop_streamheader (GstMatroskaMux * mux)
  * Returns: Result of the gst_pad_push issued to write the data.
  */
 static GstFlowReturn
-gst_matroska_mux_write_data (GstMatroskaMux * mux, GstMatroskaPad * collect_pad,
-    GstBuffer * buf)
+gst_matroska_mux_write_data (GstMatroskaMux * mux, GstMatroskaPad * collect_pad)
 {
   GstEbmlWrite *ebml = mux->ebml_write;
-  GstBuffer *hdr;
+  GstBuffer *buf, *hdr;
   guint64 blockgroup;
   gboolean write_duration;
   gint16 relative_timestamp;
@@ -3192,6 +2782,8 @@ gst_matroska_mux_write_data (GstMatroskaMux * mux, GstMatroskaPad * collect_pad,
   GstMatroskamuxPad *pad;
 
   /* write data */
+  buf = collect_pad->buffer;
+  collect_pad->buffer = NULL;
   pad = GST_MATROSKAMUX_PAD_CAST (collect_pad->collect.pad);
 
   /* vorbis/theora headers are retrieved from caps and put in CodecPrivate */
@@ -3353,14 +2945,14 @@ gst_matroska_mux_write_data (GstMatroskaMux * mux, GstMatroskaPad * collect_pad,
         relative_timestamp, flags);
     gst_ebml_write_set_cache (ebml, 0x40);
     gst_ebml_write_buffer_header (ebml, GST_MATROSKA_ID_SIMPLEBLOCK,
-        gst_buffer_get_size (buf) + gst_buffer_get_size (hdr));
+        GST_BUFFER_SIZE (buf) + GST_BUFFER_SIZE (hdr));
     gst_ebml_write_buffer (ebml, hdr);
     gst_ebml_write_flush_cache (ebml, FALSE, GST_BUFFER_TIMESTAMP (buf));
     gst_ebml_write_buffer (ebml, buf);
 
     return gst_ebml_last_write_result (ebml);
   } else {
-    gst_ebml_write_set_cache (ebml, gst_buffer_get_size (buf) * 2);
+    gst_ebml_write_set_cache (ebml, GST_BUFFER_SIZE (buf) * 2);
     /* write and call order slightly unnatural,
      * but avoids seek and minizes pushing */
     blockgroup = gst_ebml_write_master_start (ebml, GST_MATROSKA_ID_BLOCKGROUP);
@@ -3370,10 +2962,9 @@ gst_matroska_mux_write_data (GstMatroskaMux * mux, GstMatroskaPad * collect_pad,
     if (write_duration)
       gst_ebml_write_uint (ebml, GST_MATROSKA_ID_BLOCKDURATION, block_duration);
     gst_ebml_write_buffer_header (ebml, GST_MATROSKA_ID_BLOCK,
-        gst_buffer_get_size (buf) + gst_buffer_get_size (hdr));
+        GST_BUFFER_SIZE (buf) + GST_BUFFER_SIZE (hdr));
     gst_ebml_write_buffer (ebml, hdr);
-    gst_ebml_write_master_finish_full (ebml, blockgroup,
-        gst_buffer_get_size (buf));
+    gst_ebml_write_master_finish_full (ebml, blockgroup, GST_BUFFER_SIZE (buf));
     gst_ebml_write_flush_cache (ebml, FALSE, GST_BUFFER_TIMESTAMP (buf));
     gst_ebml_write_buffer (ebml, buf);
 
@@ -3381,8 +2972,9 @@ gst_matroska_mux_write_data (GstMatroskaMux * mux, GstMatroskaPad * collect_pad,
   }
 }
 
+
 /**
- * gst_matroska_mux_handle_buffer:
+ * gst_matroska_mux_collected:
  * @pads: #GstCollectPads
  * @uuser_data: #GstMatroskaMux
  *
@@ -3391,12 +2983,12 @@ gst_matroska_mux_write_data (GstMatroskaMux * mux, GstMatroskaPad * collect_pad,
  * Returns: #GstFlowReturn
  */
 static GstFlowReturn
-gst_matroska_mux_handle_buffer (GstCollectPads * pads, GstCollectData * data,
-    GstBuffer * buf, gpointer user_data)
+gst_matroska_mux_collected (GstCollectPads * pads, gpointer user_data)
 {
   GstMatroskaMux *mux = GST_MATROSKA_MUX (user_data);
   GstEbmlWrite *ebml = mux->ebml_write;
   GstMatroskaPad *best;
+  gboolean popped;
   GstFlowReturn ret = GST_FLOW_OK;
 
   GST_DEBUG_OBJECT (mux, "Collected pads");
@@ -3415,53 +3007,53 @@ gst_matroska_mux_handle_buffer (GstCollectPads * pads, GstCollectData * data,
     mux->state = GST_MATROSKA_MUX_STATE_DATA;
   }
 
-  /* provided with stream to write from */
-  best = (GstMatroskaPad *) data;
+  do {
+    /* which stream to write from? */
+    best = gst_matroska_mux_best_pad (mux, &popped);
 
-  /* if there is no best pad, we have reached EOS */
-  if (best == NULL) {
-    GST_DEBUG_OBJECT (mux, "No best pad finishing...");
-    if (!mux->streamable) {
-      gst_matroska_mux_finish (mux);
-    } else {
-      GST_DEBUG_OBJECT (mux, "... but streamable, nothing to finish");
+    /* if there is no best pad, we have reached EOS */
+    if (best == NULL) {
+      /* buffer popped, but none returned means it was clipped */
+      if (popped)
+        break;
+      GST_DEBUG_OBJECT (mux, "No best pad finishing...");
+      if (!mux->streamable) {
+        gst_matroska_mux_finish (mux);
+      } else {
+        GST_DEBUG_OBJECT (mux, "... but streamable, nothing to finish");
+      }
+      gst_pad_push_event (mux->srcpad, gst_event_new_eos ());
+      ret = GST_FLOW_UNEXPECTED;
+      break;
     }
-    gst_pad_push_event (mux->srcpad, gst_event_new_eos ());
-    ret = GST_FLOW_EOS;
-    goto exit;
-  }
+    GST_DEBUG_OBJECT (best->collect.pad, "best pad - buffer ts %"
+        GST_TIME_FORMAT " dur %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (best->buffer)),
+        GST_TIME_ARGS (GST_BUFFER_DURATION (best->buffer)));
 
-  /* if we have a best stream, should also have a buffer */
-  g_assert (buf);
+    /* make note of first and last encountered timestamps, so we can calculate
+     * the actual duration later when we send an updated header on eos */
+    if (GST_BUFFER_TIMESTAMP_IS_VALID (best->buffer)) {
+      GstClockTime start_ts = GST_BUFFER_TIMESTAMP (best->buffer);
+      GstClockTime end_ts = start_ts;
 
-  GST_DEBUG_OBJECT (best->collect.pad, "best pad - buffer ts %"
-      GST_TIME_FORMAT " dur %" GST_TIME_FORMAT,
-      GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buf)),
-      GST_TIME_ARGS (GST_BUFFER_DURATION (buf)));
+      if (GST_BUFFER_DURATION_IS_VALID (best->buffer))
+        end_ts += GST_BUFFER_DURATION (best->buffer);
+      else if (best->track->default_duration)
+        end_ts += best->track->default_duration;
 
-  /* make note of first and last encountered timestamps, so we can calculate
-   * the actual duration later when we send an updated header on eos */
-  if (GST_BUFFER_TIMESTAMP_IS_VALID (buf)) {
-    GstClockTime start_ts = GST_BUFFER_TIMESTAMP (buf);
-    GstClockTime end_ts = start_ts;
+      if (!GST_CLOCK_TIME_IS_VALID (best->end_ts) || end_ts > best->end_ts)
+        best->end_ts = end_ts;
 
-    if (GST_BUFFER_DURATION_IS_VALID (buf))
-      end_ts += GST_BUFFER_DURATION (buf);
-    else if (best->track->default_duration)
-      end_ts += best->track->default_duration;
+      if (G_UNLIKELY (best->start_ts == GST_CLOCK_TIME_NONE ||
+              start_ts < best->start_ts))
+        best->start_ts = start_ts;
+    }
 
-    if (!GST_CLOCK_TIME_IS_VALID (best->end_ts) || end_ts > best->end_ts)
-      best->end_ts = end_ts;
+    /* write one buffer */
+    ret = gst_matroska_mux_write_data (mux, best);
+  } while (ret == GST_FLOW_OK && !popped);
 
-    if (G_UNLIKELY (best->start_ts == GST_CLOCK_TIME_NONE ||
-            start_ts < best->start_ts))
-      best->start_ts = start_ts;
-  }
-
-  /* write one buffer */
-  ret = gst_matroska_mux_write_data (mux, best, buf);
-
-exit:
   return ret;
 }
 

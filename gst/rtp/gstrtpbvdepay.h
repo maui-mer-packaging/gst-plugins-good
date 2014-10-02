@@ -21,7 +21,7 @@
 #define __GST_RTP_BV_DEPAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -41,14 +41,14 @@ typedef struct _GstRTPBVDepayClass GstRTPBVDepayClass;
 
 struct _GstRTPBVDepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   gint mode;
 };
 
 struct _GstRTPBVDepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_bv_depay_get_type (void);

@@ -25,7 +25,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 videotestsrc ! cairotextoverlay text="hello" ! autovideosink
+ * gst-launch videotestsrc ! cairotextoverlay text="hello" ! autovideosink
  * ]|
  * </refsect2>
  */
@@ -132,14 +132,14 @@ gst_text_overlay_base_init (gpointer g_class)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
 
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&cairo_text_overlay_src_template_factory));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&video_sink_template_factory));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&text_sink_template_factory));
+  gst_element_class_add_static_pad_template (element_class,
+      &cairo_text_overlay_src_template_factory);
+  gst_element_class_add_static_pad_template (element_class,
+      &video_sink_template_factory);
+  gst_element_class_add_static_pad_template (element_class,
+      &text_sink_template_factory);
 
-  gst_element_class_set_static_metadata (element_class, "Text overlay",
+  gst_element_class_set_details_simple (element_class, "Text overlay",
       "Filter/Editor/Video",
       "Adds text strings on top of a video buffer",
       "David Schleef <ds@schleef.org>");
@@ -285,7 +285,7 @@ gst_text_overlay_init (GstCairoTextOverlay * overlay,
       GST_DEBUG_FUNCPTR (gst_text_overlay_collected), overlay);
 
   overlay->video_collect_data = gst_collect_pads_add_pad (overlay->collect,
-      overlay->video_sinkpad, sizeof (GstCollectData), NULL, TRUE);
+      overlay->video_sinkpad, sizeof (GstCollectData));
 
   /* FIXME: hacked way to override/extend the event function of
    * GstCollectPads; because it sets its own event function giving the
@@ -641,7 +641,7 @@ gst_text_overlay_text_pad_linked (GstPad * pad, GstPad * peer)
 
   if (overlay->text_collect_data == NULL) {
     overlay->text_collect_data = gst_collect_pads_add_pad (overlay->collect,
-        overlay->text_sinkpad, sizeof (GstCollectData), NULL, TRUE);
+        overlay->text_sinkpad, sizeof (GstCollectData));
   }
 
   overlay->need_render = TRUE;
@@ -853,7 +853,7 @@ gst_text_overlay_collected (GstCollectPads * pads, gpointer data)
           overlay->text_collect_data);
     }
     gst_pad_push_event (overlay->srcpad, gst_event_new_eos ());
-    ret = GST_FLOW_EOS;
+    ret = GST_FLOW_UNEXPECTED;
     goto done;
   }
 

@@ -60,12 +60,18 @@ struct _GstVideoBalance {
   gdouble hue;
   gdouble saturation;
 
+  /* format */
+  GstVideoFormat format;
+  gint width;
+  gint height;
+  gint size;
+
   /* tables */
   guint8 tabley[256];
   guint8 *tableu[256];
   guint8 *tablev[256];
 
-  void (*process) (GstVideoBalance *balance, GstVideoFrame *frame);
+  void (*process) (GstVideoBalance *balance, guint8 *data);
 };
 
 struct _GstVideoBalanceClass {

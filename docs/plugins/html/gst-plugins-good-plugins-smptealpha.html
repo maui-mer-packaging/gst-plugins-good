@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>smptealpha</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-smpte.html" title="smpte">
 <link rel="next" href="gst-plugins-good-plugins-souphttpsrc.html" title="souphttpsrc">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-smpte.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-souphttpsrc.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,12 +48,11 @@
 <a name="gst-plugins-good-plugins-smptealpha.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
-                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstvideofilter.html#GstVideoFilter">GstVideoFilter</a>
-                                 +----GstSMPTEAlpha
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstvideofilter.html#GstVideoFilter">GstVideoFilter</a>
+                           +----GstSMPTEAlpha
 </pre>
 </div>
 <div class="refsect1">
@@ -87,13 +86,13 @@ avoid banding.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp19224208"></a><h3>Sample pipelines</h3>
+<a name="idp20980288"></a><h3>Sample pipelines</h3>
 <p>
 Here is a pipeline to demonstrate the smpte transition :
 </p>
 <pre class="programlisting">
-gst-launch-1.0 -v videotestsrc ! smptealpha border=20000 type=44
-position=0.5 ! videomixer ! videoconvert ! ximagesink
+gst-launch -v videotestsrc ! smptealpha border=20000 type=44
+position=0.5 ! videomixer ! ffmpegcolorspace ! ximagesink 
 </pre>
 <p>
 This shows a midway bowtie-h transition a from a videotestsrc to a
@@ -106,7 +105,7 @@ transparent image. The edges of the transition are smoothed with a
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp19783744"></a><h3>Element Information</h3>
+<a name="idp19693408"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -129,7 +128,7 @@ transparent image. The edges of the transition are smoothed with a
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp18447008"></a><h3>Element Pads</h3>
+<a name="idp15071024"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -147,31 +146,31 @@ transparent image. The edges of the transition are smoothed with a
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw, format=(string)I420, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td>video/x-raw-yuv, format=(fourcc)I420, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)YV12, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)YV12, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)AYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)AYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)ARGB, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)BGRA, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)RGBA, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)-16777216, green_mask=(int)16711680, blue_mask=(int)65280, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)ARGB, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 </tbody>
 </table></div>
@@ -192,23 +191,23 @@ transparent image. The edges of the transition are smoothed with a
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw, format=(string)AYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td>video/x-raw-yuv, format=(fourcc)AYUV, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)ARGB, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)BGRA, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)RGBA, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)-16777216, green_mask=(int)16711680, blue_mask=(int)65280, alpha_mask=(int)255, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)ARGB, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianness=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, alpha_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 </tbody>
 </table></div>

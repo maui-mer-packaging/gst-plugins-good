@@ -60,8 +60,6 @@ struct _GstMpegAudioParse {
   /* samples per frame */
   gint        spf;
 
-  gint         freerate;
-
   gboolean     sent_codec_tag;
   guint        last_posted_bitrate;
   gint         last_posted_crc, last_crc;

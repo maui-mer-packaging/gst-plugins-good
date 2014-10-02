@@ -12,7 +12,7 @@
 GPATH = $(srcdir)
 
 # thomas: make docs parallel installable
-TARGET_DIR=$(HTML_DIR)/$(DOC_MODULE)-@GST_API_VERSION@
+TARGET_DIR=$(HTML_DIR)/$(DOC_MODULE)-@GST_MAJORMINOR@
 
 EXTRA_DIST = 				\
 	$(content_files)		\
@@ -132,7 +132,7 @@ html-build.stamp: sgml.stamp $(DOC_MAIN_SGML_FILE) $(content_files)
 	fi; \
 	cd html && gtkdoc-mkhtml $$mkhtml_options $(MKHTML_OPTIONS) $(DOC_MODULE) ../$(DOC_MAIN_SGML_FILE)
 	@mv html/index.sgml html/index.sgml.bak
-	@$(SED) "s/ href=\"$(DOC_MODULE)\// href=\"$(DOC_MODULE)-@GST_API_VERSION@\//g" html/index.sgml.bak >html/index.sgml
+	@$(SED) "s/ href=\"$(DOC_MODULE)\// href=\"$(DOC_MODULE)-@GST_MAJORMINOR@\//g" html/index.sgml.bak >html/index.sgml
 	@rm -f html/index.sgml.bak
 	@rm -rf html/xml
 	@rm -f version.entities
@@ -192,9 +192,10 @@ install-data-local:
 	  echo '-- Installing $(builddir)/html/$(DOC_MODULE).devhelp2' ; \
 	  if test -e $(builddir)/html/$(DOC_MODULE).devhelp2; then \
 	            $(INSTALL_DATA) $(builddir)/html/$(DOC_MODULE).devhelp2 \
-	            $(DESTDIR)$(TARGET_DIR)/$(DOC_MODULE)-@GST_API_VERSION@.devhelp2; \
+	            $(DESTDIR)$(TARGET_DIR)/$(DOC_MODULE)-@GST_MAJORMINOR@.devhelp2; \
 	  fi; \
-	  $(GTKDOC_REBASE) --relative --dest-dir=$(DESTDIR) --html-dir=$(DESTDIR)$(TARGET_DIR) || true ; \
+	  (which gtkdoc-rebase >/dev/null && \
+	    gtkdoc-rebase --relative --dest-dir=$(DESTDIR) --html-dir=$(DESTDIR)$(TARGET_DIR)) || true ; \
 	fi)
 uninstall-local:
 	if test -d $(DESTDIR)$(TARGET_DIR); then \

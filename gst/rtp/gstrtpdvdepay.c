@@ -75,42 +75,45 @@ static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
 static GstStateChangeReturn
 gst_rtp_dv_depay_change_state (GstElement * element, GstStateChange transition);
 
-static GstBuffer *gst_rtp_dv_depay_process (GstRTPBaseDepayload * base,
+static GstBuffer *gst_rtp_dv_depay_process (GstBaseRTPDepayload * base,
     GstBuffer * in);
-static gboolean gst_rtp_dv_depay_setcaps (GstRTPBaseDepayload * depayload,
+static gboolean gst_rtp_dv_depay_setcaps (GstBaseRTPDepayload * depayload,
     GstCaps * caps);
 
-#define gst_rtp_dv_depay_parent_class parent_class
-G_DEFINE_TYPE (GstRTPDVDepay, gst_rtp_dv_depay, GST_TYPE_RTP_BASE_DEPAYLOAD);
+GST_BOILERPLATE (GstRTPDVDepay, gst_rtp_dv_depay, GstBaseRTPDepayload,
+    GST_TYPE_BASE_RTP_DEPAYLOAD)
 
+     static void gst_rtp_dv_depay_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
 
+  gst_element_class_add_static_pad_template (element_class, &src_factory);
+  gst_element_class_add_static_pad_template (element_class, &sink_factory);
+
+  gst_element_class_set_details_simple (element_class, "RTP DV Depayloader",
+      "Codec/Depayloader/Network/RTP",
+      "Depayloads DV from RTP packets (RFC 3189)",
+      "Marcel Moreaux <marcelm@spacelabs.nl>, Wim Taymans <wim.taymans@gmail.com>");
+}
+
+/* initialize the plugin's class */
 static void
 gst_rtp_dv_depay_class_init (GstRTPDVDepayClass * klass)
 {
   GstElementClass *gstelement_class = (GstElementClass *) klass;
-  GstRTPBaseDepayloadClass *gstrtpbasedepayload_class =
-      (GstRTPBaseDepayloadClass *) klass;
-
-  GST_DEBUG_CATEGORY_INIT (rtpdvdepay_debug, "rtpdvdepay", 0,
-      "DV RTP Depayloader");
+  GstBaseRTPDepayloadClass *gstbasertpdepayload_class =
+      (GstBaseRTPDepayloadClass *) klass;
 
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_rtp_dv_depay_change_state);
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_factory));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sink_factory));
-
-  gst_element_class_set_static_metadata (gstelement_class, "RTP DV Depayloader",
-      "Codec/Depayloader/Network/RTP",
-      "Depayloads DV from RTP packets (RFC 3189)",
-      "Marcel Moreaux <marcelm@spacelabs.nl>, Wim Taymans <wim.taymans@gmail.com>");
-
-  gstrtpbasedepayload_class->process =
+  gstbasertpdepayload_class->process =
       GST_DEBUG_FUNCPTR (gst_rtp_dv_depay_process);
-  gstrtpbasedepayload_class->set_caps =
+  gstbasertpdepayload_class->set_caps =
       GST_DEBUG_FUNCPTR (gst_rtp_dv_depay_setcaps);
+
+  GST_DEBUG_CATEGORY_INIT (rtpdvdepay_debug, "rtpdvdepay", 0,
+      "DV RTP Depayloader");
 }
 
 /* initialize the new element
@@ -119,7 +122,7 @@ gst_rtp_dv_depay_class_init (GstRTPDVDepayClass * klass)
  * initialize structure
  */
 static void
-gst_rtp_dv_depay_init (GstRTPDVDepay * filter)
+gst_rtp_dv_depay_init (GstRTPDVDepay * filter, GstRTPDVDepayClass * klass)
 {
 }
 
@@ -159,7 +162,7 @@ parse_encode (GstRTPDVDepay * rtpdvdepay, const gchar * encode)
 }
 
 static gboolean
-gst_rtp_dv_depay_setcaps (GstRTPBaseDepayload * depayload, GstCaps * caps)
+gst_rtp_dv_depay_setcaps (GstBaseRTPDepayload * depayload, GstCaps * caps)
 {
   GstStructure *structure;
   GstRTPDVDepay *rtpdvdepay;
@@ -211,7 +214,7 @@ gst_rtp_dv_depay_setcaps (GstRTPBaseDepayload * depayload, GstCaps * caps)
   /* Initialize the new accumulator frame.
    * If the previous frame exists, copy that into the accumulator frame.
    * This way, missing packets in the stream won't show up badly. */
-  gst_buffer_memset (rtpdvdepay->acc, 0, 0, rtpdvdepay->frame_size);
+  memset (GST_BUFFER_DATA (rtpdvdepay->acc), 0, rtpdvdepay->frame_size);
 
   srccaps = gst_caps_new_simple ("video/x-dv",
       "systemstream", G_TYPE_BOOLEAN, systemstream,
@@ -287,7 +290,7 @@ calculate_difblock_location (guint8 * block)
  * NTSC.
  */
 static GstBuffer *
-gst_rtp_dv_depay_process (GstRTPBaseDepayload * base, GstBuffer * in)
+gst_rtp_dv_depay_process (GstBaseRTPDepayload * base, GstBuffer * in)
 {
   GstBuffer *out = NULL;
   guint8 *payload;
@@ -295,15 +298,12 @@ gst_rtp_dv_depay_process (GstRTPBaseDepayload * base, GstBuffer * in)
   guint payload_len, location;
   GstRTPDVDepay *dvdepay = GST_RTP_DV_DEPAY (base);
   gboolean marker;
-  GstRTPBuffer rtp = { NULL, };
 
-  gst_rtp_buffer_map (in, GST_MAP_READ, &rtp);
-
-  marker = gst_rtp_buffer_get_marker (&rtp);
+  marker = gst_rtp_buffer_get_marker (in);
 
   /* Check if the received packet contains (the start of) a new frame, we do
    * this by checking the RTP timestamp. */
-  rtp_ts = gst_rtp_buffer_get_timestamp (&rtp);
+  rtp_ts = gst_rtp_buffer_get_timestamp (in);
 
   /* we cannot copy the packet yet if the marker is set, we will do that below
    * after taking out the data */
@@ -317,8 +317,8 @@ gst_rtp_dv_depay_process (GstRTPBaseDepayload * base, GstBuffer * in)
   }
 
   /* Extract the payload */
-  payload_len = gst_rtp_buffer_get_payload_len (&rtp);
-  payload = gst_rtp_buffer_get_payload (&rtp);
+  payload_len = gst_rtp_buffer_get_payload_len (in);
+  payload = gst_rtp_buffer_get_payload (in);
 
   /* copy all DIF chunks in their place. */
   while (payload_len >= 80) {
@@ -336,19 +336,16 @@ gst_rtp_dv_depay_process (GstRTPBaseDepayload * base, GstBuffer * in)
       GST_LOG_OBJECT (dvdepay, "got block at location %d", location);
     }
 
-    if (location != -1) {
-      /* get the byte offset of the dif block */
-      offset = location * 80;
+    /* get the byte offset of the dif block */
+    offset = location * 80;
 
-      /* And copy it in, provided the location is sane. */
-      if (offset <= dvdepay->frame_size - 80)
-        gst_buffer_fill (dvdepay->acc, offset, payload, 80);
-    }
+    /* And copy it in, provided the location is sane. */
+    if (offset >= 0 && offset <= dvdepay->frame_size - 80)
+      memcpy (GST_BUFFER_DATA (dvdepay->acc) + offset, payload, 80);
 
     payload += 80;
     payload_len -= 80;
   }
-  gst_rtp_buffer_unmap (&rtp);
 
   if (marker) {
     GST_DEBUG_OBJECT (dvdepay, "marker bit complete frame %u", rtp_ts);

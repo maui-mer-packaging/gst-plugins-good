@@ -25,7 +25,7 @@
 #include <gst/video/video.h>
 
 #include "blend.h"
-#include <gst/base/gstcollectpads.h>
+#include <gst/base/gstcollectpads2.h>
 
 G_BEGIN_DECLS
 
@@ -75,18 +75,23 @@ struct _GstVideoMixer2
   GstPad *srcpad;
 
   /* Lock to prevent the state to change while blending */
-  GMutex lock;
+  GMutex *lock;
   /* Sink pads using Collect Pads 2*/
-  GstCollectPads *collect;
+  GstCollectPads2 *collect;
 
   /* sinkpads, a GSList of GstVideoMixer2Pads */
   GSList *sinkpads;
   gint numpads;
   /* Next available sinkpad index */
-  guint next_sinkpad;
+  gint next_sinkpad;
 
   /* Output caps */
-  GstVideoInfo info;
+  GstVideoFormat format;
+  gint width, height;
+  gint fps_n;
+  gint fps_d;
+  gint par_n;
+  gint par_d;
 
   gboolean newseg_pending;
   gboolean flush_stop_pending;
@@ -114,6 +119,7 @@ struct _GstVideoMixer2Class
 };
 
 GType gst_videomixer2_get_type (void);
+gboolean gst_videomixer2_register (GstPlugin * plugin);
 
 G_END_DECLS
 #endif /* __GST_VIDEO_MIXER2_H__ */

@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>y4menc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-ximagesrc.html" title="ximagesrc">
 <link rel="next" href="ch02.html" title="gst-plugins-good Plugins">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-ximagesrc.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="ch02.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -46,10 +46,9 @@
 <a name="gst-plugins-good-plugins-y4menc.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----GstY4mEncode
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstY4mEncode
 </pre>
 </div>
 <div class="refsect1">
@@ -57,7 +56,7 @@
 <p>
 </p>
 <div class="refsect2">
-<a name="idp21411360"></a><h3>Example launch line</h3>
+<a name="idp23032720"></a><h3>Example launch line</h3>
 <p>
 Creates a YU4MPEG2 raw video stream as defined by the mjpegtools project.
 </p>
@@ -66,7 +65,7 @@ Creates a YU4MPEG2 raw video stream as defined by the mjpegtools project.
 </p>
 <pre class="programlisting">
 gst-launch-0.10 videotestsrc num-buffers=250 \
-! 'video/x-raw,format=(string)I420,width=320,height=240,framerate=(fraction)25/1' \
+! 'video/x-raw-yuv,format=(fourcc)I420,width=320,height=240,framerate=(fraction)25/1' \
 ! y4menc ! filesink location=test.yuv
 </pre>
 <p>
@@ -77,7 +76,7 @@ gst-launch-0.10 videotestsrc num-buffers=250 \
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp23615216"></a><h3>Element Information</h3>
+<a name="idp24113856"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -100,7 +99,7 @@ gst-launch-0.10 videotestsrc num-buffers=250 \
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp5959728"></a><h3>Element Pads</h3>
+<a name="idp16647280"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -118,7 +117,7 @@ gst-launch-0.10 videotestsrc num-buffers=250 \
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw, format=(string){ IYUV, I420, Y42B, Y41B, Y444 }, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td>video/x-raw-yuv, format=(fourcc){ IYUV, I420, Y42B, Y41B, Y444 }, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 </tbody>
 </table></div>

@@ -50,47 +50,53 @@ static GstStaticPadTemplate gst_rtp_mpa_depay_sink_template =
         "clock-rate = (int) 90000")
     );
 
-#define gst_rtp_mpa_depay_parent_class parent_class
-G_DEFINE_TYPE (GstRtpMPADepay, gst_rtp_mpa_depay, GST_TYPE_RTP_BASE_DEPAYLOAD);
+GST_BOILERPLATE (GstRtpMPADepay, gst_rtp_mpa_depay, GstBaseRTPDepayload,
+    GST_TYPE_BASE_RTP_DEPAYLOAD);
 
-static gboolean gst_rtp_mpa_depay_setcaps (GstRTPBaseDepayload * depayload,
+static gboolean gst_rtp_mpa_depay_setcaps (GstBaseRTPDepayload * depayload,
     GstCaps * caps);
-static GstBuffer *gst_rtp_mpa_depay_process (GstRTPBaseDepayload * depayload,
+static GstBuffer *gst_rtp_mpa_depay_process (GstBaseRTPDepayload * depayload,
     GstBuffer * buf);
+
+static void
+gst_rtp_mpa_depay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_mpa_depay_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_mpa_depay_sink_template);
+
+  gst_element_class_set_details_simple (element_class,
+      "RTP MPEG audio depayloader", "Codec/Depayloader/Network/RTP",
+      "Extracts MPEG audio from RTP packets (RFC 2038)",
+      "Wim Taymans <wim.taymans@gmail.com>");
+}
 
 static void
 gst_rtp_mpa_depay_class_init (GstRtpMPADepayClass * klass)
 {
-  GstElementClass *gstelement_class;
-  GstRTPBaseDepayloadClass *gstrtpbasedepayload_class;
+  GstBaseRTPDepayloadClass *gstbasertpdepayload_class;
+
+  gstbasertpdepayload_class = (GstBaseRTPDepayloadClass *) klass;
+
+  gstbasertpdepayload_class->set_caps = gst_rtp_mpa_depay_setcaps;
+  gstbasertpdepayload_class->process = gst_rtp_mpa_depay_process;
 
   GST_DEBUG_CATEGORY_INIT (rtpmpadepay_debug, "rtpmpadepay", 0,
       "MPEG Audio RTP Depayloader");
-
-  gstelement_class = (GstElementClass *) klass;
-  gstrtpbasedepayload_class = (GstRTPBaseDepayloadClass *) klass;
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_mpa_depay_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_mpa_depay_sink_template));
-
-  gst_element_class_set_static_metadata (gstelement_class,
-      "RTP MPEG audio depayloader", "Codec/Depayloader/Network/RTP",
-      "Extracts MPEG audio from RTP packets (RFC 2038)",
-      "Wim Taymans <wim.taymans@gmail.com>");
-
-  gstrtpbasedepayload_class->set_caps = gst_rtp_mpa_depay_setcaps;
-  gstrtpbasedepayload_class->process = gst_rtp_mpa_depay_process;
 }
 
 static void
-gst_rtp_mpa_depay_init (GstRtpMPADepay * rtpmpadepay)
+gst_rtp_mpa_depay_init (GstRtpMPADepay * rtpmpadepay,
+    GstRtpMPADepayClass * klass)
 {
+  /* needed because of GST_BOILERPLATE */
 }
 
 static gboolean
-gst_rtp_mpa_depay_setcaps (GstRTPBaseDepayload * depayload, GstCaps * caps)
+gst_rtp_mpa_depay_setcaps (GstBaseRTPDepayload * depayload, GstCaps * caps)
 {
   GstStructure *structure;
   GstCaps *outcaps;
@@ -112,64 +118,56 @@ gst_rtp_mpa_depay_setcaps (GstRTPBaseDepayload * depayload, GstCaps * caps)
 }
 
 static GstBuffer *
-gst_rtp_mpa_depay_process (GstRTPBaseDepayload * depayload, GstBuffer * buf)
+gst_rtp_mpa_depay_process (GstBaseRTPDepayload * depayload, GstBuffer * buf)
 {
   GstRtpMPADepay *rtpmpadepay;
   GstBuffer *outbuf;
-  GstRTPBuffer rtp = { NULL };
-  gint payload_len;
-#if 0
-  guint8 *payload;
-  guint16 frag_offset;
-#endif
-  gboolean marker;
 
   rtpmpadepay = GST_RTP_MPA_DEPAY (depayload);
 
-  gst_rtp_buffer_map (buf, GST_MAP_READ, &rtp);
+  {
+    gint payload_len;
+    gboolean marker;
 
-  payload_len = gst_rtp_buffer_get_payload_len (&rtp);
+    payload_len = gst_rtp_buffer_get_payload_len (buf);
 
-  if (payload_len <= 4)
-    goto empty_packet;
+    if (payload_len <= 4)
+      goto empty_packet;
 
-#if 0
-  payload = gst_rtp_buffer_get_payload (&rtp);
-  /* strip off header
-   *
-   *  0                   1                   2                   3
-   *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   * |             MBZ               |          Frag_offset          |
-   * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   */
-  frag_offset = (payload[2] << 8) | payload[3];
-#endif
+    /* strip off header
+     *
+     *  0                   1                   2                   3
+     *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     * |             MBZ               |          Frag_offset          |
+     * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     */
+    /* frag_offset = (payload[2] << 8) | payload[3]; */
 
-  /* subbuffer skipping the 4 header bytes */
-  outbuf = gst_rtp_buffer_get_payload_subbuffer (&rtp, 4, -1);
-  marker = gst_rtp_buffer_get_marker (&rtp);
+    /* subbuffer skipping the 4 header bytes */
+    outbuf = gst_rtp_buffer_get_payload_subbuffer (buf, 4, -1);
+    marker = gst_rtp_buffer_get_marker (buf);
 
-  if (marker) {
-    /* mark start of talkspurt with discont */
-    GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_DISCONT);
+    if (marker) {
+      /* mark start of talkspurt with discont */
+      GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_DISCONT);
+    }
+    GST_DEBUG_OBJECT (rtpmpadepay,
+        "gst_rtp_mpa_depay_chain: pushing buffer of size %d",
+        GST_BUFFER_SIZE (outbuf));
+
+    /* FIXME, we can push half mpeg frames when they are split over multiple
+     * RTP packets */
+    return outbuf;
   }
-  GST_DEBUG_OBJECT (rtpmpadepay,
-      "gst_rtp_mpa_depay_chain: pushing buffer of size %" G_GSIZE_FORMAT "",
-      gst_buffer_get_size (outbuf));
 
-  gst_rtp_buffer_unmap (&rtp);
-
-  /* FIXME, we can push half mpeg frames when they are split over multiple
-   * RTP packets */
-  return outbuf;
+  return NULL;
 
   /* ERRORS */
 empty_packet:
   {
     GST_ELEMENT_WARNING (rtpmpadepay, STREAM, DECODE,
         ("Empty Payload."), (NULL));
-    gst_rtp_buffer_unmap (&rtp);
     return NULL;
   }
 }

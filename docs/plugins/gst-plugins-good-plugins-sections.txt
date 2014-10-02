@@ -541,6 +541,38 @@ gst_caps_setter_get_type
 </SECTION>
 
 <SECTION>
+<FILE>element-cmmldec</FILE>
+<TITLE>cmmldec</TITLE>
+GstCmmlDec
+<SUBSECTION Standard>
+GstCmmlDecClass
+GST_TYPE_CMML_DEC
+GST_CMML_DEC
+GST_CMML_DEC_CLASS
+GST_CMML_DEC_GET_CLASS
+GST_IS_CMML_DEC
+GST_IS_CMML_DEC_CLASS
+gst_cmml_dec_plugin_init
+gst_cmml_dec_get_type
+</SECTION>
+
+<SECTION>
+<FILE>element-cmmlenc</FILE>
+<TITLE>cmmlenc</TITLE>
+GstCmmlEnc
+<SUBSECTION Standard>
+GstCmmlEncClass
+GST_TYPE_CMML_ENC
+GST_CMML_ENC
+GST_CMML_ENC_CLASS
+GST_CMML_ENC_GET_CLASS
+GST_IS_CMML_ENC
+GST_IS_CMML_ENC_CLASS
+gst_cmml_enc_plugin_init
+gst_cmml_enc_get_type
+</SECTION>
+
+<SECTION>
 <FILE>element-cutter</FILE>
 <TITLE>cutter</TITLE>
 GstCutter
@@ -766,6 +798,20 @@ ProcessFunc
 </SECTION>
 
 <SECTION>
+<FILE>element-esdsink</FILE>
+<TITLE>esdsink</TITLE>
+GstEsdSink
+<SUBSECTION Standard>
+GstEsdSinkClass
+GST_TYPE_ESDSINK
+GST_ESDSINK
+GST_ESDSINK_CLASS
+GST_IS_ESDSINK
+GST_IS_ESDSINK_CLASS
+gst_esdsink_get_type
+</SECTION>
+
+<SECTION>
 <FILE>element-flacdec</FILE>
 <TITLE>flacdec</TITLE>
 GstFlacDec
@@ -882,6 +928,62 @@ gst_gamma_get_type
 </SECTION>
 
 <SECTION>
+<FILE>element-gconfaudiosrc</FILE>
+<TITLE>gconfaudiosrc</TITLE>
+GstGConfAudioSrc
+<SUBSECTION Standard>
+GstGConfAudioSrcClass
+GST_GCONF_AUDIO_SRC
+GST_IS_GCONF_AUDIO_SRC
+GST_TYPE_GCONF_AUDIO_SRC
+GST_GCONF_AUDIO_SRC_CLASS
+GST_IS_GCONF_AUDIO_SRC_CLASS
+gst_gconf_audio_src_get_type
+</SECTION>
+
+<SECTION>
+<FILE>element-gconfaudiosink</FILE>
+<TITLE>gconfaudiosink</TITLE>
+GstGConfAudioSink
+<SUBSECTION Standard>
+GstGConfAudioSinkClass
+GST_GCONF_AUDIO_SINK
+GST_IS_GCONF_AUDIO_SINK
+GST_TYPE_GCONF_AUDIO_SINK
+GST_GCONF_AUDIO_SINK_CLASS
+GST_IS_GCONF_AUDIO_SINK_CLASS
+gst_gconf_audio_sink_get_type
+</SECTION>
+
+<SECTION>
+<FILE>element-gconfvideosrc</FILE>
+<TITLE>gconfvideosrc</TITLE>
+GstGConfVideoSrc
+<SUBSECTION Standard>
+GstGConfVideoSrcClass
+GST_GCONF_VIDEO_SRC
+GST_IS_GCONF_VIDEO_SRC
+GST_TYPE_GCONF_VIDEO_SRC
+GST_GCONF_VIDEO_SRC_CLASS
+GST_IS_GCONF_VIDEO_SRC_CLASS
+gst_gconf_video_src_get_type
+</SECTION>
+
+<SECTION>
+<FILE>element-gconfvideosink</FILE>
+<TITLE>gconfvideosink</TITLE>
+GstGConfVideoSink
+<SUBSECTION Standard>
+GstGConfVideoSinkClass
+GST_GCONF_VIDEO_SINK
+GST_IS_GCONF_VIDEO_SINK
+GST_TYPE_GCONF_VIDEO_SINK
+GST_GCONF_VIDEO_SINK_CLASS
+GST_IS_GCONF_VIDEO_SINK_CLASS
+gst_gconf_video_sink_get_type
+</SECTION>
+
+<SECTION>
 <FILE>element-gdkpixbufsink</FILE>
 <TITLE>gdkpixbufsink</TITLE>
 GstGdkPixbufSink
@@ -925,8 +1027,8 @@ GST_IS_GOOM_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>element-rtpbin</FILE>
-<TITLE>rtpbin</TITLE>
+<FILE>element-gstrtpbin</FILE>
+<TITLE>gstrtpbin</TITLE>
 GstRtpBin
 <SUBSECTION Standard>
 GstRtpBinPrivate
@@ -940,8 +1042,8 @@ GST_IS_RTP_BIN_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>element-rtpjitterbuffer</FILE>
-<TITLE>rtpjitterbuffer</TITLE>
+<FILE>element-gstrtpjitterbuffer</FILE>
+<TITLE>gstrtpjitterbuffer</TITLE>
 GstRtpJitterBuffer
 <SUBSECTION Standard>
 GstRtpJitterBufferClass
@@ -955,8 +1057,8 @@ GST_IS_RTP_JITTER_BUFFER_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>element-rtpptdemux</FILE>
-<TITLE>rtpptdemux</TITLE>
+<FILE>element-gstrtpptdemux</FILE>
+<TITLE>gstrtpptdemux</TITLE>
 GstRtpPtDemux
 <SUBSECTION Standard>
 GstRtpPtDemuxClass
@@ -970,8 +1072,8 @@ GST_IS_RTP_PT_DEMUX_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>element-rtpsession</FILE>
-<TITLE>rtpsession</TITLE>
+<FILE>element-gstrtpsession</FILE>
+<TITLE>gstrtpsession</TITLE>
 GstRtpSession
 <SUBSECTION Standard>
 GstRtpSessionClass
@@ -986,8 +1088,8 @@ GST_RTP_SESSION_CAST
 </SECTION>
 
 <SECTION>
-<FILE>element-rtpssrcdemux</FILE>
-<TITLE>rtpssrcdemux</TITLE>
+<FILE>element-gstrtpssrcdemux</FILE>
+<TITLE>gstrtpssrcdemux</TITLE>
 GstRtpSsrcDemux
 <SUBSECTION Standard>
 GstRtpSsrcDemuxClass
@@ -998,6 +1100,34 @@ GST_TYPE_RTP_SSRC_DEMUX
 gst_rtp_ssrc_demux_get_type
 GST_RTP_SSRC_DEMUX_CLASS
 GST_IS_RTP_SSRC_DEMUX_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>element-halaudiosink</FILE>
+<TITLE>halaudiosink</TITLE>
+GstHalAudioSink
+<SUBSECTION Standard>
+GstHalAudioSinkClass
+GST_TYPE_HAL_AUDIO_SINK
+GST_HAL_AUDIO_SINK
+GST_HAL_AUDIO_SINK_CLASS
+GST_IS_HAL_AUDIO_SINK
+GST_IS_HAL_AUDIO_SINK_CLASS
+gst_hal_audio_sink_get_type
+</SECTION>
+
+<SECTION>
+<FILE>element-halaudiosrc</FILE>
+<TITLE>halaudiosrc</TITLE>
+GstHalAudioSrc
+<SUBSECTION Standard>
+GstHalAudioSrcClass
+GST_TYPE_HAL_AUDIO_SRC
+GST_HAL_AUDIO_SRC
+GST_HAL_AUDIO_SRC_CLASS
+GST_IS_HAL_AUDIO_SRC
+GST_IS_HAL_AUDIO_SRC_CLASS
+gst_hal_audio_src_get_type
 </SECTION>
 
 <SECTION>
@@ -1337,6 +1467,30 @@ gst_multiudpsink_get_type
 </SECTION>
 
 <SECTION>
+<FILE>element-oss4mixer</FILE>
+<TITLE>oss4mixer</TITLE>
+GstOss4Mixer
+<SUBSECTION Standard>
+GstOss4MixerClass
+GST_OSS4_MIXER
+GST_OSS4_MIXER_CLASS
+GST_IS_OSS4_MIXER
+GST_IS_OSS4_MIXER_CLASS
+GST_TYPE_OSS4_MIXER
+gst_oss4_mixer_get_type
+GST_OSS4_MIXER_CAST
+GST_OSS4_MIXER_IS_OPEN
+MIXEXT_ENUM_IS_AVAILABLE
+MIXEXT_HAS_DESCRIPTION
+MIXEXT_IS_ROOT
+MIXEXT_IS_SLIDER
+gst_oss4_mixer_get_control_val
+gst_oss4_mixer_set_control_val
+gst_oss4_source_input_get_type
+GstOss4MixerControl
+</SECTION>
+
+<SECTION>
 <FILE>element-oss4sink</FILE>
 <TITLE>oss4sink</TITLE>
 GstOss4Sink
@@ -1371,6 +1525,20 @@ GST_OSS4_SOURCE_INPUT_CLASS
 GST_TYPE_OSS4_SOURCE_INPUT
 GstOss4SourceInput
 GstOss4SourceInputClass
+</SECTION>
+
+<SECTION>
+<FILE>element-ossmixer</FILE>
+<TITLE>ossmixer</TITLE>
+GstOssMixerElement
+<SUBSECTION Standard>
+GstOssMixerElementClass
+GST_OSS_MIXER_ELEMENT
+GST_OSS_MIXER_ELEMENT_CLASS
+GST_IS_OSS_MIXER_ELEMENT
+GST_IS_OSS_MIXER_ELEMENT_CLASS
+GST_TYPE_OSS_MIXER_ELEMENT
+gst_oss_mixer_element_get_type
 </SECTION>
 
 <SECTION>
@@ -1498,6 +1666,20 @@ GST_PULSESRC_CLASS
 GST_IS_PULSESRC_CLASS
 GST_PULSESRC_CAST
 gst_pulsesrc_get_type
+</SECTION>
+
+<SECTION>
+<FILE>element-pulsemixer</FILE>
+<TITLE>pulsemixer</TITLE>
+GstPulseMixer
+<SUBSECTION Standard>
+GstPulseMixerClass
+GST_PULSEMIXER
+GST_IS_PULSEMIXER
+GST_TYPE_PULSEMIXER
+GST_PULSEMIXER_CLASS
+GST_IS_PULSEMIXER_CLASS
+gst_pulsemixer_get_type
 </SECTION>
 
 <SECTION>
@@ -1960,6 +2142,35 @@ gst_video_mixer_get_type
 </SECTION>
 
 <SECTION>
+<FILE>gstvideomixer2pad</FILE>
+<TITLE>GstVideoMixer2Pad</TITLE>
+GstVideoMixer2Pad
+<SUBSECTION Standard>
+GstVideoMixer2PadClass
+GST_VIDEO_MIXER2_PAD
+GST_VIDEO_MIXER2_PAD_CLASS
+GST_IS_VIDEO_MIXER2_PAD
+GST_IS_VIDEO_MIXER2_PAD_CLASS
+GST_TYPE_VIDEO_MIXER2_PAD
+gst_videomixer2_pad_get_type
+</SECTION>
+
+<SECTION>
+<FILE>element-videomixer2</FILE>
+<TITLE>videomixer2</TITLE>
+GstVideoMixer2
+GstVideoMixer2Background
+<SUBSECTION Standard>
+GstVideoMixer2Class
+GST_VIDEO_MIXER2
+GST_IS_VIDEO_MIXER2
+GST_TYPE_VIDEO_MIXER2
+GST_VIDEO_MIXER2_CLASS
+GST_IS_VIDEO_MIXER2_CLASS
+gst_videomixer2_get_type
+</SECTION>
+
+<SECTION>
 <FILE>element-v4l2src</FILE>
 <TITLE>v4l2src</TITLE>
 GstV4l2Src
@@ -2000,34 +2211,6 @@ GST_TYPE_V4L2RADIO
 GST_V4L2RADIO_CLASS
 GST_IS_V4L2RADIO_CLASS
 gst_v4l2radio_get_type
-</SECTION>
-
-<SECTION>
-<FILE>element-vp8dec</FILE>
-<TITLE>vp8dec</TITLE>
-GstVP8Dec
-<SUBSECTION Standard>
-GstVP8DecClass
-GST_VP8_DEC
-GST_VP8_DEC_CLASS
-GST_IS_VP8_DEC
-GST_IS_VP8_DEC_CLASS
-GST_TYPE_VP8_DEC
-gst_vp8_dec_get_type
-</SECTION>
-
-<SECTION>
-<FILE>element-vp8enc</FILE>
-<TITLE>vp8enc</TITLE>
-GstVP8Enc
-<SUBSECTION Standard>
-GstVP8EncClass
-GST_VP8_ENC
-GST_VP8_ENC_CLASS
-GST_IS_VP8_ENC
-GST_IS_VP8_ENC_CLASS
-GST_TYPE_VP8_ENC
-gst_vp8_enc_get_type
 </SECTION>
 
 <SECTION>

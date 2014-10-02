@@ -69,10 +69,10 @@ struct _GstXImageSrc
   gint64 last_frame_no;
 
   /* Protect X Windows calls */
-  GMutex  x_lock;
+  GMutex *x_lock;
 
   /* Gathered pool of emitted buffers */
-  GMutex  pool_lock;
+  GMutex *pool_lock;
   GSList *buffer_pool;
 
   /* XFixes and XDamage support */
@@ -99,7 +99,7 @@ struct _GstXImageSrc
   int damage_event_base;
   XserverRegion damage_region;
   GC damage_copy_gc;
-  GstBuffer *last_ximage;
+  GstXImageSrcBuffer *last_ximage;
 #endif
 };
 

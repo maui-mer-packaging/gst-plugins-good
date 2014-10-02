@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gst-plugins-good 0.10.26.2\n"
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/\n"
-"POT-Creation-Date: 2012-09-17 16:41+0100\n"
+"POT-Creation-Date: 2012-02-21 00:10+0000\n"
 "PO-Revision-Date: 2011-01-21 22:36+0100\n"
 "Last-Translator: Christian Kirbach <christian.kirbach@googlemail.com>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -26,10 +26,19 @@ msgstr ""
 "X-Poedit-Country: GERMANY\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Could not establish connection to sound server"
+msgstr "Es konnte keine Verbindung zum Audio-Server hergestellt werden"
+
+msgid "Failed to query sound server capabilities"
+msgstr "Abfrage der Fähigkeiten des Audio-Servers ist fehlgeschlagen"
+
 #. TRANSLATORS: 'song title' by 'artist name'
 #, c-format
 msgid "'%s' by '%s'"
 msgstr "»%s« durch »%s«"
+
+msgid "Internal data stream error."
+msgstr "Interner Datenstromfehler."
 
 msgid "Failed to decode JPEG image"
 msgstr "Dekodieren des JPEG-Bildes schlug fehl"
@@ -60,9 +69,6 @@ msgstr "Server gab unerwartete Daten zurück."
 
 msgid "No URL set."
 msgstr "Keine Adresse festgelegt."
-
-msgid "Internal data stream error."
-msgstr "Interner Datenstromfehler."
 
 msgid "No or invalid input audio, AVI stream will be corrupt."
 msgstr "Kein oder ungültiger Eingabeton, der AVI-Strom wird fehlerhaft sein."
@@ -110,6 +116,83 @@ msgstr ""
 msgid "Internal data flow error."
 msgstr "Interner Datenstromfehler."
 
+msgid "Volume"
+msgstr "Lautstärke"
+
+msgid "Bass"
+msgstr "Bass"
+
+msgid "Treble"
+msgstr "Höhen"
+
+msgid "Synth"
+msgstr "Synth"
+
+msgid "PCM"
+msgstr "PCM"
+
+msgid "Speaker"
+msgstr "Lautsprecher"
+
+msgid "Line-in"
+msgstr "Line-Eingang"
+
+msgid "Microphone"
+msgstr "Mikrofon"
+
+msgid "CD"
+msgstr "CD"
+
+msgid "Mixer"
+msgstr "Mischer"
+
+msgid "PCM-2"
+msgstr "PCM 2"
+
+msgid "Record"
+msgstr "Aufnahme"
+
+msgid "In-gain"
+msgstr "Eingangspegel"
+
+msgid "Out-gain"
+msgstr "Ausgangspegel"
+
+msgid "Line-1"
+msgstr "Eingang-1"
+
+msgid "Line-2"
+msgstr "Eingang-2"
+
+msgid "Line-3"
+msgstr "Eingang-3"
+
+msgid "Digital-1"
+msgstr "Digital-1"
+
+msgid "Digital-2"
+msgstr "Digital-2"
+
+msgid "Digital-3"
+msgstr "Digital-3"
+
+# Mikrofon? Zweifelhaft. Eher Kopfhörer oder Telefon.
+msgid "Phone-in"
+msgstr "Mikrofoneingang"
+
+# Ist hier Kopfhörer oder Telefon gemeint?
+msgid "Phone-out"
+msgstr "Mikrofonausgang"
+
+msgid "Video"
+msgstr "Video"
+
+msgid "Radio"
+msgstr "Radio"
+
+msgid "Monitor"
+msgstr "Monitor"
+
 msgid ""
 "Could not open audio device for playback. Device is being used by another "
 "application."
@@ -137,6 +220,312 @@ msgstr ""
 msgid "Could not open audio device for recording."
 msgstr "Das Audio-Gerät konnte nicht zur Aufnahme geöffnet werden. "
 
+msgid "Could not open audio device for mixer control handling."
+msgstr "Das Audio-Gerät konnte nicht für das Mischpult geöffnet werden."
+
+msgid ""
+"Could not open audio device for mixer control handling. This version of the "
+"Open Sound System is not supported by this element."
+msgstr ""
+"Das Audio-Gerät konnte nicht für das Mischpult geöffnet werden. Diese "
+"Version des Open Sound System (OSS) wird nicht unterstützt."
+
+msgid "Master"
+msgstr "Hauptregler"
+
+msgid "Front"
+msgstr "Front"
+
+msgid "Rear"
+msgstr "AufnahmeRückseite"
+
+msgid "Headphones"
+msgstr "Kopfhörer"
+
+msgid "Center"
+msgstr "Mitte"
+
+msgid "LFE"
+msgstr "LFE"
+
+msgid "Surround"
+msgstr "Surround"
+
+msgid "Side"
+msgstr "Seite"
+
+msgid "Built-in Speaker"
+msgstr "Eingebaute Lautsprecher"
+
+msgid "AUX 1 Out"
+msgstr "AUX-Ausgang 1"
+
+msgid "AUX 2 Out"
+msgstr "AUX-Ausgang 2"
+
+msgid "AUX Out"
+msgstr "AUX-Ausgang"
+
+msgid "3D Depth"
+msgstr "3D-Tiefe"
+
+msgid "3D Center"
+msgstr "3D-Mitte"
+
+msgid "3D Enhance"
+msgstr "Erweitertes 3D"
+
+msgid "Telephone"
+msgstr "Telefon"
+
+# Hier ist mir noch nichts Besseres eingefallen.
+msgid "Line Out"
+msgstr "Line-Ausgang"
+
+msgid "Line In"
+msgstr "Line-Eingang"
+
+msgid "Internal CD"
+msgstr "Interne CD"
+
+msgid "Video In"
+msgstr "Video-Eingang"
+
+msgid "AUX 1 In"
+msgstr "AUX-Eingang 1"
+
+msgid "AUX 2 In"
+msgstr "AUX-Eingang 2"
+
+msgid "AUX In"
+msgstr "AUX-Eingang"
+
+msgid "Record Gain"
+msgstr "Aufnahmepegel"
+
+msgid "Output Gain"
+msgstr "Ausgangspegel"
+
+msgid "Microphone Boost"
+msgstr "Mikrofonverstärkung"
+
+msgid "Loopback"
+msgstr "Schleife"
+
+msgid "Diagnostic"
+msgstr "Zur Diagnose"
+
+msgid "Bass Boost"
+msgstr "Bassverstärkung"
+
+msgid "Playback Ports"
+msgstr "Wiedergabe-Ports"
+
+msgid "Input"
+msgstr "Eingang"
+
+msgid "Record Source"
+msgstr "Aufnahmequelle"
+
+msgid "Monitor Source"
+msgstr "Überwachungsquelle"
+
+msgid "Keyboard Beep"
+msgstr "Tastatur-Piepsen"
+
+msgid "Simulate Stereo"
+msgstr "Stereo simulieren"
+
+msgid "Stereo"
+msgstr "Stereo"
+
+msgid "Surround Sound"
+msgstr "Surround-Audio"
+
+msgid "Microphone Gain"
+msgstr "Mikrofonpegel"
+
+msgid "Speaker Source"
+msgstr "Lautsprecherquelle"
+
+msgid "Microphone Source"
+msgstr "Mikrofonquelle"
+
+msgid "Jack"
+msgstr "Stecker"
+
+msgid "Center / LFE"
+msgstr "Mitte / LFE"
+
+msgid "Stereo Mix"
+msgstr "Stereo-Mischpult"
+
+msgid "Mono Mix"
+msgstr "Mono-Mischpult"
+
+msgid "Input Mix"
+msgstr "Eingangs-Mischpult"
+
+msgid "SPDIF In"
+msgstr "SPDIF-Eingang"
+
+msgid "SPDIF Out"
+msgstr "SPDIF-Ausgang"
+
+msgid "Microphone 1"
+msgstr "Mikrofon 1"
+
+msgid "Microphone 2"
+msgstr "Mikrofon 2"
+
+msgid "Digital Out"
+msgstr "Digital-Ausgang"
+
+msgid "Digital In"
+msgstr "Digital-Eingang"
+
+msgid "HDMI"
+msgstr "HDMI"
+
+msgid "Modem"
+msgstr "Modem"
+
+msgid "Handset"
+msgstr "Hörer"
+
+msgid "Other"
+msgstr "Anderes"
+
+msgid "None"
+msgstr "Kein"
+
+msgid "On"
+msgstr "Aktiviert"
+
+msgid "Off"
+msgstr "Deaktiviert"
+
+msgid "Mute"
+msgstr "Stumm"
+
+msgid "Fast"
+msgstr "Schnell"
+
+#. TRANSLATORS: "Very Low" is a quality setting here
+msgid "Very Low"
+msgstr "Sehr niedrig"
+
+#. TRANSLATORS: "Low" is a quality setting here
+msgid "Low"
+msgstr "Niedrig"
+
+#. TRANSLATORS: "Medium" is a quality setting here
+msgid "Medium"
+msgstr "Medium"
+
+#. TRANSLATORS: "High" is a quality setting here
+msgid "High"
+msgstr "Hoch"
+
+#. TRANSLATORS: "Very High" is a quality setting here
+msgid "Very High"
+msgstr "Sehr hoch"
+
+#. TRANSLATORS: "Production" is a quality setting here
+msgid "Production"
+msgstr "Produktion"
+
+msgid "Front Panel Microphone"
+msgstr "Mikrofon am Vordereingang"
+
+msgid "Front Panel Line In"
+msgstr "Line-Eingang am Vordereingang"
+
+msgid "Front Panel Headphones"
+msgstr "Kopfhörer am Vordereingang"
+
+msgid "Front Panel Line Out"
+msgstr "Line-Ausgang am Vordereingang"
+
+msgid "Green Connector"
+msgstr "Grüner Stecker"
+
+msgid "Pink Connector"
+msgstr "Rosa Stecker"
+
+msgid "Blue Connector"
+msgstr "Blauer Stecker"
+
+msgid "White Connector"
+msgstr "Weißer Stecker"
+
+msgid "Black Connector"
+msgstr "Schwarzer Stecker"
+
+msgid "Gray Connector"
+msgstr "Grauer Stecker"
+
+msgid "Orange Connector"
+msgstr "Oranger Stecker"
+
+msgid "Red Connector"
+msgstr "Roter Stecker"
+
+msgid "Yellow Connector"
+msgstr "Gelber Stecker"
+
+msgid "Green Front Panel Connector"
+msgstr "Grüner Stecker am Vordereingang"
+
+msgid "Pink Front Panel Connector"
+msgstr "Rosa Stecker am Vordereingang"
+
+msgid "Blue Front Panel Connector"
+msgstr "Blauer Stecker am Vordereingang"
+
+msgid "White Front Panel Connector"
+msgstr "Weißer Stecker am Vordereingang"
+
+msgid "Black Front Panel Connector"
+msgstr "Schwarzer Stecker am Vordereingang"
+
+msgid "Gray Front Panel Connector"
+msgstr "Grauer Stecker am Vordereingang"
+
+msgid "Orange Front Panel Connector"
+msgstr "Oranger Stecker am Vordereingang"
+
+msgid "Red Front Panel Connector"
+msgstr "Roter Stecker am Vordereingang"
+
+msgid "Yellow Front Panel Connector"
+msgstr "Gelber Stecker am Vordereingang"
+
+msgid "Spread Output"
+msgstr "Ausgabe verstreuen"
+
+msgid "Downmix"
+msgstr "Heruntermischen"
+
+msgid "Virtual Mixer Input"
+msgstr "Eingang des virtuellen Mischpults"
+
+msgid "Virtual Mixer Output"
+msgstr "Ausgang des virtuellen Mischpults"
+
+msgid "Virtual Mixer Channels"
+msgstr "Kanäle des virtuellen Mischpults"
+
+#. TRANSLATORS: name + number of a volume mixer control
+#, c-format
+msgid "%s %d Function"
+msgstr "%s %d Function"
+
+#. TRANSLATORS: name of a volume mixer control
+#, c-format
+msgid "%s Function"
+msgstr "%s-Funktion"
+
 msgid ""
 "Could not open audio device for playback. This version of the Open Sound "
 "System is not supported by this element."
@@ -156,112 +545,24 @@ msgstr "Aufnahme wird von diesem Audio-Gerät nicht unterstützt."
 msgid "Error recording from audio device."
 msgstr "Fehler beim Aufnehmen vom Audio-Gerät."
 
-msgid "Volume"
-msgstr "Lautstärke"
-
 msgid "Gain"
 msgstr "Pegel"
 
-msgid "Monitor"
-msgstr "Monitor"
-
-msgid "Built-in Speaker"
-msgstr "Eingebaute Lautsprecher"
-
 msgid "Headphone"
 msgstr "Kopfhörer"
-
-# Hier ist mir noch nichts Besseres eingefallen.
-msgid "Line Out"
-msgstr "Line-Ausgang"
-
-msgid "SPDIF Out"
-msgstr "SPDIF-Ausgang"
-
-msgid "AUX 1 Out"
-msgstr "AUX-Ausgang 1"
-
-msgid "AUX 2 Out"
-msgstr "AUX-Ausgang 2"
 
 #, c-format
 msgid "Error reading %d bytes from device '%s'."
 msgstr "Fehler beim Lesen von %d Bytes von Gerät »%s«."
 
+# »Frame« sollten wir im Zusammenhang mit Videos vielleicht besser so belassen. Habe ich in gnome-subtitles auch so gemacht.
 #, c-format
-msgid "Failed to enumerate possible video formats device '%s' can work with"
-msgstr ""
-"Aufzählen möglicher Videoformate, mit denen Gerät »%s« arbeiten kann, schlug "
-"fehl"
-
-# »Geholt« ist auch noch nicht optimal, aber »abgebildet« geht auch nicht wirklich.
-#, c-format
-msgid "Could not map buffers from device '%s'"
-msgstr "Die Puffer des Gerätes »%s« konnten nicht geholt werden."
-
-#, fuzzy, c-format
-msgid "The driver of device '%s' does not support the IO method %d"
-msgstr ""
-"Der Treiber von Gerät »%s« unterstützt keine der bekannten Aufnahmemethoden."
-
-#, fuzzy, c-format
-msgid "The driver of device '%s' does not support any known IO method."
-msgstr ""
-"Der Treiber von Gerät »%s« unterstützt keine der bekannten Aufnahmemethoden."
-
-#, fuzzy, c-format
-msgid "Device '%s' does not support video capture"
-msgstr "»%s« ist kein Wiedergabegerät."
-
-#, fuzzy, c-format
-msgid "Device '%s' is busy"
-msgstr "»%s« ist kein Wiedergabegerät."
+msgid "Got unexpected frame size of %u instead of %u."
+msgstr "Unerwartete Frame-Größe von %u anstatt %u wurde erhalten."
 
 #, c-format
-msgid "Device '%s' cannot capture at %dx%d"
-msgstr "Das Gerät »%s« kann nicht bei %dx%d aufnehmen"
-
-#, c-format
-msgid "Device '%s' cannot capture in the specified format"
-msgstr "Das angegebene Format kann nicht vom Gerät »%s« ausgelesen werden"
-
-#, c-format
-msgid "Could not get parameters on device '%s'"
-msgstr "Parameter konnten nicht von Gerät »%s« ausgelesen werden"
-
-#, fuzzy
-msgid "Video device did not accept new frame rate setting."
-msgstr ""
-"Vom Video-Eingabegerät wurde die Einstellung zur Bildwiederholungsrate nicht "
-"akzeptiert."
-
-msgid "Video device could not create buffer pool."
-msgstr ""
-
-#, fuzzy, c-format
-msgid "Failed to get settings of tuner %d on device '%s'."
-msgstr ""
-"Auslesen der Einstellungen der Senderwahl »%d« auf Gerät »%s« schlug fehl."
-
-#, fuzzy, c-format
-msgid "Error getting capabilities for device '%s'."
-msgstr "Fehler beim Lesen von %d Bytes von Gerät »%s«."
-
-#, fuzzy, c-format
-msgid "Device '%s' is not a tuner."
-msgstr "»%s« ist kein Wiedergabegerät."
-
-#, fuzzy, c-format
-msgid "Failed to get radio input on device '%s'. "
-msgstr "Festlegen der Eingabe »%d« des Geräts »%s« schlug fehl."
-
-#, c-format
-msgid "Failed to set input %d on device %s."
-msgstr "Festlegen der Eingabe »%d« des Geräts »%s« schlug fehl."
-
-#, fuzzy, c-format
-msgid "Failed to change mute state for device '%s'."
-msgstr "Auslesen der aktuellen Signalstärke des Geräts »%s« schlug fehl."
+msgid "Error reading %d bytes on device '%s'."
+msgstr "Fehler beim Lesen von %d Bytes auf Gerät »%s«."
 
 #, c-format
 msgid ""
@@ -341,6 +642,10 @@ msgstr ""
 "Auslesen der aktuellen Eingabe auf dem Gerät »%s« schlug fehl. Vielleicht "
 "ist es ein Funkgerät."
 
+#, c-format
+msgid "Failed to set input %d on device %s."
+msgstr "Festlegen der Eingabe »%d« des Geräts »%s« schlug fehl."
+
 # Sendegerät sicherlich nicht, eben eher ein Radio. Warum diese Fehlermeldung beie einem Radiogerät kommen könnte, weiß ich allerdings auch nicht.
 #, c-format
 msgid ""
@@ -353,6 +658,37 @@ msgstr ""
 msgid "Failed to set output %d on device %s."
 msgstr "Festlegen der Ausgabe »%d« des Geräts »%s« schlug fehl."
 
+#, c-format
+msgid "Could not enqueue buffers in device '%s'."
+msgstr "Auf Gerät »%s« konnten keine Puffer eingereiht werden."
+
+#, c-format
+msgid "Failed trying to get video frames from device '%s'."
+msgstr "Der Versuch Videobilder von Gerät »%s« auszulesen schlug fehl."
+
+#, c-format
+msgid "Failed after %d tries. device %s. system error: %s"
+msgstr "%d Versuche sind fehlgeschlagen. Gerät »%s«. Systemfehler: %s"
+
+#, c-format
+msgid "Could not get parameters on device '%s'"
+msgstr "Parameter konnten nicht von Gerät »%s« ausgelesen werden"
+
+msgid "Video input device did not accept new frame rate setting."
+msgstr ""
+"Vom Video-Eingabegerät wurde die Einstellung zur Bildwiederholungsrate nicht "
+"akzeptiert."
+
+# »Geholt« ist auch noch nicht optimal, aber »abgebildet« geht auch nicht wirklich.
+#, c-format
+msgid "Could not map buffers from device '%s'"
+msgstr "Die Puffer des Gerätes »%s« konnten nicht geholt werden."
+
+#, c-format
+msgid "The driver of device '%s' does not support any known capture method."
+msgstr ""
+"Der Treiber von Gerät »%s« unterstützt keine der bekannten Aufnahmemethoden."
+
 msgid "Changing resolution at runtime is not yet supported."
 msgstr "Ein Wechsel der Auflösung zur Laufzeit wird noch nicht unterstützt."
 
@@ -360,378 +696,10 @@ msgstr "Ein Wechsel der Auflösung zur Laufzeit wird noch nicht unterstützt."
 msgid "Cannot operate without a clock"
 msgstr "Es kann nicht ohne einen Taktgeber gearbeitet werden."
 
-# »Frame« sollten wir im Zusammenhang mit Videos vielleicht besser so belassen. Habe ich in gnome-subtitles auch so gemacht.
-#~ msgid "Got unexpected frame size of %u instead of %u."
-#~ msgstr "Unerwartete Frame-Größe von %u anstatt %u wurde erhalten."
-
-#~ msgid "Failed trying to get video frames from device '%s'."
-#~ msgstr "Der Versuch Videobilder von Gerät »%s« auszulesen schlug fehl."
-
-#~ msgid "Failed after %d tries. device %s. system error: %s"
-#~ msgstr "%d Versuche sind fehlgeschlagen. Gerät »%s«. Systemfehler: %s"
-
-#~ msgid "Bass"
-#~ msgstr "Bass"
-
-#~ msgid "Treble"
-#~ msgstr "Höhen"
-
-#~ msgid "Synth"
-#~ msgstr "Synth"
-
-#~ msgid "PCM"
-#~ msgstr "PCM"
-
-#~ msgid "Speaker"
-#~ msgstr "Lautsprecher"
-
-#~ msgid "Line-in"
-#~ msgstr "Line-Eingang"
-
-#~ msgid "Microphone"
-#~ msgstr "Mikrofon"
-
-#~ msgid "CD"
-#~ msgstr "CD"
-
-#~ msgid "Mixer"
-#~ msgstr "Mischer"
-
-#~ msgid "PCM-2"
-#~ msgstr "PCM 2"
-
-#~ msgid "Record"
-#~ msgstr "Aufnahme"
-
-#~ msgid "In-gain"
-#~ msgstr "Eingangspegel"
-
-#~ msgid "Out-gain"
-#~ msgstr "Ausgangspegel"
-
-#~ msgid "Line-1"
-#~ msgstr "Eingang-1"
-
-#~ msgid "Line-2"
-#~ msgstr "Eingang-2"
-
-#~ msgid "Line-3"
-#~ msgstr "Eingang-3"
-
-#~ msgid "Digital-1"
-#~ msgstr "Digital-1"
-
-#~ msgid "Digital-2"
-#~ msgstr "Digital-2"
-
-#~ msgid "Digital-3"
-#~ msgstr "Digital-3"
-
-# Mikrofon? Zweifelhaft. Eher Kopfhörer oder Telefon.
-#~ msgid "Phone-in"
-#~ msgstr "Mikrofoneingang"
-
-# Ist hier Kopfhörer oder Telefon gemeint?
-#~ msgid "Phone-out"
-#~ msgstr "Mikrofonausgang"
-
-#~ msgid "Video"
-#~ msgstr "Video"
-
-#~ msgid "Radio"
-#~ msgstr "Radio"
-
-#~ msgid "Could not open audio device for mixer control handling."
-#~ msgstr "Das Audio-Gerät konnte nicht für das Mischpult geöffnet werden."
-
-#~ msgid ""
-#~ "Could not open audio device for mixer control handling. This version of "
-#~ "the Open Sound System is not supported by this element."
+#~ msgid "Failed to enumerate possible video formats device '%s' can work with"
 #~ msgstr ""
-#~ "Das Audio-Gerät konnte nicht für das Mischpult geöffnet werden. Diese "
-#~ "Version des Open Sound System (OSS) wird nicht unterstützt."
-
-#~ msgid "Master"
-#~ msgstr "Hauptregler"
-
-#~ msgid "Front"
-#~ msgstr "Front"
-
-#~ msgid "Rear"
-#~ msgstr "AufnahmeRückseite"
-
-#~ msgid "Headphones"
-#~ msgstr "Kopfhörer"
-
-#~ msgid "Center"
-#~ msgstr "Mitte"
-
-#~ msgid "LFE"
-#~ msgstr "LFE"
-
-#~ msgid "Surround"
-#~ msgstr "Surround"
-
-#~ msgid "Side"
-#~ msgstr "Seite"
-
-#~ msgid "AUX Out"
-#~ msgstr "AUX-Ausgang"
-
-#~ msgid "3D Depth"
-#~ msgstr "3D-Tiefe"
-
-#~ msgid "3D Center"
-#~ msgstr "3D-Mitte"
-
-#~ msgid "3D Enhance"
-#~ msgstr "Erweitertes 3D"
-
-#~ msgid "Telephone"
-#~ msgstr "Telefon"
-
-#~ msgid "Line In"
-#~ msgstr "Line-Eingang"
-
-#~ msgid "Internal CD"
-#~ msgstr "Interne CD"
-
-#~ msgid "Video In"
-#~ msgstr "Video-Eingang"
-
-#~ msgid "AUX 1 In"
-#~ msgstr "AUX-Eingang 1"
-
-#~ msgid "AUX 2 In"
-#~ msgstr "AUX-Eingang 2"
-
-#~ msgid "AUX In"
-#~ msgstr "AUX-Eingang"
-
-#~ msgid "Record Gain"
-#~ msgstr "Aufnahmepegel"
-
-#~ msgid "Output Gain"
-#~ msgstr "Ausgangspegel"
-
-#~ msgid "Microphone Boost"
-#~ msgstr "Mikrofonverstärkung"
-
-#~ msgid "Loopback"
-#~ msgstr "Schleife"
-
-#~ msgid "Diagnostic"
-#~ msgstr "Zur Diagnose"
-
-#~ msgid "Bass Boost"
-#~ msgstr "Bassverstärkung"
-
-#~ msgid "Playback Ports"
-#~ msgstr "Wiedergabe-Ports"
-
-#~ msgid "Input"
-#~ msgstr "Eingang"
-
-#~ msgid "Record Source"
-#~ msgstr "Aufnahmequelle"
-
-#~ msgid "Monitor Source"
-#~ msgstr "Überwachungsquelle"
-
-#~ msgid "Keyboard Beep"
-#~ msgstr "Tastatur-Piepsen"
-
-#~ msgid "Simulate Stereo"
-#~ msgstr "Stereo simulieren"
-
-#~ msgid "Stereo"
-#~ msgstr "Stereo"
-
-#~ msgid "Surround Sound"
-#~ msgstr "Surround-Audio"
-
-#~ msgid "Microphone Gain"
-#~ msgstr "Mikrofonpegel"
-
-#~ msgid "Speaker Source"
-#~ msgstr "Lautsprecherquelle"
-
-#~ msgid "Microphone Source"
-#~ msgstr "Mikrofonquelle"
-
-#~ msgid "Jack"
-#~ msgstr "Stecker"
-
-#~ msgid "Center / LFE"
-#~ msgstr "Mitte / LFE"
-
-#~ msgid "Stereo Mix"
-#~ msgstr "Stereo-Mischpult"
-
-#~ msgid "Mono Mix"
-#~ msgstr "Mono-Mischpult"
-
-#~ msgid "Input Mix"
-#~ msgstr "Eingangs-Mischpult"
-
-#~ msgid "SPDIF In"
-#~ msgstr "SPDIF-Eingang"
-
-#~ msgid "Microphone 1"
-#~ msgstr "Mikrofon 1"
-
-#~ msgid "Microphone 2"
-#~ msgstr "Mikrofon 2"
-
-#~ msgid "Digital Out"
-#~ msgstr "Digital-Ausgang"
-
-#~ msgid "Digital In"
-#~ msgstr "Digital-Eingang"
-
-#~ msgid "HDMI"
-#~ msgstr "HDMI"
-
-#~ msgid "Modem"
-#~ msgstr "Modem"
-
-#~ msgid "Handset"
-#~ msgstr "Hörer"
-
-#~ msgid "Other"
-#~ msgstr "Anderes"
-
-#~ msgid "None"
-#~ msgstr "Kein"
-
-#~ msgid "On"
-#~ msgstr "Aktiviert"
-
-#~ msgid "Off"
-#~ msgstr "Deaktiviert"
-
-#~ msgid "Mute"
-#~ msgstr "Stumm"
-
-#~ msgid "Fast"
-#~ msgstr "Schnell"
-
-#~ msgid "Very Low"
-#~ msgstr "Sehr niedrig"
-
-#~ msgid "Low"
-#~ msgstr "Niedrig"
-
-#~ msgid "Medium"
-#~ msgstr "Medium"
-
-#~ msgid "High"
-#~ msgstr "Hoch"
-
-#~ msgid "Very High"
-#~ msgstr "Sehr hoch"
-
-#~ msgid "Production"
-#~ msgstr "Produktion"
-
-#~ msgid "Front Panel Microphone"
-#~ msgstr "Mikrofon am Vordereingang"
-
-#~ msgid "Front Panel Line In"
-#~ msgstr "Line-Eingang am Vordereingang"
-
-#~ msgid "Front Panel Headphones"
-#~ msgstr "Kopfhörer am Vordereingang"
-
-#~ msgid "Front Panel Line Out"
-#~ msgstr "Line-Ausgang am Vordereingang"
-
-#~ msgid "Green Connector"
-#~ msgstr "Grüner Stecker"
-
-#~ msgid "Pink Connector"
-#~ msgstr "Rosa Stecker"
-
-#~ msgid "Blue Connector"
-#~ msgstr "Blauer Stecker"
-
-#~ msgid "White Connector"
-#~ msgstr "Weißer Stecker"
-
-#~ msgid "Black Connector"
-#~ msgstr "Schwarzer Stecker"
-
-#~ msgid "Gray Connector"
-#~ msgstr "Grauer Stecker"
-
-#~ msgid "Orange Connector"
-#~ msgstr "Oranger Stecker"
-
-#~ msgid "Red Connector"
-#~ msgstr "Roter Stecker"
-
-#~ msgid "Yellow Connector"
-#~ msgstr "Gelber Stecker"
-
-#~ msgid "Green Front Panel Connector"
-#~ msgstr "Grüner Stecker am Vordereingang"
-
-#~ msgid "Pink Front Panel Connector"
-#~ msgstr "Rosa Stecker am Vordereingang"
-
-#~ msgid "Blue Front Panel Connector"
-#~ msgstr "Blauer Stecker am Vordereingang"
-
-#~ msgid "White Front Panel Connector"
-#~ msgstr "Weißer Stecker am Vordereingang"
-
-#~ msgid "Black Front Panel Connector"
-#~ msgstr "Schwarzer Stecker am Vordereingang"
-
-#~ msgid "Gray Front Panel Connector"
-#~ msgstr "Grauer Stecker am Vordereingang"
-
-#~ msgid "Orange Front Panel Connector"
-#~ msgstr "Oranger Stecker am Vordereingang"
-
-#~ msgid "Red Front Panel Connector"
-#~ msgstr "Roter Stecker am Vordereingang"
-
-#~ msgid "Yellow Front Panel Connector"
-#~ msgstr "Gelber Stecker am Vordereingang"
-
-#~ msgid "Spread Output"
-#~ msgstr "Ausgabe verstreuen"
-
-#~ msgid "Downmix"
-#~ msgstr "Heruntermischen"
-
-#~ msgid "Virtual Mixer Input"
-#~ msgstr "Eingang des virtuellen Mischpults"
-
-#~ msgid "Virtual Mixer Output"
-#~ msgstr "Ausgang des virtuellen Mischpults"
-
-#~ msgid "Virtual Mixer Channels"
-#~ msgstr "Kanäle des virtuellen Mischpults"
-
-#~ msgid "%s %d Function"
-#~ msgstr "%s %d Function"
-
-#~ msgid "%s Function"
-#~ msgstr "%s-Funktion"
-
-#~ msgid "Error reading %d bytes on device '%s'."
-#~ msgstr "Fehler beim Lesen von %d Bytes auf Gerät »%s«."
-
-#~ msgid "Could not enqueue buffers in device '%s'."
-#~ msgstr "Auf Gerät »%s« konnten keine Puffer eingereiht werden."
-
-#~ msgid "Could not establish connection to sound server"
-#~ msgstr "Es konnte keine Verbindung zum Audio-Server hergestellt werden"
-
-#~ msgid "Failed to query sound server capabilities"
-#~ msgstr "Abfrage der Fähigkeiten des Audio-Servers ist fehlgeschlagen"
+#~ "Aufzählen möglicher Videoformate, mit denen Gerät »%s« arbeiten kann, "
+#~ "schlug fehl"
 
 #~ msgid ""
 #~ "The buffer type is not supported, or the index is out of bounds, or no "
@@ -757,6 +725,12 @@ msgstr "Es kann nicht ohne einen Taktgeber gearbeitet werden."
 
 #~ msgid "No free buffers found in the pool at index %d."
 #~ msgstr "Es wurden keine freien Puffer im Vorrat bei Index %d gefunden."
+
+#~ msgid "Device '%s' cannot capture at %dx%d"
+#~ msgstr "Das Gerät »%s« kann nicht bei %dx%d aufnehmen"
+
+#~ msgid "Device '%s' cannot capture in the specified format"
+#~ msgstr "Das angegebene Format kann nicht vom Gerät »%s« ausgelesen werden"
 
 #~ msgid "Could not get buffers from device '%s'."
 #~ msgstr "Die Puffer konnten nicht von Gerät »%s« ausgelesen werden."

@@ -17,10 +17,6 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/* FIXME 0.11: suppress warnings for deprecated API such as GValueArray
- * with newer GLib versions (>= 2.31.0) */
-#define GLIB_DISABLE_DEPRECATION_WARNINGS
-
 #include <string.h>
 #include <math.h>
 
@@ -108,7 +104,7 @@ print_stats (GstElement * rtpbin)
 
 /* build a pipeline equivalent to:
  *
- * gst-launch -v rtpbin name=rtpbin \
+ * gst-launch -v gstrtpbin name=rtpbin \
  *    $AUDIO_SRC ! audioconvert ! audioresample ! $AUDIO_ENC ! $AUDIO_PAY ! rtpbin.send_rtp_sink_0  \
  *           rtpbin.send_rtp_src_0 ! udpsink port=5002 host=$DEST                      \
  *           rtpbin.send_rtcp_src_0 ! udpsink port=5003 host=$DEST sync=false async=false \
@@ -154,7 +150,7 @@ main (int argc, char *argv[])
   }
 
   /* the rtpbin element */
-  rtpbin = gst_element_factory_make ("rtpbin", "rtpbin");
+  rtpbin = gst_element_factory_make ("gstrtpbin", "rtpbin");
   g_assert (rtpbin);
 
   gst_bin_add (GST_BIN (pipeline), rtpbin);

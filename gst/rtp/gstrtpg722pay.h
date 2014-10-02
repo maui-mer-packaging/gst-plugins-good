@@ -21,7 +21,7 @@
 #define __GST_RTP_G722_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbaseaudiopayload.h>
+#include <gst/rtp/gstbasertpaudiopayload.h>
 
 G_BEGIN_DECLS
 
@@ -41,7 +41,7 @@ typedef struct _GstRtpG722PayClass GstRtpG722PayClass;
 
 struct _GstRtpG722Pay
 {
-  GstRTPBaseAudioPayload payload;
+  GstBaseRTPAudioPayload payload;
 
   gint rate;
   gint channels;
@@ -49,7 +49,7 @@ struct _GstRtpG722Pay
 
 struct _GstRtpG722PayClass
 {
-  GstRTPBaseAudioPayloadClass parent_class;
+  GstBaseRTPAudioPayloadClass parent_class;
 };
 
 GType gst_rtp_g722_pay_get_type (void);

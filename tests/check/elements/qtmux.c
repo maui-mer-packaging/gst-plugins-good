@@ -163,7 +163,7 @@ setup_qtmux (GstStaticPadTemplate * srctemplate, const gchar * sinkname)
   GST_DEBUG ("setup_qtmux");
   qtmux = gst_check_setup_element ("qtmux");
   mysrcpad = setup_src_pad (qtmux, srctemplate, NULL, sinkname);
-  mysinkpad = gst_check_setup_sink_pad (qtmux, &sinktemplate);
+  mysinkpad = gst_check_setup_sink_pad (qtmux, &sinktemplate, NULL);
   gst_pad_set_active (mysrcpad, TRUE);
   gst_pad_set_active (mysinkpad, TRUE);
 
@@ -195,7 +195,6 @@ check_qtmux_pad (GstStaticPadTemplate * srctemplate, const gchar * sinkname,
   guint8 data0[12] = "\000\000\000\024ftypqt  ";
   guint8 data1[8] = "\000\000\000\001mdat";
   guint8 data2[4] = "moov";
-  GstSegment segment;
 
   qtmux = setup_qtmux (srctemplate, sinkname);
   g_object_set (qtmux, "dts-method", dts_method, NULL);
@@ -203,14 +202,9 @@ check_qtmux_pad (GstStaticPadTemplate * srctemplate, const gchar * sinkname,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
       "could not set to playing");
 
-  /* ensure segment (format) properly setup */
-  gst_segment_init (&segment, GST_FORMAT_TIME);
-  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_segment (&segment)));
-
   inbuffer = gst_buffer_new_and_alloc (1);
-  gst_buffer_memset (inbuffer, 0, 0, 1);
-  caps = gst_pad_get_pad_template_caps (mysrcpad);
-  gst_pad_set_caps (mysrcpad, caps);
+  caps = gst_caps_copy (gst_pad_get_pad_template_caps (mysrcpad));
+  gst_buffer_set_caps (inbuffer, caps);
   gst_caps_unref (caps);
   GST_BUFFER_TIMESTAMP (inbuffer) = 0;
   GST_BUFFER_DURATION (inbuffer) = 40 * GST_MSECOND;
@@ -224,9 +218,6 @@ check_qtmux_pad (GstStaticPadTemplate * srctemplate, const gchar * sinkname,
   /* at least expect ftyp, mdat header, buffer chunk and moov */
   fail_unless (num_buffers >= 4);
 
-  /* clean up first to clear any pending refs in sticky caps */
-  cleanup_qtmux (qtmux, sinkname);
-
   for (i = 0; i < num_buffers; ++i) {
     outbuffer = GST_BUFFER (buffers->data);
     fail_if (outbuffer == NULL);
@@ -236,23 +227,24 @@ check_qtmux_pad (GstStaticPadTemplate * srctemplate, const gchar * sinkname,
       case 0:
       {
         /* ftyp header */
-        fail_unless (gst_buffer_get_size (outbuffer) >= 20);
-        fail_unless (gst_buffer_memcmp (outbuffer, 0, data0,
-                sizeof (data0)) == 0);
-        fail_unless (gst_buffer_memcmp (outbuffer, 16, data0 + 8, 4) == 0);
+        guint8 *data = GST_BUFFER_DATA (outbuffer);
+
+        fail_unless (GST_BUFFER_SIZE (outbuffer) >= 20);
+        fail_unless (memcmp (data, data0, sizeof (data0)) == 0);
+        fail_unless (memcmp (data + 16, data0 + 8, 4) == 0);
         break;
       }
       case 1:                  /* mdat header */
-        fail_unless (gst_buffer_get_size (outbuffer) == 16);
-        fail_unless (gst_buffer_memcmp (outbuffer, 0, data1, sizeof (data1))
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == 16);
+        fail_unless (memcmp (GST_BUFFER_DATA (outbuffer), data1, sizeof (data1))
             == 0);
         break;
       case 2:                  /* buffer we put in */
-        fail_unless (gst_buffer_get_size (outbuffer) == 1);
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == 1);
         break;
       case 3:                  /* moov */
-        fail_unless (gst_buffer_get_size (outbuffer) > 8);
-        fail_unless (gst_buffer_memcmp (outbuffer, 4, data2,
+        fail_unless (GST_BUFFER_SIZE (outbuffer) > 8);
+        fail_unless (memcmp (GST_BUFFER_DATA (outbuffer) + 4, data2,
                 sizeof (data2)) == 0);
         break;
       default:
@@ -266,6 +258,8 @@ check_qtmux_pad (GstStaticPadTemplate * srctemplate, const gchar * sinkname,
 
   g_list_free (buffers);
   buffers = NULL;
+
+  cleanup_qtmux (qtmux, sinkname);
 }
 
 static void
@@ -282,7 +276,6 @@ check_qtmux_pad_fragmented (GstStaticPadTemplate * srctemplate,
   guint8 data2[4] = "moov";
   guint8 data3[4] = "moof";
   guint8 data4[4] = "mfra";
-  GstSegment segment;
 
   qtmux = setup_qtmux (srctemplate, sinkname);
   g_object_set (qtmux, "dts-method", dts_method, NULL);
@@ -292,14 +285,9 @@ check_qtmux_pad_fragmented (GstStaticPadTemplate * srctemplate,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
       "could not set to playing");
 
-  /* ensure segment (format) properly setup */
-  gst_segment_init (&segment, GST_FORMAT_TIME);
-  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_segment (&segment)));
-
   inbuffer = gst_buffer_new_and_alloc (1);
-  gst_buffer_memset (inbuffer, 0, 0, 1);
-  caps = gst_pad_get_pad_template_caps (mysrcpad);
-  gst_pad_set_caps (mysrcpad, caps);
+  caps = gst_caps_copy (gst_pad_get_pad_template_caps (mysrcpad));
+  gst_buffer_set_caps (inbuffer, caps);
   gst_caps_unref (caps);
   GST_BUFFER_TIMESTAMP (inbuffer) = 0;
   GST_BUFFER_DURATION (inbuffer) = 40 * GST_MSECOND;
@@ -314,9 +302,6 @@ check_qtmux_pad_fragmented (GstStaticPadTemplate * srctemplate,
    * and optionally mfra */
   fail_unless (num_buffers >= 5);
 
-  /* clean up first to clear any pending refs in sticky caps */
-  cleanup_qtmux (qtmux, sinkname);
-
   for (i = 0; i < num_buffers; ++i) {
     outbuffer = GST_BUFFER (buffers->data);
     fail_if (outbuffer == NULL);
@@ -326,33 +311,34 @@ check_qtmux_pad_fragmented (GstStaticPadTemplate * srctemplate,
       case 0:
       {
         /* ftyp header */
-        fail_unless (gst_buffer_get_size (outbuffer) >= 20);
-        fail_unless (gst_buffer_memcmp (outbuffer, 0, data0,
-                sizeof (data0)) == 0);
-        fail_unless (gst_buffer_memcmp (outbuffer, 16, data0 + 8, 4) == 0);
+        guint8 *data = GST_BUFFER_DATA (outbuffer);
+
+        fail_unless (GST_BUFFER_SIZE (outbuffer) >= 20);
+        fail_unless (memcmp (data, data0, sizeof (data0)) == 0);
+        fail_unless (memcmp (data + 16, data0 + 8, 4) == 0);
         break;
       }
       case 1:                  /* moov */
-        fail_unless (gst_buffer_get_size (outbuffer) > 8);
-        fail_unless (gst_buffer_memcmp (outbuffer, 4, data2,
+        fail_unless (GST_BUFFER_SIZE (outbuffer) > 8);
+        fail_unless (memcmp (GST_BUFFER_DATA (outbuffer) + 4, data2,
                 sizeof (data2)) == 0);
         break;
       case 2:                  /* moof */
-        fail_unless (gst_buffer_get_size (outbuffer) > 8);
-        fail_unless (gst_buffer_memcmp (outbuffer, 4, data3,
+        fail_unless (GST_BUFFER_SIZE (outbuffer) > 8);
+        fail_unless (memcmp (GST_BUFFER_DATA (outbuffer) + 4, data3,
                 sizeof (data3)) == 0);
         break;
       case 3:                  /* mdat header */
-        fail_unless (gst_buffer_get_size (outbuffer) == 8);
-        fail_unless (gst_buffer_memcmp (outbuffer, 4, data1,
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == 8);
+        fail_unless (memcmp (GST_BUFFER_DATA (outbuffer) + 4, data1,
                 sizeof (data1)) == 0);
         break;
       case 4:                  /* buffer we put in */
-        fail_unless (gst_buffer_get_size (outbuffer) == 1);
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == 1);
         break;
       case 5:                  /* mfra */
-        fail_unless (gst_buffer_get_size (outbuffer) > 8);
-        fail_unless (gst_buffer_memcmp (outbuffer, 4, data4,
+        fail_unless (GST_BUFFER_SIZE (outbuffer) > 8);
+        fail_unless (memcmp (GST_BUFFER_DATA (outbuffer) + 4, data4,
                 sizeof (data4)) == 0);
         break;
       default:
@@ -366,20 +352,22 @@ check_qtmux_pad_fragmented (GstStaticPadTemplate * srctemplate,
 
   g_list_free (buffers);
   buffers = NULL;
+
+  cleanup_qtmux (qtmux, sinkname);
 }
 
 /* dts-method dd */
 
 GST_START_TEST (test_video_pad_dd)
 {
-  check_qtmux_pad (&srcvideotemplate, "video_%u", 0);
+  check_qtmux_pad (&srcvideotemplate, "video_%d", 0);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_dd)
 {
-  check_qtmux_pad (&srcaudiotemplate, "audio_%u", 0);
+  check_qtmux_pad (&srcaudiotemplate, "audio_%d", 0);
 }
 
 GST_END_TEST;
@@ -387,14 +375,14 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_frag_dd)
 {
-  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%u", 0, FALSE);
+  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%d", 0, FALSE);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_frag_dd)
 {
-  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%u", 0, FALSE);
+  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%d", 0, FALSE);
 }
 
 GST_END_TEST;
@@ -402,7 +390,7 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_frag_dd_streamable)
 {
-  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%u", 0, TRUE);
+  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%d", 0, TRUE);
 }
 
 GST_END_TEST;
@@ -410,7 +398,7 @@ GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_frag_dd_streamable)
 {
-  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%u", 0, TRUE);
+  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%d", 0, TRUE);
 }
 
 GST_END_TEST;
@@ -419,14 +407,14 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_reorder)
 {
-  check_qtmux_pad (&srcvideotemplate, "video_%u", 1);
+  check_qtmux_pad (&srcvideotemplate, "video_%d", 1);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_reorder)
 {
-  check_qtmux_pad (&srcaudiotemplate, "audio_%u", 1);
+  check_qtmux_pad (&srcaudiotemplate, "audio_%d", 1);
 }
 
 GST_END_TEST;
@@ -434,14 +422,14 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_frag_reorder)
 {
-  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%u", 1, FALSE);
+  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%d", 1, FALSE);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_frag_reorder)
 {
-  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%u", 1, FALSE);
+  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%d", 1, FALSE);
 }
 
 GST_END_TEST;
@@ -449,7 +437,7 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_frag_reorder_streamable)
 {
-  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%u", 1, TRUE);
+  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%d", 1, TRUE);
 }
 
 GST_END_TEST;
@@ -457,7 +445,7 @@ GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_frag_reorder_streamable)
 {
-  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%u", 1, TRUE);
+  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%d", 1, TRUE);
 }
 
 GST_END_TEST;
@@ -466,14 +454,14 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_asc)
 {
-  check_qtmux_pad (&srcvideotemplate, "video_%u", 2);
+  check_qtmux_pad (&srcvideotemplate, "video_%d", 2);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_asc)
 {
-  check_qtmux_pad (&srcaudiotemplate, "audio_%u", 2);
+  check_qtmux_pad (&srcaudiotemplate, "audio_%d", 2);
 }
 
 GST_END_TEST;
@@ -481,14 +469,14 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_frag_asc)
 {
-  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%u", 2, FALSE);
+  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%d", 2, FALSE);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_frag_asc)
 {
-  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%u", 2, FALSE);
+  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%d", 2, FALSE);
 }
 
 GST_END_TEST;
@@ -496,7 +484,7 @@ GST_END_TEST;
 
 GST_START_TEST (test_video_pad_frag_asc_streamable)
 {
-  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%u", 2, TRUE);
+  check_qtmux_pad_fragmented (&srcvideotemplate, "video_%d", 2, TRUE);
 }
 
 GST_END_TEST;
@@ -504,17 +492,16 @@ GST_END_TEST;
 
 GST_START_TEST (test_audio_pad_frag_asc_streamable)
 {
-  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%u", 2, TRUE);
+  check_qtmux_pad_fragmented (&srcaudiotemplate, "audio_%d", 2, TRUE);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_reuse)
 {
-  GstElement *qtmux = setup_qtmux (&srcvideotemplate, "video_%u");
+  GstElement *qtmux = setup_qtmux (&srcvideotemplate, "video_%d");
   GstBuffer *inbuffer;
   GstCaps *caps;
-  GstSegment segment;
 
   gst_element_set_state (qtmux, GST_STATE_PLAYING);
   gst_element_set_state (qtmux, GST_STATE_NULL);
@@ -522,15 +509,10 @@ GST_START_TEST (test_reuse)
   gst_pad_set_active (mysrcpad, TRUE);
   gst_pad_set_active (mysinkpad, TRUE);
 
-  /* ensure segment (format) properly setup */
-  gst_segment_init (&segment, GST_FORMAT_TIME);
-  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_segment (&segment)));
-
   inbuffer = gst_buffer_new_and_alloc (1);
   fail_unless (inbuffer != NULL);
-  gst_buffer_memset (inbuffer, 0, 0, 1);
-  caps = gst_pad_get_pad_template_caps (mysrcpad);
-  gst_pad_set_caps (mysrcpad, caps);
+  caps = gst_caps_copy (gst_pad_get_pad_template_caps (mysrcpad));
+  gst_buffer_set_caps (inbuffer, caps);
   gst_caps_unref (caps);
   GST_BUFFER_TIMESTAMP (inbuffer) = 0;
   GST_BUFFER_DURATION (inbuffer) = 40 * GST_MSECOND;
@@ -540,7 +522,7 @@ GST_START_TEST (test_reuse)
   /* send eos to have all written */
   fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_eos ()) == TRUE);
 
-  cleanup_qtmux (qtmux, "video_%u");
+  cleanup_qtmux (qtmux, "video_%d");
 }
 
 GST_END_TEST;
@@ -552,7 +534,7 @@ create_qtmux_profile (const gchar * variant)
   GstCaps *caps;
 
   if (variant == NULL) {
-    caps = gst_caps_new_empty_simple ("video/quicktime");
+    caps = gst_caps_new_simple ("video/quicktime", NULL);
   } else {
     caps = gst_caps_new_simple ("video/quicktime",
         "variant", G_TYPE_STRING, variant, NULL);
@@ -561,9 +543,10 @@ create_qtmux_profile (const gchar * variant)
   cprof = gst_encoding_container_profile_new ("Name", "blah", caps, NULL);
   gst_caps_unref (caps);
 
-  caps = gst_caps_new_simple ("audio/x-raw",
-      "format", G_TYPE_STRING, "S16BE",
-      "channels", G_TYPE_INT, 2, "rate", G_TYPE_INT, 44100, NULL);
+  caps = gst_caps_new_simple ("audio/x-raw-int", "width", G_TYPE_INT, 16,
+      "depth", G_TYPE_INT, 16, "endianness", G_TYPE_INT, 4321,
+      "channels", G_TYPE_INT, 2, "rate", G_TYPE_INT, 44100,
+      "signed", G_TYPE_BOOLEAN, TRUE, NULL);
   gst_encoding_container_profile_add_profile (cprof,
       GST_ENCODING_PROFILE (gst_encoding_audio_profile_new (caps, NULL, NULL,
               1)));
@@ -621,29 +604,33 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("audio/x-raw")
+    GST_STATIC_CAPS ("audio/x-raw-int")
     );
 
 static GType test_mp3_enc_get_type (void);
 
-G_DEFINE_TYPE (TestMp3Enc, test_mp3_enc, GST_TYPE_ELEMENT);
+GST_BOILERPLATE (TestMp3Enc, test_mp3_enc, GstElement, GST_TYPE_ELEMENT);
 
 static void
-test_mp3_enc_class_init (TestMp3EncClass * klass)
+test_mp3_enc_base_init (gpointer klass)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
 
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&sink_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&src_template));
+  gst_element_class_add_static_pad_template (element_class, &sink_template);
+  gst_element_class_add_static_pad_template (element_class, &src_template);
 
-  gst_element_class_set_metadata (element_class, "MPEG1 Audio Encoder",
+  gst_element_class_set_details_simple (element_class, "MPEG1 Audio Encoder",
       "Codec/Encoder/Audio", "Pretends to encode mp3", "Foo Bar <foo@bar.com>");
 }
 
 static void
-test_mp3_enc_init (TestMp3Enc * mp3enc)
+test_mp3_enc_class_init (TestMp3EncClass * klass)
+{
+  /* doesn't actually need to do anything for this test */
+}
+
+static void
+test_mp3_enc_init (TestMp3Enc * mp3enc, TestMp3EncClass * klass)
 {
   GstPad *pad;
 
@@ -696,7 +683,7 @@ GST_START_TEST (test_encodebin_mp4mux)
       "fakemp3enc", "fakemp3enc", plugin_init, VERSION, "LGPL",
       "gst-plugins-good", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN);
 
-  feature = gst_registry_find_feature (gst_registry_get (), "testmp3enc",
+  feature = gst_default_registry_find_feature ("testmp3enc",
       GST_TYPE_ELEMENT_FACTORY);
   gst_plugin_feature_set_rank (feature, GST_RANK_PRIMARY + 100);
 
@@ -721,7 +708,7 @@ GST_START_TEST (test_encodebin_mp4mux)
 
     /* make sure we got mp4mux for variant=iso */
     GST_INFO ("muxer: %s", G_OBJECT_TYPE_NAME (mux));
-    fail_unless_equals_string (GST_OBJECT_NAME (f), "mp4mux");
+    fail_unless_equals_string (GST_PLUGIN_FEATURE_NAME (f), "mp4mux");
   }
   gst_object_unref (mux);
   gst_object_unref (enc);
@@ -749,7 +736,7 @@ extract_tags (const gchar * location, GstTagList ** taglist)
       != GST_STATE_CHANGE_FAILURE);
 
   if (*taglist == NULL) {
-    *taglist = gst_tag_list_new_empty ();
+    *taglist = gst_tag_list_new ();
   }
 
   while (1) {
@@ -768,7 +755,7 @@ extract_tags (const gchar * location, GstTagList ** taglist)
 
       gst_message_parse_tag (msg, &tags);
       gst_tag_list_insert (*taglist, tags, GST_TAG_MERGE_REPLACE);
-      gst_tag_list_unref (tags);
+      gst_tag_list_free (tags);
     }
     gst_message_unref (msg);
   }
@@ -794,7 +781,6 @@ test_average_bitrate_custom (const gchar * elementname,
   gint64 durations[] = { GST_SECOND * 3, GST_SECOND * 5, GST_SECOND * 2 };
   gint64 total_bytes = 0;
   GstClockTime total_duration = 0;
-  GstSegment segment;
 
   location = g_strdup_printf ("%s/%s-%d", g_get_tmp_dir (), "qtmuxtest",
       g_random_int ());
@@ -814,21 +800,16 @@ test_average_bitrate_custom (const gchar * elementname,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
       "could not set to playing");
 
-  /* ensure segment (format) properly setup */
-  gst_segment_init (&segment, GST_FORMAT_TIME);
-  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_segment (&segment)));
-
   for (i = 0; i < 3; i++) {
     inbuffer = gst_buffer_new_and_alloc (bytes[i]);
-    gst_buffer_memset (inbuffer, 0, 0, bytes[i]);
-    caps = gst_pad_get_pad_template_caps (mysrcpad);
-    gst_pad_set_caps (mysrcpad, caps);
+    caps = gst_caps_copy (gst_pad_get_pad_template_caps (mysrcpad));
+    gst_buffer_set_caps (inbuffer, caps);
     gst_caps_unref (caps);
     GST_BUFFER_TIMESTAMP (inbuffer) = total_duration;
     GST_BUFFER_DURATION (inbuffer) = (GstClockTime) durations[i];
     ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
 
-    total_bytes += gst_buffer_get_size (inbuffer);
+    total_bytes += GST_BUFFER_SIZE (inbuffer);
     total_duration += GST_BUFFER_DURATION (inbuffer);
     fail_unless (gst_pad_push (mysrcpad, inbuffer) == GST_FLOW_OK);
   }
@@ -858,7 +839,7 @@ test_average_bitrate_custom (const gchar * elementname,
         (guint) gst_util_uint64_scale_round ((guint64) total_bytes,
         (guint64) 8 * GST_SECOND, (guint64) total_duration);
     fail_unless (bitrate == expected);
-    gst_tag_list_unref (taglist);
+    gst_tag_list_free (taglist);
   }
 
   /* delete file */
@@ -868,11 +849,11 @@ test_average_bitrate_custom (const gchar * elementname,
 
 GST_START_TEST (test_average_bitrate)
 {
-  test_average_bitrate_custom ("mp4mux", &srcaudioaactemplate, "audio_%u");
-  test_average_bitrate_custom ("mp4mux", &srcvideoh264template, "video_%u");
+  test_average_bitrate_custom ("mp4mux", &srcaudioaactemplate, "audio_%d");
+  test_average_bitrate_custom ("mp4mux", &srcvideoh264template, "video_%d");
 
-  test_average_bitrate_custom ("qtmux", &srcaudioaactemplate, "audio_%u");
-  test_average_bitrate_custom ("qtmux", &srcvideoh264template, "video_%u");
+  test_average_bitrate_custom ("qtmux", &srcaudioaactemplate, "audio_%d");
+  test_average_bitrate_custom ("qtmux", &srcvideoh264template, "video_%d");
 }
 
 GST_END_TEST;

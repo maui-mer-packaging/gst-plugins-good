@@ -17,10 +17,9 @@ libgstavi_la_LIBADD = \
 	$(GST_PLUGINS_BASE_LIBS) \
 	$(GST_BASE_LIBS) \
 	$(GST_LIBS) \
-	-lgstriff-@GST_API_VERSION@ \
-	-lgstaudio-@GST_API_VERSION@ \
-	-lgsttag-@GST_API_VERSION@ \
-	-lgstvideo-@GST_API_VERSION@
+	-lgstriff-@GST_MAJORMINOR@ \
+	-lgstaudio-@GST_MAJORMINOR@ \
+	-lgsttag-@GST_MAJORMINOR@
 
 libgstavi_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
 libgstavi_la_LIBTOOLFLAGS = --tag=disable-static

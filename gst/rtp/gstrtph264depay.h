@@ -22,7 +22,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,7 +42,7 @@ typedef struct _GstRtpH264DepayClass GstRtpH264DepayClass;
 
 struct _GstRtpH264Depay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   gboolean    byte_stream;
 
@@ -61,16 +61,11 @@ struct _GstRtpH264Depay
   guint8 current_fu_type;
   GstClockTime fu_timestamp;
   gboolean fu_marker;
-
-  /* misc */
-  GPtrArray *sps;
-  GPtrArray *pps;
-  gboolean new_codec_data;
 };
 
 struct _GstRtpH264DepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_h264_depay_get_type (void);

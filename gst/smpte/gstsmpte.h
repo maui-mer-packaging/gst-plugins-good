@@ -23,7 +23,6 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstcollectpads.h>
-#include <gst/video/video.h>
 
 G_BEGIN_DECLS
 
@@ -66,8 +65,6 @@ struct _GstSMPTE {
   gdouble        fps;
   gint           fps_num;
   gint           fps_denom;
-  GstVideoInfo   vinfo1;
-  GstVideoInfo   vinfo2;
 
   /* state of the effect */
   gint           position;
@@ -79,7 +76,6 @@ struct _GstSMPTEClass {
   GstElementClass parent_class;
 };
 
-GType gst_smpte_get_type (void);
 gboolean gst_smpte_plugin_init (GstPlugin * plugin);
 
 G_END_DECLS

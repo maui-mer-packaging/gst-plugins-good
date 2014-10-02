@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "gstjackaudioclient.h"
-#include "gstjack.h"
 
 #include <gst/glib-compat-private.h>
 
@@ -44,8 +43,8 @@ static GList *connections;
 typedef struct
 {
   gint refcount;
-  GMutex lock;
-  GCond flush_cond;
+  GMutex *lock;
+  GCond *flush_cond;
 
   /* id/server pair and the connection */
   gchar *id;
@@ -56,10 +55,6 @@ typedef struct
   gint n_clients;
   GList *src_clients;
   GList *sink_clients;
-
-  /* transport state handling */
-  gint cur_ts;
-  GstState transport_state;
 } GstJackAudioConnection;
 
 /* an object sharing a jack_client_t connection. */
@@ -71,12 +66,14 @@ struct _GstJackAudioClient
   gboolean active;
   gboolean deactivate;
 
-  JackShutdownCallback shutdown;
+  void (*shutdown) (void *arg);
   JackProcessCallback process;
   JackBufferSizeCallback buffer_size;
   JackSampleRateCallback sample_rate;
   gpointer user_data;
 };
+
+typedef jack_default_audio_sample_t sample_t;
 
 typedef struct
 {
@@ -84,54 +81,14 @@ typedef struct
   gpointer user_data;
 } JackCB;
 
-static gboolean
-jack_handle_transport_change (GstJackAudioClient * client, GstState state)
-{
-  GstObject *obj = GST_OBJECT_PARENT (client->user_data);
-  guint mode;
-
-  g_object_get (obj, "transport", &mode, NULL);
-  if ((mode & GST_JACK_TRANSPORT_SLAVE) && (GST_STATE (obj) != state)) {
-    GST_INFO_OBJECT (obj, "requesting state change: %s",
-        gst_element_state_get_name (state));
-    gst_element_post_message (GST_ELEMENT (obj),
-        gst_message_new_request_state (obj, state));
-    return TRUE;
-  }
-  return FALSE;
-}
-
 static int
 jack_process_cb (jack_nframes_t nframes, void *arg)
 {
   GstJackAudioConnection *conn = (GstJackAudioConnection *) arg;
   GList *walk;
   int res = 0;
-  jack_transport_state_t ts = jack_transport_query (conn->client, NULL);
 
-  if (ts != conn->cur_ts) {
-    conn->cur_ts = ts;
-    switch (ts) {
-      case JackTransportStopped:
-        GST_DEBUG ("transport state is 'stopped'");
-        conn->transport_state = GST_STATE_PAUSED;
-        break;
-      case JackTransportStarting:
-        GST_DEBUG ("transport state is 'starting'");
-        conn->transport_state = GST_STATE_READY;
-        break;
-      case JackTransportRolling:
-        GST_DEBUG ("transport state is 'rolling'");
-        conn->transport_state = GST_STATE_PLAYING;
-        break;
-      default:
-        break;
-    }
-    GST_DEBUG ("num of clients: src=%d, sink=%d",
-        g_list_length (conn->src_clients), g_list_length (conn->sink_clients));
-  }
-
-  g_mutex_lock (&conn->lock);
+  g_mutex_lock (conn->lock);
   /* call sources first, then sinks. Sources will either push data into the
    * ringbuffer of the sinks, which will then pull the data out of it, or
    * sinks will pull the data from the sources. */
@@ -143,7 +100,7 @@ jack_process_cb (jack_nframes_t nframes, void *arg)
       res = client->process (nframes, client->user_data);
       if (client->deactivate) {
         client->deactivate = FALSE;
-        g_cond_signal (&conn->flush_cond);
+        g_cond_signal (conn->flush_cond);
       }
     }
   }
@@ -155,32 +112,11 @@ jack_process_cb (jack_nframes_t nframes, void *arg)
       res = client->process (nframes, client->user_data);
       if (client->deactivate) {
         client->deactivate = FALSE;
-        g_cond_signal (&conn->flush_cond);
+        g_cond_signal (conn->flush_cond);
       }
     }
   }
-
-  /* handle transport state requisition, do sinks first, stop after the first
-   * element that handled it */
-  if (conn->transport_state != GST_STATE_VOID_PENDING) {
-    for (walk = conn->sink_clients; walk; walk = g_list_next (walk)) {
-      if (jack_handle_transport_change ((GstJackAudioClient *) walk->data,
-              conn->transport_state)) {
-        conn->transport_state = GST_STATE_VOID_PENDING;
-        break;
-      }
-    }
-  }
-  if (conn->transport_state != GST_STATE_VOID_PENDING) {
-    for (walk = conn->src_clients; walk; walk = g_list_next (walk)) {
-      if (jack_handle_transport_change ((GstJackAudioClient *) walk->data,
-              conn->transport_state)) {
-        conn->transport_state = GST_STATE_VOID_PENDING;
-        break;
-      }
-    }
-  }
-  g_mutex_unlock (&conn->lock);
+  g_mutex_unlock (conn->lock);
 
   return res;
 }
@@ -208,7 +144,7 @@ jack_shutdown_cb (void *arg)
   GST_DEBUG ("disconnect client %s from server %s", conn->id,
       GST_STR_NULL (conn->server));
 
-  g_mutex_lock (&conn->lock);
+  g_mutex_lock (conn->lock);
   for (walk = conn->src_clients; walk; walk = g_list_next (walk)) {
     GstJackAudioClient *client = (GstJackAudioClient *) walk->data;
 
@@ -221,7 +157,7 @@ jack_shutdown_cb (void *arg)
     if (client->shutdown)
       client->shutdown (client->user_data);
   }
-  g_mutex_unlock (&conn->lock);
+  g_mutex_unlock (conn->lock);
 }
 
 typedef struct
@@ -280,16 +216,14 @@ gst_jack_audio_make_connection (const gchar * id, const gchar * server,
   /* now create object */
   conn = g_new (GstJackAudioConnection, 1);
   conn->refcount = 1;
-  g_mutex_init (&conn->lock);
-  g_cond_init (&conn->flush_cond);
+  conn->lock = g_mutex_new ();
+  conn->flush_cond = g_cond_new ();
   conn->id = g_strdup (id);
   conn->server = g_strdup (server);
   conn->client = jclient;
   conn->n_clients = 0;
   conn->src_clients = NULL;
   conn->sink_clients = NULL;
-  conn->cur_ts = -1;
-  conn->transport_state = GST_STATE_VOID_PENDING;
 
   /* set our callbacks  */
   jack_set_process_callback (jclient, jack_process_cb, conn);
@@ -299,7 +233,6 @@ gst_jack_audio_make_connection (const gchar * id, const gchar * server,
   jack_on_shutdown (jclient, jack_shutdown_cb, conn);
 
   /* all callbacks are set, activate the client */
-  GST_INFO ("activate jack_client %p", jclient);
   if ((res = jack_activate (jclient)))
     goto could_not_activate;
 
@@ -317,7 +250,7 @@ could_not_activate:
   {
     GST_ERROR ("Could not activate client (%d)", res);
     *status = JackFailure;
-    g_mutex_clear (&conn->lock);
+    g_mutex_free (conn->lock);
     g_free (conn->id);
     g_free (conn->server);
     g_free (conn);
@@ -394,7 +327,6 @@ gst_jack_audio_unref_connection (GstJackAudioConnection * conn)
      *      waiting for the JACK thread, and can thus cause deadlock in 
      *      jack_process_cb()
      */
-    GST_INFO ("deactivate jack_client %p", conn->client);
     if ((res = jack_deactivate (conn->client))) {
       /* we only warn, this means the server is probably shut down and the client
        * is gone anyway. */
@@ -407,8 +339,8 @@ gst_jack_audio_unref_connection (GstJackAudioConnection * conn)
     }
 
     /* free resources */
-    g_mutex_clear (&conn->lock);
-    g_cond_clear (&conn->flush_cond);
+    g_mutex_free (conn->lock);
+    g_cond_free (conn->flush_cond);
     g_free (conn->id);
     g_free (conn->server);
     g_free (conn);
@@ -419,7 +351,7 @@ static void
 gst_jack_audio_connection_add_client (GstJackAudioConnection * conn,
     GstJackAudioClient * client)
 {
-  g_mutex_lock (&conn->lock);
+  g_mutex_lock (conn->lock);
   switch (client->type) {
     case GST_JACK_CLIENT_SOURCE:
       conn->src_clients = g_list_append (conn->src_clients, client);
@@ -433,14 +365,14 @@ gst_jack_audio_connection_add_client (GstJackAudioConnection * conn,
       g_warning ("trying to add unknown client type");
       break;
   }
-  g_mutex_unlock (&conn->lock);
+  g_mutex_unlock (conn->lock);
 }
 
 static void
 gst_jack_audio_connection_remove_client (GstJackAudioConnection * conn,
     GstJackAudioClient * client)
 {
-  g_mutex_lock (&conn->lock);
+  g_mutex_lock (conn->lock);
   switch (client->type) {
     case GST_JACK_CLIENT_SOURCE:
       conn->src_clients = g_list_remove (conn->src_clients, client);
@@ -454,7 +386,7 @@ gst_jack_audio_connection_remove_client (GstJackAudioConnection * conn,
       g_warning ("trying to remove unknown client type");
       break;
   }
-  g_mutex_unlock (&conn->lock);
+  g_mutex_unlock (conn->lock);
 }
 
 /**
@@ -579,36 +511,17 @@ gst_jack_audio_client_set_active (GstJackAudioClient * client, gboolean active)
   g_return_val_if_fail (client != NULL, -1);
 
   /* make sure that we are not dispatching the client */
-  g_mutex_lock (&client->conn->lock);
+  g_mutex_lock (client->conn->lock);
   if (client->active && !active) {
     /* we need to process once more to flush the port */
     client->deactivate = TRUE;
 
     /* need to wait for process_cb run once more */
     while (client->deactivate)
-      g_cond_wait (&client->conn->flush_cond, &client->conn->lock);
+      g_cond_wait (client->conn->flush_cond, client->conn->lock);
   }
   client->active = active;
-  g_mutex_unlock (&client->conn->lock);
+  g_mutex_unlock (client->conn->lock);
 
   return 0;
-}
-
-/**
- * gst_jack_audio_client_get_transport_state:
- * @client: a #GstJackAudioClient
- *
- * Check the current transport state. The client can use this to request a state
- * change from the application.
- *
- * Returns: the state, %GST_STATE_VOID_PENDING for no change in the transport
- * state
- */
-GstState
-gst_jack_audio_client_get_transport_state (GstJackAudioClient * client)
-{
-  GstState state = client->conn->transport_state;
-
-  client->conn->transport_state = GST_STATE_VOID_PENDING;
-  return state;
 }

@@ -1,7 +1,5 @@
 /* GStreamer
  * Copyright (C) <1999> Erik Walthinsen <omega@cse.ogi.edu>
- * Copyright (C) 2012 Collabora Ltd.
- *	Author : Edward Hervey <edward@collabora.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,7 +24,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 videotestsrc num-buffers=50 ! video/x-raw, framerate='(fraction)'5/1 ! jpegenc ! avimux ! filesink location=mjpeg.avi
+ * gst-launch videotestsrc num-buffers=50 ! video/x-raw-yuv, framerate='(fraction)'5/1 ! jpegenc ! avimux ! filesink location=mjpeg.avi
  * ]| a pipeline to mux 5 JPEG frames per second into a 10 sec. long motion jpeg
  * avi.
  * </refsect2>
@@ -40,7 +38,6 @@
 #include "gstjpegenc.h"
 #include "gstjpeg.h"
 #include <gst/video/video.h>
-#include <gst/video/gstvideometa.h>
 
 /* experimental */
 /* setting smoothig seems to have no effect in libjepeg
@@ -57,6 +54,7 @@ GST_DEBUG_CATEGORY_STATIC (jpegenc_debug);
 /* JpegEnc signals and args */
 enum
 {
+  FRAME_ENCODED,
   /* FILL ME */
   LAST_SIGNAL
 };
@@ -70,36 +68,63 @@ enum
 };
 
 static void gst_jpegenc_reset (GstJpegEnc * enc);
+static void gst_jpegenc_base_init (gpointer g_class);
+static void gst_jpegenc_class_init (GstJpegEnc * klass);
+static void gst_jpegenc_init (GstJpegEnc * jpegenc);
 static void gst_jpegenc_finalize (GObject * object);
+
+static GstFlowReturn gst_jpegenc_chain (GstPad * pad, GstBuffer * buf);
+static gboolean gst_jpegenc_setcaps (GstPad * pad, GstCaps * caps);
+static GstCaps *gst_jpegenc_getcaps (GstPad * pad);
 
 static void gst_jpegenc_resync (GstJpegEnc * jpegenc);
 static void gst_jpegenc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_jpegenc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
+static GstStateChangeReturn gst_jpegenc_change_state (GstElement * element,
+    GstStateChange transition);
 
-static gboolean gst_jpegenc_start (GstVideoEncoder * benc);
-static gboolean gst_jpegenc_stop (GstVideoEncoder * benc);
-static gboolean gst_jpegenc_set_format (GstVideoEncoder * encoder,
-    GstVideoCodecState * state);
-static GstFlowReturn gst_jpegenc_handle_frame (GstVideoEncoder * encoder,
-    GstVideoCodecFrame * frame);
-static gboolean gst_jpegenc_propose_allocation (GstVideoEncoder * encoder,
-    GstQuery * query);
 
-/* static guint gst_jpegenc_signals[LAST_SIGNAL] = { 0 }; */
+static GstElementClass *parent_class = NULL;
+static guint gst_jpegenc_signals[LAST_SIGNAL] = { 0 };
 
-#define gst_jpegenc_parent_class parent_class
-G_DEFINE_TYPE (GstJpegEnc, gst_jpegenc, GST_TYPE_VIDEO_ENCODER);
+GType
+gst_jpegenc_get_type (void)
+{
+  static GType jpegenc_type = 0;
+
+  if (!jpegenc_type) {
+    static const GTypeInfo jpegenc_info = {
+      sizeof (GstJpegEnc),
+      (GBaseInitFunc) gst_jpegenc_base_init,
+      NULL,
+      (GClassInitFunc) gst_jpegenc_class_init,
+      NULL,
+      NULL,
+      sizeof (GstJpegEnc),
+      0,
+      (GInstanceInitFunc) gst_jpegenc_init,
+    };
+
+    jpegenc_type =
+        g_type_register_static (GST_TYPE_ELEMENT, "GstJpegEnc", &jpegenc_info,
+        0);
+  }
+  return jpegenc_type;
+}
 
 /* *INDENT-OFF* */
 static GstStaticPadTemplate gst_jpegenc_sink_pad_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE
-        ("{ I420, YV12, YUY2, UYVY, Y41B, Y42B, YVYU, Y444, "
-         "RGB, BGR, RGBx, xRGB, BGRx, xBGR, GRAY8 }"))
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV
+        ("{ I420, YV12, YUY2, UYVY, Y41B, Y42B, YVYU, Y444 }") "; "
+        GST_VIDEO_CAPS_RGB "; " GST_VIDEO_CAPS_BGR "; "
+        GST_VIDEO_CAPS_RGBx "; " GST_VIDEO_CAPS_xRGB "; "
+        GST_VIDEO_CAPS_BGRx "; " GST_VIDEO_CAPS_xBGR "; "
+        GST_VIDEO_CAPS_GRAY8)
     );
 /* *INDENT-ON* */
 
@@ -113,21 +138,38 @@ GST_STATIC_PAD_TEMPLATE ("src",
     );
 
 static void
-gst_jpegenc_class_init (GstJpegEncClass * klass)
+gst_jpegenc_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_jpegenc_sink_pad_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_jpegenc_src_pad_template);
+  gst_element_class_set_details_simple (element_class, "JPEG image encoder",
+      "Codec/Encoder/Image",
+      "Encode images in JPEG format", "Wim Taymans <wim.taymans@tvd.be>");
+}
+
+static void
+gst_jpegenc_class_init (GstJpegEnc * klass)
 {
   GObjectClass *gobject_class;
-  GstElementClass *element_class;
-  GstVideoEncoderClass *venc_class;
+  GstElementClass *gstelement_class;
 
   gobject_class = (GObjectClass *) klass;
-  element_class = (GstElementClass *) klass;
-  venc_class = (GstVideoEncoderClass *) klass;
+  gstelement_class = (GstElementClass *) klass;
 
   parent_class = g_type_class_peek_parent (klass);
 
-  gobject_class->finalize = gst_jpegenc_finalize;
+  gst_jpegenc_signals[FRAME_ENCODED] =
+      g_signal_new ("frame-encoded", G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstJpegEncClass, frame_encoded), NULL,
+      NULL, g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
+
   gobject_class->set_property = gst_jpegenc_set_property;
   gobject_class->get_property = gst_jpegenc_get_property;
+
 
   g_object_class_install_property (gobject_class, PROP_QUALITY,
       g_param_spec_int ("quality", "Quality", "Quality of encoding",
@@ -148,19 +190,9 @@ gst_jpegenc_class_init (GstJpegEncClass * klass)
           JPEG_DEFAULT_IDCT_METHOD,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_jpegenc_sink_pad_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_jpegenc_src_pad_template));
-  gst_element_class_set_metadata (element_class, "JPEG image encoder",
-      "Codec/Encoder/Image",
-      "Encode images in JPEG format", "Wim Taymans <wim.taymans@tvd.be>");
+  gstelement_class->change_state = gst_jpegenc_change_state;
 
-  venc_class->start = gst_jpegenc_start;
-  venc_class->stop = gst_jpegenc_stop;
-  venc_class->set_format = gst_jpegenc_set_format;
-  venc_class->handle_frame = gst_jpegenc_handle_frame;
-  venc_class->propose_allocation = gst_jpegenc_propose_allocation;
+  gobject_class->finalize = gst_jpegenc_finalize;
 
   GST_DEBUG_CATEGORY_INIT (jpegenc_debug, "jpegenc", 0,
       "JPEG encoding element");
@@ -172,53 +204,44 @@ gst_jpegenc_init_destination (j_compress_ptr cinfo)
   GST_DEBUG ("gst_jpegenc_chain: init_destination");
 }
 
-static void
-ensure_memory (GstJpegEnc * jpegenc)
-{
-  GstMemory *new_memory;
-  GstMapInfo map;
-  gsize old_size, desired_size, new_size;
-  guint8 *new_data;
-  static GstAllocationParams params = { 0, 3, 0, 0, };
-
-  old_size = jpegenc->output_map.size;
-  if (old_size == 0)
-    desired_size = jpegenc->bufsize;
-  else
-    desired_size = old_size * 2;
-
-  /* Our output memory wasn't big enough.
-   * Make a new memory that's twice the size, */
-  new_memory = gst_allocator_alloc (NULL, desired_size, &params);
-  gst_memory_map (new_memory, &map, GST_MAP_READWRITE);
-  new_data = map.data;
-  new_size = map.size;
-
-  /* copy previous data if any */
-  if (jpegenc->output_mem) {
-    memcpy (new_data, jpegenc->output_map.data, old_size);
-    gst_memory_unmap (jpegenc->output_mem, &jpegenc->output_map);
-    gst_memory_unref (jpegenc->output_mem);
-  }
-
-  /* drop it into place, */
-  jpegenc->output_mem = new_memory;
-  jpegenc->output_map = map;
-
-  /* and last, update libjpeg on where to work. */
-  jpegenc->jdest.next_output_byte = new_data + old_size;
-  jpegenc->jdest.free_in_buffer = new_size - old_size;
-}
-
 static boolean
 gst_jpegenc_flush_destination (j_compress_ptr cinfo)
 {
+  GstBuffer *overflow_buffer;
+  guint32 old_buffer_size;
   GstJpegEnc *jpegenc = (GstJpegEnc *) (cinfo->client_data);
+  GstFlowReturn ret;
 
   GST_DEBUG_OBJECT (jpegenc,
       "gst_jpegenc_chain: flush_destination: buffer too small");
 
-  ensure_memory (jpegenc);
+  /* Our output buffer wasn't big enough.
+   * Make a new buffer that's twice the size, */
+  old_buffer_size = GST_BUFFER_SIZE (jpegenc->output_buffer);
+  ret = gst_pad_alloc_buffer_and_set_caps (jpegenc->srcpad,
+      GST_BUFFER_OFFSET_NONE, old_buffer_size * 2,
+      GST_PAD_CAPS (jpegenc->srcpad), &overflow_buffer);
+  /* handle here if needed */
+  if (ret != GST_FLOW_OK) {
+    overflow_buffer = gst_buffer_new_and_alloc (old_buffer_size * 2);
+    gst_buffer_set_caps (overflow_buffer, GST_PAD_CAPS (jpegenc->srcpad));
+  }
+
+  memcpy (GST_BUFFER_DATA (overflow_buffer),
+      GST_BUFFER_DATA (jpegenc->output_buffer), old_buffer_size);
+
+  gst_buffer_copy_metadata (overflow_buffer, jpegenc->output_buffer,
+      GST_BUFFER_COPY_TIMESTAMPS);
+
+  /* drop it into place, */
+  gst_buffer_unref (jpegenc->output_buffer);
+  jpegenc->output_buffer = overflow_buffer;
+
+  /* and last, update libjpeg on where to work. */
+  jpegenc->jdest.next_output_byte =
+      GST_BUFFER_DATA (jpegenc->output_buffer) + old_buffer_size;
+  jpegenc->jdest.free_in_buffer =
+      GST_BUFFER_SIZE (jpegenc->output_buffer) - old_buffer_size;
 
   return TRUE;
 }
@@ -226,38 +249,42 @@ gst_jpegenc_flush_destination (j_compress_ptr cinfo)
 static void
 gst_jpegenc_term_destination (j_compress_ptr cinfo)
 {
-  GstBuffer *outbuf;
   GstJpegEnc *jpegenc = (GstJpegEnc *) (cinfo->client_data);
-
   GST_DEBUG_OBJECT (jpegenc, "gst_jpegenc_chain: term_source");
 
-  gst_memory_unmap (jpegenc->output_mem, &jpegenc->output_map);
-  /* Trim the buffer size. we will push it in the chain function */
-  gst_memory_resize (jpegenc->output_mem, 0,
-      jpegenc->output_map.size - jpegenc->jdest.free_in_buffer);
-  jpegenc->output_map.data = NULL;
-  jpegenc->output_map.size = 0;
+  /* Trim the buffer size and push it. */
+  GST_BUFFER_SIZE (jpegenc->output_buffer) =
+      GST_BUFFER_SIZE (jpegenc->output_buffer) - jpegenc->jdest.free_in_buffer;
 
-  outbuf = gst_buffer_new ();
-  gst_buffer_copy_into (outbuf, jpegenc->current_frame->input_buffer,
-      GST_BUFFER_COPY_METADATA, 0, -1);
-  gst_buffer_append_memory (outbuf, jpegenc->output_mem);
-  jpegenc->output_mem = NULL;
+  g_signal_emit (G_OBJECT (jpegenc), gst_jpegenc_signals[FRAME_ENCODED], 0);
 
-  jpegenc->current_frame->output_buffer = outbuf;
-
-  gst_video_frame_unmap (&jpegenc->current_vframe);
-
-  GST_VIDEO_CODEC_FRAME_SET_SYNC_POINT (jpegenc->current_frame);
-
-  gst_video_encoder_finish_frame (GST_VIDEO_ENCODER (jpegenc),
-      jpegenc->current_frame);
-  jpegenc->current_frame = NULL;
+  jpegenc->last_ret = gst_pad_push (jpegenc->srcpad, jpegenc->output_buffer);
+  jpegenc->output_buffer = NULL;
 }
 
 static void
 gst_jpegenc_init (GstJpegEnc * jpegenc)
 {
+  /* create the sink and src pads */
+  jpegenc->sinkpad =
+      gst_pad_new_from_static_template (&gst_jpegenc_sink_pad_template, "sink");
+  gst_pad_set_chain_function (jpegenc->sinkpad,
+      GST_DEBUG_FUNCPTR (gst_jpegenc_chain));
+  gst_pad_set_getcaps_function (jpegenc->sinkpad,
+      GST_DEBUG_FUNCPTR (gst_jpegenc_getcaps));
+  gst_pad_set_setcaps_function (jpegenc->sinkpad,
+      GST_DEBUG_FUNCPTR (gst_jpegenc_setcaps));
+  gst_element_add_pad (GST_ELEMENT (jpegenc), jpegenc->sinkpad);
+
+  jpegenc->srcpad =
+      gst_pad_new_from_static_template (&gst_jpegenc_src_pad_template, "src");
+  gst_pad_use_fixed_caps (jpegenc->srcpad);
+  gst_element_add_pad (GST_ELEMENT (jpegenc), jpegenc->srcpad);
+
+  /* reset the initial video state */
+  jpegenc->width = -1;
+  jpegenc->height = -1;
+
   /* setup jpeglib */
   memset (&jpegenc->cinfo, 0, sizeof (jpegenc->cinfo));
   memset (&jpegenc->jerr, 0, sizeof (jpegenc->jerr));
@@ -295,6 +322,12 @@ gst_jpegenc_reset (GstJpegEnc * enc)
       enc->row[i][j] = NULL;
     }
   }
+
+  enc->width = -1;
+  enc->height = -1;
+  enc->format = GST_VIDEO_FORMAT_UNKNOWN;
+  enc->fps_den = enc->par_den = 0;
+  enc->height = enc->width = 0;
 }
 
 static void
@@ -304,92 +337,173 @@ gst_jpegenc_finalize (GObject * object)
 
   jpeg_destroy_compress (&filter->cinfo);
 
-  if (filter->input_state)
-    gst_video_codec_state_unref (filter->input_state);
-
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
-static gboolean
-gst_jpegenc_set_format (GstVideoEncoder * encoder, GstVideoCodecState * state)
+static GstCaps *
+gst_jpegenc_getcaps (GstPad * pad)
 {
-  GstJpegEnc *enc = GST_JPEGENC (encoder);
-  gint i;
-  GstVideoInfo *info = &state->info;
-  GstVideoCodecState *output;
+  GstJpegEnc *jpegenc = GST_JPEGENC (gst_pad_get_parent (pad));
+  GstCaps *caps, *othercaps;
+  const GstCaps *templ;
+  gint i, j;
+  GstStructure *structure = NULL;
 
-  if (enc->input_state)
-    gst_video_codec_state_unref (enc->input_state);
-  enc->input_state = gst_video_codec_state_ref (state);
+  /* we want to proxy properties like width, height and framerate from the
+     other end of the element */
+
+  othercaps = gst_pad_peer_get_caps_reffed (jpegenc->srcpad);
+  if (othercaps == NULL ||
+      gst_caps_is_empty (othercaps) || gst_caps_is_any (othercaps)) {
+    caps = gst_caps_copy (gst_pad_get_pad_template_caps (pad));
+    goto done;
+  }
+
+  caps = gst_caps_new_empty ();
+  templ = gst_pad_get_pad_template_caps (pad);
+
+  for (i = 0; i < gst_caps_get_size (templ); i++) {
+    /* pick fields from peer caps */
+    for (j = 0; j < gst_caps_get_size (othercaps); j++) {
+      GstStructure *s = gst_caps_get_structure (othercaps, j);
+      const GValue *val;
+
+      structure = gst_structure_copy (gst_caps_get_structure (templ, i));
+      if ((val = gst_structure_get_value (s, "width")))
+        gst_structure_set_value (structure, "width", val);
+      if ((val = gst_structure_get_value (s, "height")))
+        gst_structure_set_value (structure, "height", val);
+      if ((val = gst_structure_get_value (s, "framerate")))
+        gst_structure_set_value (structure, "framerate", val);
+
+      gst_caps_merge_structure (caps, structure);
+    }
+  }
+
+done:
+
+  gst_caps_replace (&othercaps, NULL);
+  gst_object_unref (jpegenc);
+
+  return caps;
+}
+
+static gboolean
+gst_jpegenc_setcaps (GstPad * pad, GstCaps * caps)
+{
+  GstJpegEnc *enc = GST_JPEGENC (gst_pad_get_parent (pad));
+  GstVideoFormat format;
+  gint width, height;
+  gint fps_num, fps_den;
+  gint par_num, par_den;
+  gint i;
+  GstCaps *othercaps;
+  gboolean ret;
+
+  /* get info from caps */
+  if (!gst_video_format_parse_caps (caps, &format, &width, &height))
+    goto refuse_caps;
+  /* optional; pass along if present */
+  fps_num = fps_den = -1;
+  par_num = par_den = -1;
+  gst_video_parse_caps_framerate (caps, &fps_num, &fps_den);
+  gst_video_parse_caps_pixel_aspect_ratio (caps, &par_num, &par_den);
+
+  if (width == enc->width && height == enc->height && enc->format == format
+      && fps_num == enc->fps_num && fps_den == enc->fps_den
+      && par_num == enc->par_num && par_den == enc->par_den)
+    return TRUE;
+
+  /* store input description */
+  enc->format = format;
+  enc->width = width;
+  enc->height = height;
+  enc->fps_num = fps_num;
+  enc->fps_den = fps_den;
+  enc->par_num = par_num;
+  enc->par_den = par_den;
 
   /* prepare a cached image description  */
-  enc->channels = GST_VIDEO_INFO_N_COMPONENTS (info);
-
+  enc->channels = 3 + (gst_video_format_has_alpha (format) ? 1 : 0);
   /* ... but any alpha is disregarded in encoding */
-  if (GST_VIDEO_INFO_IS_GRAY (info))
+  if (gst_video_format_is_gray (format))
     enc->channels = 1;
-
+  else
+    enc->channels = 3;
   enc->h_max_samp = 0;
   enc->v_max_samp = 0;
   for (i = 0; i < enc->channels; ++i) {
-    enc->cwidth[i] = GST_VIDEO_INFO_COMP_WIDTH (info, i);
-    enc->cheight[i] = GST_VIDEO_INFO_COMP_HEIGHT (info, i);
-    enc->inc[i] = GST_VIDEO_INFO_COMP_PSTRIDE (info, i);
-    enc->h_samp[i] =
-        GST_ROUND_UP_4 (GST_VIDEO_INFO_WIDTH (info)) / enc->cwidth[i];
+    enc->cwidth[i] = gst_video_format_get_component_width (format, i, width);
+    enc->cheight[i] = gst_video_format_get_component_height (format, i, height);
+    enc->offset[i] = gst_video_format_get_component_offset (format, i, width,
+        height);
+    enc->stride[i] = gst_video_format_get_row_stride (format, i, width);
+    enc->inc[i] = gst_video_format_get_pixel_stride (format, i);
+    enc->h_samp[i] = GST_ROUND_UP_4 (width) / enc->cwidth[i];
     enc->h_max_samp = MAX (enc->h_max_samp, enc->h_samp[i]);
-    enc->v_samp[i] =
-        GST_ROUND_UP_4 (GST_VIDEO_INFO_HEIGHT (info)) / enc->cheight[i];
+    enc->v_samp[i] = GST_ROUND_UP_4 (height) / enc->cheight[i];
     enc->v_max_samp = MAX (enc->v_max_samp, enc->v_samp[i]);
   }
   /* samp should only be 1, 2 or 4 */
   g_assert (enc->h_max_samp <= 4);
   g_assert (enc->v_max_samp <= 4);
-
   /* now invert */
   /* maximum is invariant, as one of the components should have samp 1 */
   for (i = 0; i < enc->channels; ++i) {
-    GST_DEBUG ("%d %d", enc->h_samp[i], enc->h_max_samp);
     enc->h_samp[i] = enc->h_max_samp / enc->h_samp[i];
     enc->v_samp[i] = enc->v_max_samp / enc->v_samp[i];
   }
   enc->planar = (enc->inc[0] == 1 && enc->inc[1] == 1 && enc->inc[2] == 1);
 
-  output =
-      gst_video_encoder_set_output_state (encoder,
-      gst_caps_new_empty_simple ("image/jpeg"), state);
-  gst_video_codec_state_unref (output);
+  othercaps = gst_caps_copy (gst_pad_get_pad_template_caps (enc->srcpad));
+  gst_caps_set_simple (othercaps,
+      "width", G_TYPE_INT, enc->width, "height", G_TYPE_INT, enc->height, NULL);
+  if (enc->fps_den > 0)
+    gst_caps_set_simple (othercaps,
+        "framerate", GST_TYPE_FRACTION, enc->fps_num, enc->fps_den, NULL);
+  if (enc->par_den > 0)
+    gst_caps_set_simple (othercaps,
+        "pixel-aspect-ratio", GST_TYPE_FRACTION, enc->par_num, enc->par_den,
+        NULL);
 
-  gst_jpegenc_resync (enc);
+  ret = gst_pad_set_caps (enc->srcpad, othercaps);
+  gst_caps_unref (othercaps);
 
-  return TRUE;
+  if (ret)
+    gst_jpegenc_resync (enc);
+
+  gst_object_unref (enc);
+
+  return ret;
+
+  /* ERRORS */
+refuse_caps:
+  {
+    GST_WARNING_OBJECT (enc, "refused caps %" GST_PTR_FORMAT, caps);
+    gst_object_unref (enc);
+    return FALSE;
+  }
 }
 
 static void
 gst_jpegenc_resync (GstJpegEnc * jpegenc)
 {
-  GstVideoInfo *info;
   gint width, height;
   gint i, j;
 
   GST_DEBUG_OBJECT (jpegenc, "resync");
 
-  if (!jpegenc->input_state)
-    return;
-
-  info = &jpegenc->input_state->info;
-
-  jpegenc->cinfo.image_width = width = GST_VIDEO_INFO_WIDTH (info);
-  jpegenc->cinfo.image_height = height = GST_VIDEO_INFO_HEIGHT (info);
+  jpegenc->cinfo.image_width = width = jpegenc->width;
+  jpegenc->cinfo.image_height = height = jpegenc->height;
   jpegenc->cinfo.input_components = jpegenc->channels;
 
   GST_DEBUG_OBJECT (jpegenc, "width %d, height %d", width, height);
-  GST_DEBUG_OBJECT (jpegenc, "format %d", GST_VIDEO_INFO_FORMAT (info));
+  GST_DEBUG_OBJECT (jpegenc, "format %d", jpegenc->format);
 
-  if (GST_VIDEO_INFO_IS_RGB (info)) {
+  if (gst_video_format_is_rgb (jpegenc->format)) {
     GST_DEBUG_OBJECT (jpegenc, "RGB");
     jpegenc->cinfo.in_color_space = JCS_RGB;
-  } else if (GST_VIDEO_INFO_IS_GRAY (info)) {
+  } else if (gst_video_format_is_gray (jpegenc->format)) {
     GST_DEBUG_OBJECT (jpegenc, "gray");
     jpegenc->cinfo.in_color_space = JCS_GRAYSCALE;
   } else {
@@ -398,7 +512,7 @@ gst_jpegenc_resync (GstJpegEnc * jpegenc)
   }
 
   /* input buffer size as max output */
-  jpegenc->bufsize = GST_VIDEO_INFO_SIZE (info);
+  jpegenc->bufsize = gst_video_format_get_size (jpegenc->format, width, height);
   jpeg_set_defaults (&jpegenc->cinfo);
   jpegenc->cinfo.raw_data_in = TRUE;
   /* duh, libjpeg maps RGB to YUV ... and don't expect some conversion */
@@ -434,40 +548,46 @@ gst_jpegenc_resync (GstJpegEnc * jpegenc)
 }
 
 static GstFlowReturn
-gst_jpegenc_handle_frame (GstVideoEncoder * encoder, GstVideoCodecFrame * frame)
+gst_jpegenc_chain (GstPad * pad, GstBuffer * buf)
 {
+  GstFlowReturn ret;
   GstJpegEnc *jpegenc;
+  guchar *data;
+  gulong size;
   guint height;
   guchar *base[3], *end[3];
-  guint stride[3];
   gint i, j, k;
-  static GstAllocationParams params = { 0, 0, 0, 3, };
 
-  jpegenc = GST_JPEGENC (encoder);
+  jpegenc = GST_JPEGENC (GST_OBJECT_PARENT (pad));
 
-  GST_LOG_OBJECT (jpegenc, "got new frame");
+  if (G_UNLIKELY (jpegenc->width <= 0 || jpegenc->height <= 0))
+    goto not_negotiated;
 
-  if (!gst_video_frame_map (&jpegenc->current_vframe,
-          &jpegenc->input_state->info, frame->input_buffer, GST_MAP_READ))
-    goto invalid_frame;
+  data = GST_BUFFER_DATA (buf);
+  size = GST_BUFFER_SIZE (buf);
 
-  jpegenc->current_frame = frame;
+  GST_LOG_OBJECT (jpegenc, "got buffer of %lu bytes", size);
 
-  height = GST_VIDEO_INFO_HEIGHT (&jpegenc->input_state->info);
+  ret =
+      gst_pad_alloc_buffer_and_set_caps (jpegenc->srcpad,
+      GST_BUFFER_OFFSET_NONE, jpegenc->bufsize, GST_PAD_CAPS (jpegenc->srcpad),
+      &jpegenc->output_buffer);
+
+  if (ret != GST_FLOW_OK)
+    goto done;
+
+  gst_buffer_copy_metadata (jpegenc->output_buffer, buf,
+      GST_BUFFER_COPY_TIMESTAMPS);
+
+  height = jpegenc->height;
 
   for (i = 0; i < jpegenc->channels; i++) {
-    base[i] = GST_VIDEO_FRAME_COMP_DATA (&jpegenc->current_vframe, i);
-    stride[i] = GST_VIDEO_FRAME_COMP_STRIDE (&jpegenc->current_vframe, i);
-    end[i] =
-        base[i] + GST_VIDEO_FRAME_COMP_HEIGHT (&jpegenc->current_vframe,
-        i) * stride[i];
+    base[i] = data + jpegenc->offset[i];
+    end[i] = base[i] + jpegenc->cheight[i] * jpegenc->stride[i];
   }
 
-  jpegenc->output_mem = gst_allocator_alloc (NULL, jpegenc->bufsize, &params);
-  gst_memory_map (jpegenc->output_mem, &jpegenc->output_map, GST_MAP_READWRITE);
-
-  jpegenc->jdest.next_output_byte = jpegenc->output_map.data;
-  jpegenc->jdest.free_in_buffer = jpegenc->output_map.size;
+  jpegenc->jdest.next_output_byte = GST_BUFFER_DATA (jpegenc->output_buffer);
+  jpegenc->jdest.free_in_buffer = GST_BUFFER_SIZE (jpegenc->output_buffer);
 
   /* prepare for raw input */
 #if JPEG_LIB_VERSION >= 70
@@ -485,8 +605,8 @@ gst_jpegenc_handle_frame (GstVideoEncoder * encoder, GstVideoCodecFrame * frame)
       for (k = 0; k < jpegenc->channels; k++) {
         for (j = 0; j < jpegenc->v_samp[k] * DCTSIZE; j++) {
           jpegenc->line[k][j] = base[k];
-          if (base[k] + stride[k] < end[k])
-            base[k] += stride[k];
+          if (base[k] + jpegenc->stride[k] < end[k])
+            base[k] += jpegenc->stride[k];
         }
       }
       jpeg_write_raw_data (&jpegenc->cinfo, jpegenc->line,
@@ -507,8 +627,8 @@ gst_jpegenc_handle_frame (GstVideoEncoder * encoder, GstVideoCodecFrame * frame)
             src += jpegenc->inc[k];
             dst++;
           }
-          if (base[k] + stride[k] < end[k])
-            base[k] += stride[k];
+          if (base[k] + jpegenc->stride[k] < end[k])
+            base[k] += jpegenc->stride[k];
         }
       }
       jpeg_write_raw_data (&jpegenc->cinfo, jpegenc->line,
@@ -516,27 +636,23 @@ gst_jpegenc_handle_frame (GstVideoEncoder * encoder, GstVideoCodecFrame * frame)
     }
   }
 
-  /* This will ensure that gst_jpegenc_term_destination is called */
+  /* This will ensure that gst_jpegenc_term_destination is called; we push
+     the final output buffer from there */
   jpeg_finish_compress (&jpegenc->cinfo);
   GST_LOG_OBJECT (jpegenc, "compressing done");
 
-  return GST_FLOW_OK;
+done:
+  gst_buffer_unref (buf);
 
-invalid_frame:
+  return ret;
+
+/* ERRORS */
+not_negotiated:
   {
-    GST_WARNING_OBJECT (jpegenc, "invalid frame received");
-    gst_video_encoder_finish_frame (encoder, frame);
-    return GST_FLOW_OK;
+    GST_WARNING_OBJECT (jpegenc, "no input format set (no caps on buffer)");
+    ret = GST_FLOW_NOT_NEGOTIATED;
+    goto done;
   }
-}
-
-static gboolean
-gst_jpegenc_propose_allocation (GstVideoEncoder * encoder, GstQuery * query)
-{
-  gst_query_add_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL);
-
-  return GST_VIDEO_ENCODER_CLASS (parent_class)->propose_allocation (encoder,
-      query);
 }
 
 static void
@@ -595,24 +711,34 @@ gst_jpegenc_get_property (GObject * object, guint prop_id, GValue * value,
   GST_OBJECT_UNLOCK (jpegenc);
 }
 
-static gboolean
-gst_jpegenc_start (GstVideoEncoder * benc)
+static GstStateChangeReturn
+gst_jpegenc_change_state (GstElement * element, GstStateChange transition)
 {
-  GstJpegEnc *enc = (GstJpegEnc *) benc;
+  GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
+  GstJpegEnc *filter = GST_JPEGENC (element);
 
-  enc->line[0] = NULL;
-  enc->line[1] = NULL;
-  enc->line[2] = NULL;
+  switch (transition) {
+    case GST_STATE_CHANGE_NULL_TO_READY:
+      GST_DEBUG_OBJECT (element, "setting line buffers");
+      filter->line[0] = NULL;
+      filter->line[1] = NULL;
+      filter->line[2] = NULL;
+      break;
+    default:
+      break;
+  }
 
-  return TRUE;
-}
+  ret = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
+  if (ret == GST_STATE_CHANGE_FAILURE)
+    return ret;
 
-static gboolean
-gst_jpegenc_stop (GstVideoEncoder * benc)
-{
-  GstJpegEnc *enc = (GstJpegEnc *) benc;
+  switch (transition) {
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+      gst_jpegenc_reset (filter);
+      break;
+    default:
+      break;
+  }
 
-  gst_jpegenc_reset (enc);
-
-  return TRUE;
+  return ret;
 }

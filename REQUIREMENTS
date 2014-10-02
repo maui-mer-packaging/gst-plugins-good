@@ -89,10 +89,21 @@ Version:	>= 0.71
 Plugins:	cdio (cdiocddasrc)
 URL:		http://www.gnu.org/software/libcdio/
 
+Package:	ESound
+Version:	>= 0.2.12
+Plugins:	esdsink
+URL:		http://www.gnome.org/
+
 Package:	FLAC
 Version:	== 1.1.2
 Plugins:	flac (flacenc, flacdec)
 URL:		http://flac.sourceforge.net/
+
+Package:	GConf
+Version:	>= 2.0
+Plugins:	gconfelements (gconfvideosink, gconfvideosrc, gconfaudiosink,
+		gconfaudiosrc)
+URL:		http://www.gnome.org/
 
 Package:	HAL
 Version:	>= 0.5.6

@@ -27,7 +27,6 @@
 #include "gstdcaparse.h"
 #include "gstflacparse.h"
 #include "gstmpegaudioparse.h"
-#include "gstwavpackparse.h"
 
 static gboolean
 plugin_init (GstPlugin * plugin)
@@ -46,8 +45,6 @@ plugin_init (GstPlugin * plugin)
       GST_RANK_PRIMARY + 1, GST_TYPE_FLAC_PARSE);
   ret &= gst_element_register (plugin, "mpegaudioparse",
       GST_RANK_PRIMARY + 2, GST_TYPE_MPEG_AUDIO_PARSE);
-  ret &= gst_element_register (plugin, "wavpackparse",
-      GST_RANK_PRIMARY + 1, GST_TYPE_WAVPACK_PARSE);
 
   return ret;
 }
@@ -55,6 +52,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    audioparsers,
+    "audioparsers",
     "Parsers for various audio formats",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN);

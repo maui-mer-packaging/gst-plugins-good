@@ -64,7 +64,7 @@ qtdemux_dump_mvhd (GstQTDemux * qtdemux, GstByteReader * data, int depth)
 
   GST_LOG ("%*s  pref. rate:    %g", depth, "", GET_FP32 (data));
   GST_LOG ("%*s  pref. volume:  %g", depth, "", GET_FP16 (data));
-  gst_byte_reader_skip_unchecked (data, 46);
+  gst_byte_reader_skip (data, 46);
   GST_LOG ("%*s  preview time:  %u", depth, "", GET_UINT32 (data));
   GST_LOG ("%*s  preview dur.:  %u", depth, "", GET_UINT32 (data));
   GST_LOG ("%*s  poster time:   %u", depth, "", GET_UINT32 (data));
@@ -281,7 +281,7 @@ qtdemux_dump_stsd (GstQTDemux * qtdemux, GstByteReader * data, int depth)
       return FALSE;
 
     qt_atom_parser_peek_sub (data, 0, 78, &sub);
-    gst_byte_reader_skip_unchecked (&sub, 6);
+    gst_byte_reader_skip (&sub, 6);
     GST_LOG ("%*s    data reference:%d", depth, "", GET_UINT16 (&sub));
     GST_LOG ("%*s    version/rev.:  %08x", depth, "", GET_UINT32 (&sub));
     fourcc = GET_FOURCC (&sub);
@@ -297,7 +297,7 @@ qtdemux_dump_stsd (GstQTDemux * qtdemux, GstByteReader * data, int depth)
     GST_LOG ("%*s    frame count:   %u", depth, "", GET_UINT16 (&sub));
     /* something is not right with this, it's supposed to be a string but it's
      * not apparently, so just skip this for now */
-    gst_byte_reader_skip_unchecked (&sub, 1 + 31);
+    gst_byte_reader_skip (&sub, 1 + 31);
     GST_LOG ("%*s    compressor:    (skipped)", depth, "");
     GST_LOG ("%*s    depth:         %u", depth, "", GET_UINT16 (&sub));
     GST_LOG ("%*s    color table ID:%u", depth, "", GET_UINT16 (&sub));
@@ -721,28 +721,6 @@ qtdemux_dump_mehd (GstQTDemux * qtdemux, GstByteReader * data, int depth)
 }
 
 gboolean
-qtdemux_dump_tfdt (GstQTDemux * qtdemux, GstByteReader * data, int depth)
-{
-  guint32 version = 0;
-  guint64 decode_time;
-  guint value_size;
-
-  if (!gst_byte_reader_get_uint32_be (data, &version))
-    return FALSE;
-
-  GST_LOG ("%*s  version/flags: %08x", depth, "", version);
-
-  value_size = ((version >> 24) == 1) ? sizeof (guint64) : sizeof (guint32);
-  if (qt_atom_parser_get_offset (data, value_size, &decode_time)) {
-    GST_LOG ("%*s  Track fragment decode time: %" G_GUINT64_FORMAT,
-        depth, "", decode_time);
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
-gboolean
 qtdemux_dump_sdtp (GstQTDemux * qtdemux, GstByteReader * data, int depth)
 {
   guint32 version;
@@ -764,8 +742,6 @@ qtdemux_dump_sdtp (GstQTDemux * qtdemux, GstByteReader * data, int depth)
         ((guint16) (val >> 2)) & 0x3);
     GST_LOG ("%*s     sample_has_redundancy: %d", depth, "",
         ((guint16) (val >> 4)) & 0x3);
-    GST_LOG ("%*s     early display: %d", depth, "",
-        ((guint16) (val >> 6)) & 0x1);
     ++i;
   }
   return TRUE;
@@ -824,7 +800,7 @@ qtdemux_node_dump_foreach (GNode * node, gpointer qtdemux)
 gboolean
 qtdemux_node_dump (GstQTDemux * qtdemux, GNode * node)
 {
-  if (_gst_debug_min < GST_LEVEL_LOG)
+  if (__gst_debug_min < GST_LEVEL_LOG)
     return TRUE;
 
   g_node_traverse (node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,

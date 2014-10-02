@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>flvdemux</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-flactag.html" title="flactag">
 <link rel="next" href="gst-plugins-good-plugins-flvmux.html" title="flvmux">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-flactag.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-flvmux.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -46,10 +46,9 @@
 <a name="gst-plugins-good-plugins-flvdemux.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----GstFlvDemux
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstFlvDemux
 </pre>
 </div>
 <div class="refsect1">
@@ -60,13 +59,13 @@ flvdemux demuxes an FLV file into the different contained streams.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp4953632"></a><h3>Example launch line</h3>
+<a name="idp5348464"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> <span class="gtkdoc opt">-</span>v filesrc location<span class="gtkdoc opt">=/</span>path<span class="gtkdoc opt">/</span>to<span class="gtkdoc opt">/</span>flv <span class="gtkdoc opt">!</span> flvdemux <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> autoaudiosink</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch <span class="gtkdoc opt">-</span>v filesrc location<span class="gtkdoc opt">=/</span>path<span class="gtkdoc opt">/</span>to<span class="gtkdoc opt">/</span>flv <span class="gtkdoc opt">!</span> flvdemux <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> autoaudiosink</pre></td>
       </tr>
     </tbody>
   </table>
@@ -78,7 +77,7 @@ flvdemux demuxes an FLV file into the different contained streams.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp12909744"></a><h3>Element Information</h3>
+<a name="idp15035680"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -101,7 +100,7 @@ flvdemux demuxes an FLV file into the different contained streams.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp2604432"></a><h3>Element Pads</h3>
+<a name="idp9454960"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -156,7 +155,11 @@ flvdemux demuxes an FLV file into the different contained streams.
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> audio/x-raw, format=(string){ U8, S16LE }, layout=(string)interleaved, channels=(int){ 1, 2 }, rate=(int){ 5512, 11025, 22050, 44100 }</td>
+<td> audio/x-raw-int, endianness=(int)1234, channels=(int){ 1, 2 }, width=(int)8, depth=(int)8, rate=(int){ 5512, 11025, 22050, 44100 }, signed=(boolean)false</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, endianness=(int)1234, channels=(int){ 1, 2 }, width=(int)16, depth=(int)16, rate=(int){ 5512, 11025, 22050, 44100 }, signed=(boolean)true</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>

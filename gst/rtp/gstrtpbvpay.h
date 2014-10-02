@@ -21,7 +21,7 @@
 #define __GST_RTP_BV_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbaseaudiopayload.h>
+#include <gst/rtp/gstbasertpaudiopayload.h>
 
 G_BEGIN_DECLS
 
@@ -41,14 +41,14 @@ typedef struct _GstRTPBVPayClass GstRTPBVPayClass;
 
 struct _GstRTPBVPay
 {
-  GstRTPBaseAudioPayload audiopayload;
+  GstBaseRTPAudioPayload audiopayload;
 
   gint mode;
 };
 
 struct _GstRTPBVPayClass
 {
-  GstRTPBaseAudioPayloadClass parent_class;
+  GstBaseRTPAudioPayloadClass parent_class;
 };
 
 GType gst_rtp_bv_pay_get_type (void);

@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>autovideosrc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-autovideosink.html" title="autovideosink">
 <link rel="next" href="gst-plugins-good-plugins-avidemux.html" title="avidemux">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-autovideosink.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-avidemux.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -50,11 +50,10 @@
 <a name="gst-plugins-good-plugins-autovideosrc.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBin.html">GstBin</a>
-                           +----GstAutoVideoSrc
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBin.html">GstBin</a>
+                     +----GstAutoVideoSrc
 </pre>
 </div>
 <div class="refsect1">
@@ -80,13 +79,13 @@ of their element information, and also have a non-zero autoplugging rank.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp7803840"></a><h3>Example launch line</h3>
+<a name="idp11438560"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> <span class="gtkdoc opt">-</span>v <span class="gtkdoc opt">-</span>m autovideosrc <span class="gtkdoc opt">!</span> xvimagesink</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch <span class="gtkdoc opt">-</span>v <span class="gtkdoc opt">-</span>m autovideosrc <span class="gtkdoc opt">!</span> xvimagesink</pre></td>
       </tr>
     </tbody>
   </table>
@@ -98,7 +97,7 @@ of their element information, and also have a non-zero autoplugging rank.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp12168656"></a><h3>Element Information</h3>
+<a name="idp8987104"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -121,7 +120,7 @@ of their element information, and also have a non-zero autoplugging rank.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp9692176"></a><h3>Element Pads</h3>
+<a name="idp6016496"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>

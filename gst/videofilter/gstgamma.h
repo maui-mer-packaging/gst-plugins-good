@@ -54,13 +54,20 @@ struct _GstGamma
   GstVideoFilter videofilter;
 
   /* < private > */
+
+  /* format */
+  GstVideoFormat format;
+  gint width;
+  gint height;
+  gint size;
+
   /* properties */
   gdouble gamma;
 
   /* tables */
   guint8 gamma_table[256];
 
-  void (*process) (GstGamma *gamma, GstVideoFrame *frame);
+  void (*process) (GstGamma *gamma, guint8 *data);
 };
 
 struct _GstGammaClass

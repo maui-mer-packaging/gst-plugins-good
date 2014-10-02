@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>id3demux</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-icydemux.html" title="icydemux">
 <link rel="next" href="gst-plugins-good-plugins-id3v2mux.html" title="id3v2mux">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-icydemux.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-id3v2mux.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,11 +48,10 @@
 <a name="gst-plugins-good-plugins-id3demux.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gsttagdemux.html#GstTagDemux">GstTagDemux</a>
-                           +----GstID3Demux
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gsttagdemux.html#GstTagDemux">GstTagDemux</a>
+                     +----GstID3Demux
 </pre>
 </div>
 <div class="refsect1">
@@ -83,13 +82,13 @@ relied on libid3tag from the MAD project.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp11812912"></a><h3>Example launch line</h3>
+<a name="idp13731648"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> filesrc location<span class="gtkdoc opt">=</span>file<span class="gtkdoc opt">.</span>mp3 <span class="gtkdoc opt">!</span> id3demux <span class="gtkdoc opt">!</span> fakesink <span class="gtkdoc opt">-</span>t</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch filesrc location<span class="gtkdoc opt">=</span>file<span class="gtkdoc opt">.</span>mp3 <span class="gtkdoc opt">!</span> id3demux <span class="gtkdoc opt">!</span> fakesink <span class="gtkdoc opt">-</span>t</pre></td>
       </tr>
     </tbody>
   </table>
@@ -103,7 +102,7 @@ the appropriate mime type set on buffers produced from id3demux.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp12722736"></a><h3>Element Information</h3>
+<a name="idp10807344"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -126,7 +125,7 @@ the appropriate mime type set on buffers produced from id3demux.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp11675920"></a><h3>Element Pads</h3>
+<a name="idp15384912"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -161,7 +160,7 @@ the appropriate mime type set on buffers produced from id3demux.
 </tr>
 <tr>
 <td><p><span class="term">presence</span></p></td>
-<td>always</td>
+<td>sometimes</td>
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>

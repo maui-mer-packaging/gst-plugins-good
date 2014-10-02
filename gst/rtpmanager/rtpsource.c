@@ -39,7 +39,6 @@ enum
 #define DEFAULT_IS_VALIDATED         FALSE
 #define DEFAULT_IS_SENDER            FALSE
 #define DEFAULT_SDES                 NULL
-#define DEFAULT_PROBATION            RTP_DEFAULT_PROBATION
 
 enum
 {
@@ -50,7 +49,6 @@ enum
   PROP_IS_SENDER,
   PROP_SDES,
   PROP_STATS,
-  PROP_PROBATION,
   PROP_LAST
 };
 
@@ -201,12 +199,6 @@ rtp_source_class_init (RTPSourceClass * klass)
           "The stats of this source", GST_TYPE_STRUCTURE,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_PROBATION,
-      g_param_spec_uint ("probation", "Number of probations",
-          "Consecutive packet sequence numbers to accept the source",
-          0, G_MAXUINT, DEFAULT_PROBATION,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
   GST_DEBUG_CATEGORY_INIT (rtp_source_debug, "rtpsource", 0, "RTP Source");
 }
 
@@ -235,11 +227,10 @@ rtp_source_init (RTPSource * src)
    * packets or a valid RTCP packet */
   src->validated = FALSE;
   src->internal = FALSE;
-  src->probation = DEFAULT_PROBATION;
-  src->curr_probation = src->probation;
+  src->probation = RTP_DEFAULT_PROBATION;
   src->closing = FALSE;
 
-  src->sdes = gst_structure_new_empty ("application/x-rtp-source-sdes");
+  src->sdes = gst_structure_new ("application/x-rtp-source-sdes", NULL);
 
   src->payload = -1;
   src->clock_rate = -1;
@@ -250,13 +241,6 @@ rtp_source_init (RTPSource * src)
   src->retained_feedback = g_queue_new ();
 
   rtp_source_reset (src);
-}
-
-static void
-rtp_conflicting_address_free (RTPConflictingAddress * addr)
-{
-  g_object_unref (addr->address);
-  g_free (addr);
 }
 
 static void
@@ -277,18 +261,12 @@ rtp_source_finalize (GObject * object)
 
   gst_caps_replace (&src->caps, NULL);
 
-  g_list_foreach (src->conflicting_addresses,
-      (GFunc) rtp_conflicting_address_free, NULL);
+  g_list_foreach (src->conflicting_addresses, (GFunc) g_free, NULL);
   g_list_free (src->conflicting_addresses);
 
   while ((buffer = g_queue_pop_head (src->retained_feedback)))
     gst_buffer_unref (buffer);
   g_queue_free (src->retained_feedback);
-
-  if (src->rtp_from)
-    g_object_unref (src->rtp_from);
-  if (src->rtcp_from)
-    g_object_unref (src->rtcp_from);
 
   G_OBJECT_CLASS (rtp_source_parent_class)->finalize (object);
 }
@@ -299,7 +277,7 @@ rtp_source_create_stats (RTPSource * src)
   GstStructure *s;
   gboolean is_sender = src->is_sender;
   gboolean internal = src->internal;
-  gchar *address_str;
+  gchar address_str[GST_NETADDRESS_MAX_LEN];
   gboolean have_rb;
   guint8 fractionlost = 0;
   gint32 packetslost = 0;
@@ -328,15 +306,15 @@ rtp_source_create_stats (RTPSource * src)
       "clock-rate", G_TYPE_INT, src->clock_rate, NULL);
 
   /* add address and port */
-  if (src->rtp_from) {
-    address_str = __g_socket_address_to_string (src->rtp_from);
+  if (src->have_rtp_from) {
+    gst_netaddress_to_string (&src->rtp_from, address_str,
+        sizeof (address_str));
     gst_structure_set (s, "rtp-from", G_TYPE_STRING, address_str, NULL);
-    g_free (address_str);
   }
-  if (src->rtcp_from) {
-    address_str = __g_socket_address_to_string (src->rtcp_from);
+  if (src->have_rtcp_from) {
+    gst_netaddress_to_string (&src->rtcp_from, address_str,
+        sizeof (address_str));
     gst_structure_set (s, "rtcp-from", G_TYPE_STRING, address_str, NULL);
-    g_free (address_str);
   }
 
   gst_structure_set (s,
@@ -470,9 +448,6 @@ rtp_source_set_property (GObject * object, guint prop_id,
     case PROP_SSRC:
       src->ssrc = g_value_get_uint (value);
       break;
-    case PROP_PROBATION:
-      src->probation = g_value_get_uint (value);
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -505,9 +480,6 @@ rtp_source_get_property (GObject * object, guint prop_id,
       break;
     case PROP_STATS:
       g_value_take_boxed (value, rtp_source_create_stats (src));
-      break;
-    case PROP_PROBATION:
-      g_value_set_uint (value, src->probation);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -833,13 +805,12 @@ rtp_source_get_sdes_string (RTPSource * src, GstRTCPSDESType type)
  * collistion checking.
  */
 void
-rtp_source_set_rtp_from (RTPSource * src, GSocketAddress * address)
+rtp_source_set_rtp_from (RTPSource * src, GstNetAddress * address)
 {
   g_return_if_fail (RTP_IS_SOURCE (src));
 
-  if (src->rtp_from)
-    g_object_unref (src->rtp_from);
-  src->rtp_from = G_SOCKET_ADDRESS (g_object_ref (address));
+  src->have_rtp_from = TRUE;
+  memcpy (&src->rtp_from, address, sizeof (GstNetAddress));
 }
 
 /**
@@ -851,13 +822,12 @@ rtp_source_set_rtp_from (RTPSource * src, GSocketAddress * address)
  * collistion checking.
  */
 void
-rtp_source_set_rtcp_from (RTPSource * src, GSocketAddress * address)
+rtp_source_set_rtcp_from (RTPSource * src, GstNetAddress * address)
 {
   g_return_if_fail (RTP_IS_SOURCE (src));
 
-  if (src->rtcp_from)
-    g_object_unref (src->rtcp_from);
-  src->rtcp_from = G_SOCKET_ADDRESS (g_object_ref (address));
+  src->have_rtcp_from = TRUE;
+  memcpy (&src->rtcp_from, address, sizeof (GstNetAddress));
 }
 
 static GstFlowReturn
@@ -927,24 +897,20 @@ calculate_jitter (RTPSource * src, GstBuffer * buffer,
   gint32 diff;
   gint clock_rate;
   guint8 pt;
-  GstRTPBuffer rtp = { NULL };
 
   /* get arrival time */
   if ((running_time = arrival->running_time) == GST_CLOCK_TIME_NONE)
     goto no_time;
 
-  gst_rtp_buffer_map (buffer, GST_MAP_READ, &rtp);
-  pt = gst_rtp_buffer_get_payload_type (&rtp);
+  pt = gst_rtp_buffer_get_payload_type (buffer);
 
   GST_LOG ("SSRC %08x got payload %d", src->ssrc, pt);
 
   /* get clockrate */
-  if ((clock_rate = get_clock_rate (src, pt)) == -1) {
-    gst_rtp_buffer_unmap (&rtp);
+  if ((clock_rate = get_clock_rate (src, pt)) == -1)
     goto no_clock_rate;
-  }
 
-  rtptime = gst_rtp_buffer_get_timestamp (&rtp);
+  rtptime = gst_rtp_buffer_get_timestamp (buffer);
 
   /* convert arrival time to RTP timestamp units, truncate to 32 bits, we don't
    * care about the absolute value, just the difference. */
@@ -973,7 +939,6 @@ calculate_jitter (RTPSource * src, GstBuffer * buffer,
   GST_LOG ("rtparrival %u, rtptime %u, clock-rate %d, diff %d, jitter: %f",
       rtparrival, rtptime, clock_rate, diff, (src->stats.jitter) / 16.0);
 
-  gst_rtp_buffer_unmap (&rtp);
   return;
 
   /* ERRORS */
@@ -1056,44 +1021,43 @@ rtp_source_process_rtp (RTPSource * src, GstBuffer * buffer,
   guint16 seqnr, udelta;
   RTPSourceStats *stats;
   guint16 expected;
-  GstRTPBuffer rtp = { NULL };
 
   g_return_val_if_fail (RTP_IS_SOURCE (src), GST_FLOW_ERROR);
   g_return_val_if_fail (GST_IS_BUFFER (buffer), GST_FLOW_ERROR);
 
   stats = &src->stats;
 
-  gst_rtp_buffer_map (buffer, GST_MAP_READ, &rtp);
-  seqnr = gst_rtp_buffer_get_seq (&rtp);
-  gst_rtp_buffer_unmap (&rtp);
+  seqnr = gst_rtp_buffer_get_seq (buffer);
+
+  rtp_source_update_caps (src, GST_BUFFER_CAPS (buffer));
 
   if (stats->cycles == -1) {
     GST_DEBUG ("received first buffer");
     /* first time we heard of this source */
     init_seq (src, seqnr);
     src->stats.max_seq = seqnr - 1;
-    src->curr_probation = src->probation;
+    src->probation = RTP_DEFAULT_PROBATION;
   }
 
   udelta = seqnr - stats->max_seq;
 
   /* if we are still on probation, check seqnum */
-  if (src->curr_probation) {
+  if (src->probation) {
     expected = src->stats.max_seq + 1;
 
     /* when in probation, we require consecutive seqnums */
     if (seqnr == expected) {
       /* expected packet */
       GST_DEBUG ("probation: seqnr %d == expected %d", seqnr, expected);
-      src->curr_probation--;
+      src->probation--;
       src->stats.max_seq = seqnr;
-      if (src->curr_probation == 0) {
+      if (src->probation == 0) {
         GST_DEBUG ("probation done!");
         init_seq (src, seqnr);
       } else {
         GstBuffer *q;
 
-        GST_DEBUG ("probation %d: queue buffer", src->curr_probation);
+        GST_DEBUG ("probation %d: queue buffer", src->probation);
         /* when still in probation, keep packets in a list. */
         g_queue_push_tail (src->packets, buffer);
         /* remove packets from queue if there are too many */
@@ -1128,7 +1092,7 @@ rtp_source_process_rtp (RTPSource * src, GstBuffer * buffer,
     }
   } else {
     /* duplicate or reordered packet, will be filtered by jitterbuffer. */
-    GST_WARNING ("duplicate or reordered packet (seqnr %d)", seqnr);
+    GST_WARNING ("duplicate or reordered packet");
   }
 
   src->stats.octets_received += arrival->payload_len;
@@ -1164,7 +1128,7 @@ bad_sequence:
 probation_seqnum:
   {
     GST_WARNING ("probation: seqnr %d != expected %d", seqnr, expected);
-    src->curr_probation = src->probation;
+    src->probation = RTP_DEFAULT_PROBATION;
     src->stats.max_seq = seqnr;
     gst_buffer_unref (buffer);
     return GST_FLOW_OK;
@@ -1193,16 +1157,12 @@ rtp_source_process_bye (RTPSource * src, const gchar * reason)
   src->received_bye = TRUE;
 }
 
-static gboolean
-set_ssrc (GstBuffer ** buffer, guint idx, RTPSource * src)
+static GstBufferListItem
+set_ssrc (GstBuffer ** buffer, guint group, guint idx, RTPSource * src)
 {
-  GstRTPBuffer rtp = { NULL };
-
   *buffer = gst_buffer_make_writable (*buffer);
-  gst_rtp_buffer_map (*buffer, GST_MAP_WRITE, &rtp);
-  gst_rtp_buffer_set_ssrc (&rtp, src->ssrc);
-  gst_rtp_buffer_unmap (&rtp);
-  return TRUE;
+  gst_rtp_buffer_set_ssrc (*buffer, src->ssrc);
+  return GST_BUFFER_LIST_SKIP_GROUP;
 }
 
 /**
@@ -1231,7 +1191,6 @@ rtp_source_send_rtp (RTPSource * src, gpointer data, gboolean is_list,
   GstBuffer *buffer = NULL;
   guint packets;
   guint32 ssrc;
-  GstRTPBuffer rtp = { NULL };
 
   g_return_val_if_fail (RTP_IS_SOURCE (src), GST_FLOW_ERROR);
   g_return_val_if_fail (is_list || GST_IS_BUFFER (data), GST_FLOW_ERROR);
@@ -1241,32 +1200,24 @@ rtp_source_send_rtp (RTPSource * src, gpointer data, gboolean is_list,
 
     /* We can grab the caps from the first group, since all
      * groups of a buffer list have same caps. */
-    buffer = gst_buffer_list_get (list, 0);
+    buffer = gst_buffer_list_get (list, 0, 0);
     if (!buffer)
       goto no_buffer;
   } else {
     buffer = GST_BUFFER_CAST (data);
   }
+  rtp_source_update_caps (src, GST_BUFFER_CAPS (buffer));
 
   /* we are a sender now */
   src->is_sender = TRUE;
 
   if (is_list) {
-    gint i;
-
     /* Each group makes up a network packet. */
-    packets = gst_buffer_list_length (list);
-    for (i = 0, len = 0; i < packets; i++) {
-      gst_rtp_buffer_map (gst_buffer_list_get (list, i), GST_MAP_READ, &rtp);
-      len += gst_rtp_buffer_get_payload_len (&rtp);
-      gst_rtp_buffer_unmap (&rtp);
-    }
-    /* subsequent info taken from first list member */
-    gst_rtp_buffer_map (gst_buffer_list_get (list, 0), GST_MAP_READ, &rtp);
+    packets = gst_buffer_list_n_groups (list);
+    len = gst_rtp_buffer_list_get_payload_len (list);
   } else {
     packets = 1;
-    gst_rtp_buffer_map (buffer, GST_MAP_READ, &rtp);
-    len = gst_rtp_buffer_get_payload_len (&rtp);
+    len = gst_rtp_buffer_get_payload_len (buffer);
   }
 
   /* update stats for the SR */
@@ -1276,7 +1227,11 @@ rtp_source_send_rtp (RTPSource * src, gpointer data, gboolean is_list,
 
   do_bitrate_estimation (src, running_time, &src->bytes_sent);
 
-  rtptime = gst_rtp_buffer_get_timestamp (&rtp);
+  if (is_list) {
+    rtptime = gst_rtp_buffer_list_get_timestamp (list);
+  } else {
+    rtptime = gst_rtp_buffer_get_timestamp (buffer);
+  }
   ext_rtptime = src->last_rtptime;
   ext_rtptime = gst_rtp_buffer_ext_timestamp (&ext_rtptime, rtptime);
 
@@ -1300,13 +1255,14 @@ rtp_source_send_rtp (RTPSource * src, gpointer data, gboolean is_list,
   src->last_rtptime = ext_rtptime;
 
   /* push packet */
-  if (!src->callbacks.push_rtp) {
-    gst_rtp_buffer_unmap (&rtp);
+  if (!src->callbacks.push_rtp)
     goto no_callback;
-  }
 
-  ssrc = gst_rtp_buffer_get_ssrc (&rtp);
-  gst_rtp_buffer_unmap (&rtp);
+  if (is_list) {
+    ssrc = gst_rtp_buffer_list_get_ssrc (list);
+  } else {
+    ssrc = gst_rtp_buffer_get_ssrc (buffer);
+  }
 
   if (ssrc != src->ssrc) {
     /* the SSRC of the packet is not correct, make a writable buffer and
@@ -1323,7 +1279,7 @@ rtp_source_send_rtp (RTPSource * src, gpointer data, gboolean is_list,
       list = gst_buffer_list_make_writable (list);
       gst_buffer_list_foreach (list, (GstBufferListFunc) set_ssrc, src);
     } else {
-      set_ssrc (&buffer, 0, src);
+      set_ssrc (&buffer, 0, 0, src);
     }
   }
   GST_LOG ("pushing RTP %s %" G_GUINT64_FORMAT, is_list ? "list" : "packet",
@@ -1730,7 +1686,7 @@ rtp_source_get_last_rb (RTPSource * src, guint8 * fractionlost,
  * Returns: TRUE if it was a known conflict, FALSE otherwise
  */
 gboolean
-rtp_source_find_conflicting_address (RTPSource * src, GSocketAddress * address,
+rtp_source_find_conflicting_address (RTPSource * src, GstNetAddress * address,
     GstClockTime time)
 {
   GList *item;
@@ -1739,7 +1695,7 @@ rtp_source_find_conflicting_address (RTPSource * src, GSocketAddress * address,
       item; item = g_list_next (item)) {
     RTPConflictingAddress *known_conflict = item->data;
 
-    if (__g_socket_address_equal (address, known_conflict->address)) {
+    if (gst_netaddress_equal (address, &known_conflict->address)) {
       known_conflict->time = time;
       return TRUE;
     }
@@ -1758,13 +1714,13 @@ rtp_source_find_conflicting_address (RTPSource * src, GSocketAddress * address,
  */
 void
 rtp_source_add_conflicting_address (RTPSource * src,
-    GSocketAddress * address, GstClockTime time)
+    GstNetAddress * address, GstClockTime time)
 {
   RTPConflictingAddress *new_conflict;
 
   new_conflict = g_new0 (RTPConflictingAddress, 1);
 
-  new_conflict->address = G_SOCKET_ADDRESS (g_object_ref (address));
+  memcpy (&new_conflict->address, address, sizeof (GstNetAddress));
   new_conflict->time = time;
 
   src->conflicting_addresses = g_list_prepend (src->conflicting_addresses,
@@ -1795,14 +1751,12 @@ rtp_source_timeout (RTPSource * src, GstClockTime current_time,
     GList *next_item = g_list_next (item);
 
     if (known_conflict->time < current_time - collision_timeout) {
-      gchar *buf;
+      gchar buf[40];
 
       src->conflicting_addresses =
           g_list_delete_link (src->conflicting_addresses, item);
-      buf = __g_socket_address_to_string (known_conflict->address);
+      gst_netaddress_to_string (&known_conflict->address, buf, 40);
       GST_DEBUG ("collision %p timed out: %s", known_conflict, buf);
-      g_free (buf);
-      g_object_unref (known_conflict->address);
       g_free (known_conflict);
     }
     item = next_item;
@@ -1829,8 +1783,8 @@ rtp_source_retain_rtcp_packet (RTPSource * src, GstRTCPPacket * packet,
 {
   GstBuffer *buffer;
 
-  buffer = gst_buffer_copy_region (packet->rtcp->buffer, GST_BUFFER_COPY_MEMORY,
-      packet->offset, (gst_rtcp_packet_get_length (packet) + 1) * 4);
+  buffer = gst_buffer_create_sub (packet->buffer, packet->offset,
+      (gst_rtcp_packet_get_length (packet) + 1) * 4);
 
   GST_BUFFER_TIMESTAMP (buffer) = running_time;
 

@@ -29,7 +29,7 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 audiotestsrc num-buffers=100 ! speexenc ! oggmux ! filesink location=beep.ogg
+ * gst-launch audiotestsrc num-buffers=100 ! speexenc ! oggmux ! filesink location=beep.ogg
  * ]| Encode an Ogg/Speex file.
  * </refsect2>
  */
@@ -52,21 +52,14 @@
 GST_DEBUG_CATEGORY_STATIC (speexenc_debug);
 #define GST_CAT_DEFAULT speexenc_debug
 
-#define FORMAT_STR GST_AUDIO_NE(S16)
-
 static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("audio/x-raw, "
-        "format = (string) " FORMAT_STR ", "
-        "layout = (string) interleaved, "
+    GST_STATIC_CAPS ("audio/x-raw-int, "
         "rate = (int) [ 6000, 48000 ], "
-        "channels = (int) 1; "
-        "audio/x-raw, "
-        "format = (string) " FORMAT_STR ", "
-        "layout = (string) interleaved, "
-        "rate = (int) [ 6000, 48000 ], "
-        "channels = (int) 2, " "channel-mask = (bitmask) 0x3")
+        "channels = (int) [ 1, 2 ], "
+        "endianness = (int) BYTE_ORDER, "
+        "signed = (boolean) TRUE, " "width = (int) 16, " "depth = (int) 16")
     );
 
 static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
@@ -139,24 +132,44 @@ static GstFlowReturn gst_speex_enc_handle_frame (GstAudioEncoder * enc,
     GstBuffer * in_buf);
 static gboolean gst_speex_enc_sink_event (GstAudioEncoder * enc,
     GstEvent * event);
+static GstFlowReturn
+gst_speex_enc_pre_push (GstAudioEncoder * benc, GstBuffer ** buffer);
 
-#define gst_speex_enc_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstSpeexEnc, gst_speex_enc, GST_TYPE_AUDIO_ENCODER,
-    G_IMPLEMENT_INTERFACE (GST_TYPE_TAG_SETTER, NULL);
-    G_IMPLEMENT_INTERFACE (GST_TYPE_PRESET, NULL));
+static void
+gst_speex_enc_setup_interfaces (GType speexenc_type)
+{
+  static const GInterfaceInfo tag_setter_info = { NULL, NULL, NULL };
+
+  g_type_add_interface_static (speexenc_type, GST_TYPE_TAG_SETTER,
+      &tag_setter_info);
+
+  GST_DEBUG_CATEGORY_INIT (speexenc_debug, "speexenc", 0, "Speex encoder");
+}
+
+GST_BOILERPLATE_FULL (GstSpeexEnc, gst_speex_enc, GstAudioEncoder,
+    GST_TYPE_AUDIO_ENCODER, gst_speex_enc_setup_interfaces);
+
+static void
+gst_speex_enc_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (element_class, &src_factory);
+  gst_element_class_add_static_pad_template (element_class, &sink_factory);
+  gst_element_class_set_details_simple (element_class, "Speex audio encoder",
+      "Codec/Encoder/Audio",
+      "Encodes audio in Speex format", "Wim Taymans <wim@fluendo.com>");
+}
 
 static void
 gst_speex_enc_class_init (GstSpeexEncClass * klass)
 {
   GObjectClass *gobject_class;
-  GstElementClass *gstelement_class;
   GstAudioEncoderClass *base_class;
 
   gobject_class = (GObjectClass *) klass;
-  gstelement_class = (GstElementClass *) klass;
   base_class = (GstAudioEncoderClass *) klass;
 
-  gobject_class->finalize = gst_speex_enc_finalize;
   gobject_class->set_property = gst_speex_enc_set_property;
   gobject_class->get_property = gst_speex_enc_get_property;
 
@@ -164,7 +177,8 @@ gst_speex_enc_class_init (GstSpeexEncClass * klass)
   base_class->stop = GST_DEBUG_FUNCPTR (gst_speex_enc_stop);
   base_class->set_format = GST_DEBUG_FUNCPTR (gst_speex_enc_set_format);
   base_class->handle_frame = GST_DEBUG_FUNCPTR (gst_speex_enc_handle_frame);
-  base_class->sink_event = GST_DEBUG_FUNCPTR (gst_speex_enc_sink_event);
+  base_class->event = GST_DEBUG_FUNCPTR (gst_speex_enc_sink_event);
+  base_class->pre_push = GST_DEBUG_FUNCPTR (gst_speex_enc_pre_push);
 
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_QUALITY,
       g_param_spec_float ("quality", "Quality", "Encoding quality",
@@ -211,15 +225,7 @@ gst_speex_enc_class_init (GstSpeexEncClass * klass)
           "The last status message", NULL,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_factory));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sink_factory));
-  gst_element_class_set_static_metadata (gstelement_class,
-      "Speex audio encoder", "Codec/Encoder/Audio",
-      "Encodes audio in Speex format", "Wim Taymans <wim@fluendo.com>");
-
-  GST_DEBUG_CATEGORY_INIT (speexenc_debug, "speexenc", 0, "Speex encoder");
+  gobject_class->finalize = gst_speex_enc_finalize;
 }
 
 static void
@@ -235,7 +241,7 @@ gst_speex_enc_finalize (GObject * object)
 }
 
 static void
-gst_speex_enc_init (GstSpeexEnc * enc)
+gst_speex_enc_init (GstSpeexEnc * enc, GstSpeexEncClass * klass)
 {
   GstAudioEncoder *benc = GST_AUDIO_ENCODER (enc);
 
@@ -251,7 +257,7 @@ gst_speex_enc_start (GstAudioEncoder * benc)
 
   GST_DEBUG_OBJECT (enc, "start");
   speex_bits_init (&enc->bits);
-  enc->tags = gst_tag_list_new_empty ();
+  enc->tags = gst_tag_list_new ();
   enc->header_sent = FALSE;
 
   return TRUE;
@@ -269,8 +275,10 @@ gst_speex_enc_stop (GstAudioEncoder * benc)
     enc->state = NULL;
   }
   speex_bits_destroy (&enc->bits);
-  gst_tag_list_unref (enc->tags);
+  gst_tag_list_free (enc->tags);
   enc->tags = NULL;
+  g_slist_foreach (enc->headers, (GFunc) gst_buffer_unref, NULL);
+  enc->headers = NULL;
 
   gst_tag_setter_reset_tags (GST_TAG_SETTER (enc));
 
@@ -345,12 +353,12 @@ gst_speex_enc_create_metadata_buffer (GstSpeexEnc * enc)
       gst_tag_setter_get_tag_merge_mode (GST_TAG_SETTER (enc)));
 
   if (merged_tags == NULL)
-    merged_tags = gst_tag_list_new_empty ();
+    merged_tags = gst_tag_list_new ();
 
   GST_DEBUG_OBJECT (enc, "merged   tags = %" GST_PTR_FORMAT, merged_tags);
   comments = gst_tag_list_to_vorbiscomment_buffer (merged_tags, NULL,
       0, "Encoded with GStreamer Speexenc");
-  gst_tag_list_unref (merged_tags);
+  gst_tag_list_free (merged_tags);
 
   GST_BUFFER_OFFSET (comments) = 0;
   GST_BUFFER_OFFSET_END (comments) = 0;
@@ -489,6 +497,19 @@ gst_speex_enc_setup (GstSpeexEnc * enc)
   return TRUE;
 }
 
+/* push out the buffer */
+static GstFlowReturn
+gst_speex_enc_push_buffer (GstSpeexEnc * enc, GstBuffer * buffer)
+{
+  guint size;
+
+  size = GST_BUFFER_SIZE (buffer);
+  GST_DEBUG_OBJECT (enc, "pushing output buffer of size %u", size);
+
+  gst_buffer_set_caps (buffer, GST_PAD_CAPS (GST_AUDIO_ENCODER_SRC_PAD (enc)));
+  return gst_pad_push (GST_AUDIO_ENCODER_SRC_PAD (enc), buffer);
+}
+
 static gboolean
 gst_speex_enc_sink_event (GstAudioEncoder * benc, GstEvent * event)
 {
@@ -515,37 +536,28 @@ gst_speex_enc_sink_event (GstAudioEncoder * benc, GstEvent * event)
   }
 
   /* we only peeked, let base class handle it */
-  return GST_AUDIO_ENCODER_CLASS (parent_class)->sink_event (benc, event);
+  return FALSE;
 }
 
 static GstFlowReturn
 gst_speex_enc_encode (GstSpeexEnc * enc, GstBuffer * buf)
 {
   gint frame_size = enc->frame_size;
-  gint bytes = frame_size * 2 * enc->channels, samples;
+  gint bytes = frame_size * 2 * enc->channels, samples, size;
   gint outsize, written, dtx_ret = 0;
-  GstMapInfo map;
-  guint8 *data, *data0 = NULL, *bdata;
-  gsize bsize, size;
+  guint8 *data, *data0 = NULL;
   GstBuffer *outbuf;
   GstFlowReturn ret = GST_FLOW_OK;
 
   if (G_LIKELY (buf)) {
-    gst_buffer_map (buf, &map, GST_MAP_READ);
-    bdata = map.data;
-    bsize = map.size;
+    data = GST_BUFFER_DATA (buf);
+    size = GST_BUFFER_SIZE (buf);
 
-    if (G_UNLIKELY (bsize % bytes)) {
+    if (G_UNLIKELY (size % bytes)) {
       GST_DEBUG_OBJECT (enc, "draining; adding silence samples");
-
-      size = ((bsize / bytes) + 1) * bytes;
+      size = ((size / bytes) + 1) * bytes;
       data0 = data = g_malloc0 (size);
-      memcpy (data, bdata, bsize);
-      gst_buffer_unmap (buf, &map);
-      bdata = NULL;
-    } else {
-      data = bdata;
-      size = bsize;
+      memcpy (data, GST_BUFFER_DATA (buf), GST_BUFFER_SIZE (buf));
     }
   } else {
     GST_DEBUG_OBJECT (enc, "nothing to drain");
@@ -572,30 +584,22 @@ gst_speex_enc_encode (GstSpeexEnc * enc, GstBuffer * buf)
   speex_bits_insert_terminator (&enc->bits);
   outsize = speex_bits_nbytes (&enc->bits);
 
-  if (bdata)
-    gst_buffer_unmap (buf, &map);
-
-#if 0
   ret = gst_pad_alloc_buffer_and_set_caps (GST_AUDIO_ENCODER_SRC_PAD (enc),
       GST_BUFFER_OFFSET_NONE, outsize,
       GST_PAD_CAPS (GST_AUDIO_ENCODER_SRC_PAD (enc)), &outbuf);
 
   if ((GST_FLOW_OK != ret))
     goto done;
-#endif
-  outbuf = gst_buffer_new_allocate (NULL, outsize, NULL);
-  gst_buffer_map (outbuf, &map, GST_MAP_WRITE);
 
-  written = speex_bits_write (&enc->bits, (gchar *) map.data, outsize);
+  written = speex_bits_write (&enc->bits,
+      (gchar *) GST_BUFFER_DATA (outbuf), outsize);
 
   if (G_UNLIKELY (written < outsize)) {
     GST_ERROR_OBJECT (enc, "short write: %d < %d bytes", written, outsize);
+    GST_BUFFER_SIZE (outbuf) = written;
   } else if (G_UNLIKELY (written > outsize)) {
     GST_ERROR_OBJECT (enc, "overrun: %d > %d bytes", written, outsize);
-    written = outsize;
   }
-  gst_buffer_unmap (outbuf, &map);
-  gst_buffer_resize (outbuf, 0, written);
 
   if (!dtx_ret)
     GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_GAP);
@@ -643,14 +647,14 @@ _gst_caps_set_buffer_array (GstCaps * caps, const gchar * field,
   va_start (va, buf);
   /* put buffers in a fixed list */
   while (buf) {
-    g_assert (gst_buffer_is_writable (buf));
+    g_assert (gst_buffer_is_metadata_writable (buf));
 
     /* mark buffer */
-    GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_HEADER);
+    GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_IN_CAPS);
 
     g_value_init (&value, GST_TYPE_BUFFER);
     buf = gst_buffer_copy (buf);
-    GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_HEADER);
+    GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_IN_CAPS);
     gst_value_set_buffer (&value, buf);
     gst_buffer_unref (buf);
     gst_value_array_append_value (&array, &value);
@@ -684,11 +688,12 @@ gst_speex_enc_handle_frame (GstAudioEncoder * benc, GstBuffer * buf)
     GstCaps *caps;
     guchar *data;
     gint data_len;
-    GList *headers;
 
     /* create header buffer */
     data = (guint8 *) speex_header_to_packet (&enc->header, &data_len);
-    buf1 = gst_buffer_new_wrapped (data, data_len);
+    buf1 = gst_buffer_new ();
+    GST_BUFFER_DATA (buf1) = GST_BUFFER_MALLOCDATA (buf1) = data;
+    GST_BUFFER_SIZE (buf1) = data_len;
     GST_BUFFER_OFFSET_END (buf1) = 0;
     GST_BUFFER_OFFSET (buf1) = 0;
 
@@ -703,24 +708,56 @@ gst_speex_enc_handle_frame (GstAudioEncoder * benc, GstBuffer * buf)
     /* negotiate with these caps */
     GST_DEBUG_OBJECT (enc, "here are the caps: %" GST_PTR_FORMAT, caps);
 
-    gst_audio_encoder_set_output_format (GST_AUDIO_ENCODER (enc), caps);
+    gst_buffer_set_caps (buf1, caps);
+    gst_buffer_set_caps (buf2, caps);
+    gst_pad_set_caps (GST_AUDIO_ENCODER_SRC_PAD (enc), caps);
     gst_caps_unref (caps);
 
     /* push out buffers */
     /* store buffers for later pre_push sending */
-    headers = NULL;
+    g_slist_foreach (enc->headers, (GFunc) gst_buffer_unref, NULL);
+    enc->headers = NULL;
     GST_DEBUG_OBJECT (enc, "storing header buffers");
-    headers = g_list_prepend (headers, buf2);
-    headers = g_list_prepend (headers, buf1);
-    gst_audio_encoder_set_headers (benc, headers);
+    enc->headers = g_slist_prepend (enc->headers, buf2);
+    enc->headers = g_slist_prepend (enc->headers, buf1);
 
     enc->header_sent = TRUE;
   }
 
-  GST_DEBUG_OBJECT (enc, "received buffer %p of %" G_GSIZE_FORMAT " bytes", buf,
-      buf ? gst_buffer_get_size (buf) : 0);
+  GST_DEBUG_OBJECT (enc, "received buffer %p of %u bytes", buf,
+      buf ? GST_BUFFER_SIZE (buf) : 0);
 
   ret = gst_speex_enc_encode (enc, buf);
+
+  return ret;
+}
+
+static GstFlowReturn
+gst_speex_enc_pre_push (GstAudioEncoder * benc, GstBuffer ** buffer)
+{
+  GstSpeexEnc *enc;
+  GstFlowReturn ret = GST_FLOW_OK;
+
+  enc = GST_SPEEX_ENC (benc);
+
+  /* FIXME 0.11 ? get rid of this special ogg stuff and have it
+   * put and use 'codec data' in caps like anything else,
+   * with all the usual out-of-band advantage etc */
+  if (G_UNLIKELY (enc->headers)) {
+    GSList *header = enc->headers;
+
+    /* try to push all of these, if we lose one, might as well lose all */
+    while (header) {
+      if (ret == GST_FLOW_OK)
+        ret = gst_speex_enc_push_buffer (enc, header->data);
+      else
+        gst_speex_enc_push_buffer (enc, header->data);
+      header = g_slist_next (header);
+    }
+
+    g_slist_free (enc->headers);
+    enc->headers = NULL;
+  }
 
   return ret;
 }

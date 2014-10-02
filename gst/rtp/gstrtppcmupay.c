@@ -50,60 +50,62 @@ static GstStaticPadTemplate gst_rtp_pcmu_pay_src_template =
         "clock-rate = (int) [1, MAX ], " "encoding-name = (string) \"PCMU\"")
     );
 
-static gboolean gst_rtp_pcmu_pay_setcaps (GstRTPBasePayload * payload,
+static gboolean gst_rtp_pcmu_pay_setcaps (GstBaseRTPPayload * payload,
     GstCaps * caps);
 
-#define gst_rtp_pcmu_pay_parent_class parent_class
-G_DEFINE_TYPE (GstRtpPcmuPay, gst_rtp_pcmu_pay,
-    GST_TYPE_RTP_BASE_AUDIO_PAYLOAD);
+GST_BOILERPLATE (GstRtpPcmuPay, gst_rtp_pcmu_pay, GstBaseRTPAudioPayload,
+    GST_TYPE_BASE_RTP_AUDIO_PAYLOAD);
+
+static void
+gst_rtp_pcmu_pay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_pcmu_pay_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_pcmu_pay_src_template);
+  gst_element_class_set_details_simple (element_class, "RTP PCMU payloader",
+      "Codec/Payloader/Network/RTP",
+      "Payload-encodes PCMU audio into a RTP packet",
+      "Edgard Lima <edgard.lima@indt.org.br>");
+}
 
 static void
 gst_rtp_pcmu_pay_class_init (GstRtpPcmuPayClass * klass)
 {
-  GstElementClass *gstelement_class;
-  GstRTPBasePayloadClass *gstrtpbasepayload_class;
+  GstBaseRTPPayloadClass *gstbasertppayload_class;
 
-  gstelement_class = (GstElementClass *) klass;
-  gstrtpbasepayload_class = (GstRTPBasePayloadClass *) klass;
+  gstbasertppayload_class = (GstBaseRTPPayloadClass *) klass;
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_pcmu_pay_sink_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_pcmu_pay_src_template));
-
-  gst_element_class_set_static_metadata (gstelement_class, "RTP PCMU payloader",
-      "Codec/Payloader/Network/RTP",
-      "Payload-encodes PCMU audio into a RTP packet",
-      "Edgard Lima <edgard.lima@indt.org.br>");
-
-  gstrtpbasepayload_class->set_caps = gst_rtp_pcmu_pay_setcaps;
+  gstbasertppayload_class->set_caps = gst_rtp_pcmu_pay_setcaps;
 }
 
 static void
-gst_rtp_pcmu_pay_init (GstRtpPcmuPay * rtppcmupay)
+gst_rtp_pcmu_pay_init (GstRtpPcmuPay * rtppcmupay, GstRtpPcmuPayClass * klass)
 {
-  GstRTPBaseAudioPayload *rtpbaseaudiopayload;
+  GstBaseRTPAudioPayload *basertpaudiopayload;
 
-  rtpbaseaudiopayload = GST_RTP_BASE_AUDIO_PAYLOAD (rtppcmupay);
+  basertpaudiopayload = GST_BASE_RTP_AUDIO_PAYLOAD (rtppcmupay);
 
-  GST_RTP_BASE_PAYLOAD (rtppcmupay)->clock_rate = 8000;
+  GST_BASE_RTP_PAYLOAD (rtppcmupay)->clock_rate = 8000;
 
-  /* tell rtpbaseaudiopayload that this is a sample based codec */
-  gst_rtp_base_audio_payload_set_sample_based (rtpbaseaudiopayload);
+  /* tell basertpaudiopayload that this is a sample based codec */
+  gst_base_rtp_audio_payload_set_sample_based (basertpaudiopayload);
 
   /* octet-per-sample is 1 for PCM */
-  gst_rtp_base_audio_payload_set_sample_options (rtpbaseaudiopayload, 1);
+  gst_base_rtp_audio_payload_set_sample_options (basertpaudiopayload, 1);
 }
 
 static gboolean
-gst_rtp_pcmu_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
+gst_rtp_pcmu_pay_setcaps (GstBaseRTPPayload * payload, GstCaps * caps)
 {
   gboolean res;
 
   payload->pt = GST_RTP_PAYLOAD_PCMU;
 
-  gst_rtp_base_payload_set_options (payload, "audio", FALSE, "PCMU", 8000);
-  res = gst_rtp_base_payload_set_outcaps (payload, NULL);
+  gst_basertppayload_set_options (payload, "audio", FALSE, "PCMU", 8000);
+  res = gst_basertppayload_set_outcaps (payload, NULL);
 
   return res;
 }

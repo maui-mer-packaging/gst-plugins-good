@@ -18,8 +18,8 @@
  */
 
 #include <gst/gst.h>
+#include <gst/controller/gstcontroller.h>
 #include <gst/controller/gstlfocontrolsource.h>
-#include <gst/controller/gstdirectcontrolbinding.h>
 
 #include <stdlib.h>
 
@@ -64,7 +64,9 @@ main (gint argc, gchar ** argv)
 {
   GstElement *pipeline;
   GstElement *shapewipe;
-  GstControlSource *cs;
+  GstController *ctrl;
+  GstLFOControlSource *csource;
+  GValue val = { 0, };
   GMainLoop *loop;
   GstBus *bus;
   gchar *pipeline_string;
@@ -76,6 +78,7 @@ main (gint argc, gchar ** argv)
   }
 
   gst_init (&argc, &argv);
+  gst_controller_init (&argc, &argv);
 
   if (argc > 2) {
     border = atof (argv[2]);
@@ -83,7 +86,7 @@ main (gint argc, gchar ** argv)
 
   pipeline_string =
       g_strdup_printf
-      ("videotestsrc ! video/x-raw,format=(string)AYUV,width=640,height=480 ! shapewipe name=shape border=%f ! videomixer name=mixer ! videoconvert ! autovideosink     filesrc location=%s ! typefind ! decodebin2 ! videoconvert ! videoscale ! queue ! shape.mask_sink    videotestsrc pattern=snow ! video/x-raw,format=(string)AYUV,width=640,height=480 ! queue ! mixer.",
+      ("videotestsrc ! video/x-raw-yuv,format=(fourcc)AYUV,width=640,height=480 ! shapewipe name=shape border=%f ! videomixer name=mixer ! ffmpegcolorspace ! autovideosink     filesrc location=%s ! typefind ! decodebin2 ! ffmpegcolorspace ! videoscale ! queue ! shape.mask_sink    videotestsrc pattern=snow ! video/x-raw-yuv,format=(fourcc)AYUV,width=640,height=480 ! queue ! mixer.",
       border, argv[1]);
 
   pipeline = gst_parse_launch (pipeline_string, NULL);
@@ -96,17 +99,27 @@ main (gint argc, gchar ** argv)
 
   shapewipe = gst_bin_get_by_name (GST_BIN (pipeline), "shape");
 
-  cs = gst_lfo_control_source_new ();
+  if (!(ctrl = gst_controller_new (G_OBJECT (shapewipe), "position", NULL))) {
+    g_print ("can't control shapewipe element\n");
+    return -3;
+  }
 
-  gst_object_add_control_binding (GST_OBJECT_CAST (shapewipe),
-      gst_direct_control_binding_new (GST_OBJECT_CAST (shapewipe), "position",
-          cs));
+  csource = gst_lfo_control_source_new ();
 
-  g_object_set (cs,
-      "amplitude", 0.5,
-      "offset", 0.5, "frequency", 0.25, "timeshift", 500 * GST_MSECOND, NULL);
+  gst_controller_set_control_source (ctrl, "position",
+      GST_CONTROL_SOURCE (csource));
 
-  g_object_unref (cs);
+  g_value_init (&val, G_TYPE_FLOAT);
+  g_value_set_float (&val, 0.5);
+  g_object_set (G_OBJECT (csource), "amplitude", &val, NULL);
+  g_value_set_float (&val, 0.5);
+  g_object_set (G_OBJECT (csource), "offset", &val, NULL);
+  g_value_unset (&val);
+
+  g_object_set (G_OBJECT (csource), "frequency", 0.25, NULL);
+  g_object_set (G_OBJECT (csource), "timeshift", 500 * GST_MSECOND, NULL);
+
+  g_object_unref (csource);
 
   loop = g_main_loop_new (NULL, FALSE);
 
@@ -127,6 +140,7 @@ main (gint argc, gchar ** argv)
 
   g_main_loop_unref (loop);
 
+  g_object_unref (G_OBJECT (ctrl));
   gst_object_unref (G_OBJECT (pipeline));
 
   return 0;

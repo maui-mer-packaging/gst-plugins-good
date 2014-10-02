@@ -36,7 +36,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -t filesrc location=file.mpc ! apedemux ! fakesink
+ * gst-launch -t filesrc location=file.mpc ! apedemux ! fakesink
  * ]| This pipeline should read any available APE tag information and output it.
  * The contents of the file inside the APE tag regions should be detected, and
  * the appropriate mime type set on buffers produced from apedemux.
@@ -72,27 +72,30 @@ static GstTagDemuxResult gst_ape_demux_parse_tag (GstTagDemux * demux,
     GstBuffer * buffer, gboolean start_tag, guint * tag_size,
     GstTagList ** tags);
 
-G_DEFINE_TYPE (GstApeDemux, gst_ape_demux, GST_TYPE_TAG_DEMUX);
+GST_BOILERPLATE (GstApeDemux, gst_ape_demux, GstTagDemux, GST_TYPE_TAG_DEMUX);
 
 static void
-gst_ape_demux_class_init (GstApeDemuxClass * klass)
+gst_ape_demux_base_init (gpointer klass)
 {
-  GstElementClass *element_class;
-  GstTagDemuxClass *tagdemux_class;
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
 
-  GST_DEBUG_CATEGORY_INIT (apedemux_debug, "apedemux", 0,
-      "GStreamer APE tag demuxer");
+  gst_element_class_add_static_pad_template (element_class, &sink_factory);
 
-  tagdemux_class = GST_TAG_DEMUX_CLASS (klass);
-  element_class = GST_ELEMENT_CLASS (klass);
-
-  gst_element_class_set_static_metadata (element_class, "APE tag demuxer",
+  gst_element_class_set_details_simple (element_class, "APE tag demuxer",
       "Codec/Demuxer/Metadata",
       "Read and output APE tags while demuxing the contents",
       "Tim-Philipp Müller <tim centricular net>");
 
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&sink_factory));
+  GST_DEBUG_CATEGORY_INIT (apedemux_debug, "apedemux", 0,
+      "GStreamer APE tag demuxer");
+}
+
+static void
+gst_ape_demux_class_init (GstApeDemuxClass * klass)
+{
+  GstTagDemuxClass *tagdemux_class;
+
+  tagdemux_class = GST_TAG_DEMUX_CLASS (klass);
 
   tagdemux_class->identify_tag = GST_DEBUG_FUNCPTR (gst_ape_demux_identify_tag);
   tagdemux_class->parse_tag = GST_DEBUG_FUNCPTR (gst_ape_demux_parse_tag);
@@ -106,7 +109,7 @@ gst_ape_demux_class_init (GstApeDemuxClass * klass)
 }
 
 static void
-gst_ape_demux_init (GstApeDemux * apedemux)
+gst_ape_demux_init (GstApeDemux * apedemux, GstApeDemuxClass * gclass)
 {
   /* nothing to do here */
 }
@@ -162,7 +165,7 @@ ape_demux_get_gst_tag_from_tag (const gchar * ape_tag,
 static GstTagList *
 ape_demux_parse_tags (const guint8 * data, gint size)
 {
-  GstTagList *taglist = gst_tag_list_new_empty ();
+  GstTagList *taglist = gst_tag_list_new ();
 
   GST_LOG ("Reading tags from chunk of size %u bytes", size);
 
@@ -288,14 +291,15 @@ ape_demux_parse_tags (const guint8 * data, gint size)
           break;
         }
         default:{
-          if (gst_tag_type == G_TYPE_DATE) {
+          if (gst_tag_type == GST_TYPE_DATE) {
             gint v_int;
 
             if (sscanf (val, "%d", &v_int) == 1) {
               GDate *date = g_date_new_dmy (1, 1, v_int);
 
-              g_value_init (&v, G_TYPE_DATE);
-              g_value_take_boxed (&v, date);
+              g_value_init (&v, GST_TYPE_DATE);
+              gst_value_set_date (&v, date);
+              g_date_free (date);
             }
           } else {
             GST_WARNING ("Unhandled tag type '%s' for tag '%s'",
@@ -328,23 +332,16 @@ static gboolean
 gst_ape_demux_identify_tag (GstTagDemux * demux, GstBuffer * buffer,
     gboolean start_tag, guint * tag_size)
 {
-  GstMapInfo map;
-
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
-
-  if (memcmp (map.data, "APETAGEX", 8) != 0) {
+  if (memcmp (GST_BUFFER_DATA (buffer), "APETAGEX", 8) != 0) {
     GST_DEBUG_OBJECT (demux, "No APETAGEX marker at %s - not an APE file",
         (start_tag) ? "start" : "end");
-    gst_buffer_unmap (buffer, &map);
     return FALSE;
   }
 
-  *tag_size = GST_READ_UINT32_LE (map.data + 12);
+  *tag_size = GST_READ_UINT32_LE (GST_BUFFER_DATA (buffer) + 12);
 
   /* size is without header, so add 32 to account for that */
   *tag_size += 32;
-
-  gst_buffer_unmap (buffer, &map);
 
   return TRUE;
 }
@@ -353,22 +350,17 @@ static GstTagDemuxResult
 gst_ape_demux_parse_tag (GstTagDemux * demux, GstBuffer * buffer,
     gboolean start_tag, guint * tag_size, GstTagList ** tags)
 {
-  guint8 *data;
-  guint8 *footer;
+  const guint8 *data;
+  const guint8 *footer;
   gboolean have_header;
   gboolean end_tag = !start_tag;
   GstCaps *sink_caps;
   guint version, footer_size;
-  GstMapInfo map;
-  gsize size;
 
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
-  data = map.data;
-  size = map.size;
+  GST_LOG_OBJECT (demux, "Parsing buffer of size %u", GST_BUFFER_SIZE (buffer));
 
-  GST_LOG_OBJECT (demux, "Parsing buffer of size %" G_GSIZE_FORMAT, size);
-
-  footer = data + size - 32;
+  data = GST_BUFFER_DATA (buffer);
+  footer = GST_BUFFER_DATA (buffer) + GST_BUFFER_SIZE (buffer) - 32;
 
   GST_LOG_OBJECT (demux, "Checking for footer at offset 0x%04x",
       (guint) (footer - data));
@@ -427,8 +419,6 @@ gst_ape_demux_parse_tag (GstTagDemux * demux, GstBuffer * buffer,
       GST_TAG_CONTAINER_FORMAT, sink_caps);
   gst_caps_unref (sink_caps);
 
-  gst_buffer_unmap (buffer, &map);
-
   return GST_TAG_DEMUX_RESULT_OK;
 }
 
@@ -441,6 +431,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    apetag,
+    "apetag",
     "APEv1/2 tag reader",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

@@ -33,13 +33,17 @@
 GST_DEBUG_CATEGORY_STATIC (gst_ebml_write_debug);
 #define GST_CAT_DEFAULT gst_ebml_write_debug
 
-#define _do_init \
+#define _do_init(thing) \
       GST_DEBUG_CATEGORY_INIT (gst_ebml_write_debug, "ebmlwrite", 0, "Write EBML structured data")
-#define parent_class gst_ebml_write_parent_class
-G_DEFINE_TYPE_WITH_CODE (GstEbmlWrite, gst_ebml_write, GST_TYPE_OBJECT,
+GST_BOILERPLATE_FULL (GstEbmlWrite, gst_ebml_write, GstObject, GST_TYPE_OBJECT,
     _do_init);
 
 static void gst_ebml_write_finalize (GObject * object);
+
+static void
+gst_ebml_write_base_init (gpointer g_class)
+{
+}
 
 static void
 gst_ebml_write_class_init (GstEbmlWriteClass * klass)
@@ -50,11 +54,11 @@ gst_ebml_write_class_init (GstEbmlWriteClass * klass)
 }
 
 static void
-gst_ebml_write_init (GstEbmlWrite * ebml)
+gst_ebml_write_init (GstEbmlWrite * ebml, GstEbmlWriteClass * klass)
 {
   ebml->srcpad = NULL;
   ebml->pos = 0;
-  ebml->last_pos = G_MAXUINT64; /* force segment event */
+  ebml->last_pos = G_MAXUINT64; /* force newsegment event */
 
   ebml->cache = NULL;
   ebml->streamheader = NULL;
@@ -85,7 +89,7 @@ gst_ebml_write_finalize (GObject * object)
     ebml->caps = NULL;
   }
 
-  G_OBJECT_CLASS (parent_class)->finalize (object);
+  GST_CALL_PARENT (G_OBJECT_CLASS, finalize, (object));
 }
 
 
@@ -122,7 +126,7 @@ void
 gst_ebml_write_reset (GstEbmlWrite * ebml)
 {
   ebml->pos = 0;
-  ebml->last_pos = G_MAXUINT64; /* force segment event */
+  ebml->last_pos = G_MAXUINT64; /* force newsegment event */
 
   if (ebml->cache) {
     gst_byte_writer_free (ebml->cache);
@@ -178,8 +182,7 @@ gst_ebml_stop_streamheader (GstEbmlWrite * ebml)
 
   buffer = gst_byte_writer_free_and_get_buffer (ebml->streamheader);
   ebml->streamheader = NULL;
-  GST_DEBUG ("Streamheader was size %" G_GSIZE_FORMAT,
-      gst_buffer_get_size (buffer));
+  GST_DEBUG ("Streamheader was size %d", GST_BUFFER_SIZE (buffer));
 
   ebml->writing_streamheader = FALSE;
   return buffer;
@@ -208,19 +211,14 @@ gst_ebml_write_set_cache (GstEbmlWrite * ebml, guint size)
 }
 
 static gboolean
-gst_ebml_writer_send_segment_event (GstEbmlWrite * ebml, guint64 new_pos)
+gst_ebml_writer_send_new_segment_event (GstEbmlWrite * ebml, guint64 new_pos)
 {
-  GstSegment segment;
   gboolean res;
 
   GST_INFO ("seeking to %" G_GUINT64_FORMAT, new_pos);
 
-  gst_segment_init (&segment, GST_FORMAT_BYTES);
-  segment.start = new_pos;
-  segment.stop = -1;
-  segment.position = 0;
-
-  res = gst_pad_push_event (ebml->srcpad, gst_event_new_segment (&segment));
+  res = gst_pad_push_event (ebml->srcpad,
+      gst_event_new_new_segment (FALSE, 1.0, GST_FORMAT_BYTES, new_pos, -1, 0));
 
   if (!res)
     GST_WARNING ("seek to %" G_GUINT64_FORMAT "failed", new_pos);
@@ -246,18 +244,18 @@ gst_ebml_write_flush_cache (GstEbmlWrite * ebml, gboolean is_keyframe,
 
   buffer = gst_byte_writer_free_and_get_buffer (ebml->cache);
   ebml->cache = NULL;
-  GST_DEBUG ("Flushing cache of size %" G_GSIZE_FORMAT,
-      gst_buffer_get_size (buffer));
+  GST_DEBUG ("Flushing cache of size %d", GST_BUFFER_SIZE (buffer));
+  gst_buffer_set_caps (buffer, ebml->caps);
   GST_BUFFER_TIMESTAMP (buffer) = timestamp;
-  GST_BUFFER_OFFSET (buffer) = ebml->pos - gst_buffer_get_size (buffer);
+  GST_BUFFER_OFFSET (buffer) = ebml->pos - GST_BUFFER_SIZE (buffer);
   GST_BUFFER_OFFSET_END (buffer) = ebml->pos;
   if (ebml->last_write_result == GST_FLOW_OK) {
     if (GST_BUFFER_OFFSET (buffer) != ebml->last_pos) {
-      gst_ebml_writer_send_segment_event (ebml, GST_BUFFER_OFFSET (buffer));
+      gst_ebml_writer_send_new_segment_event (ebml, GST_BUFFER_OFFSET (buffer));
       GST_BUFFER_FLAG_SET (buffer, GST_BUFFER_FLAG_DISCONT);
     }
     if (ebml->writing_streamheader) {
-      GST_BUFFER_FLAG_SET (buffer, GST_BUFFER_FLAG_HEADER);
+      GST_BUFFER_FLAG_SET (buffer, GST_BUFFER_FLAG_IN_CAPS);
     }
     if (!is_keyframe) {
       GST_BUFFER_FLAG_SET (buffer, GST_BUFFER_FLAG_DELTA_UNIT);
@@ -281,7 +279,7 @@ gst_ebml_write_flush_cache (GstEbmlWrite * ebml, gboolean is_keyframe,
  * Returns: A new #GstBuffer.
  */
 static GstBuffer *
-gst_ebml_write_element_new (GstEbmlWrite * ebml, GstMapInfo * map, guint size)
+gst_ebml_write_element_new (GstEbmlWrite * ebml, guint8 ** data_out, guint size)
 {
   /* Create new buffer of size + ID + length */
   GstBuffer *buf;
@@ -292,8 +290,7 @@ gst_ebml_write_element_new (GstEbmlWrite * ebml, GstMapInfo * map, guint size)
   buf = gst_buffer_new_and_alloc (size);
   GST_BUFFER_TIMESTAMP (buf) = ebml->timestamp;
 
-  /* FIXME unmap not possible */
-  gst_buffer_map (buf, map, GST_MAP_WRITE);
+  *data_out = GST_BUFFER_DATA (buf);
 
   return buf;
 }
@@ -409,54 +406,42 @@ static void
 gst_ebml_write_element_push (GstEbmlWrite * ebml, GstBuffer * buf,
     guint8 * buf_data, guint8 * buf_data_end)
 {
-  GstMapInfo map;
   guint data_size;
 
-  map.data = NULL;
+  if (!buf_data)
+    buf_data = GST_BUFFER_DATA (buf);
 
-  if (buf_data_end)
+  if (buf_data_end) {
     data_size = buf_data_end - buf_data;
-  else
-    data_size = gst_buffer_get_size (buf);
+    GST_BUFFER_SIZE (buf) = data_size;
+  } else {
+    data_size = GST_BUFFER_SIZE (buf);
+  }
 
   ebml->pos += data_size;
 
   /* if there's no cache, then don't push it! */
   if (ebml->writing_streamheader) {
-    if (!buf_data) {
-      gst_buffer_map (buf, &map, GST_MAP_READ);
-      buf_data = map.data;
-    }
-    if (!gst_byte_writer_put_data (ebml->streamheader, buf_data, data_size))
-      GST_WARNING ("Error writing data to streamheader");
+    gst_byte_writer_put_data (ebml->streamheader, buf_data, data_size);
   }
   if (ebml->cache) {
-    if (!buf_data) {
-      gst_buffer_map (buf, &map, GST_MAP_READ);
-      buf_data = map.data;
-    }
-    if (!gst_byte_writer_put_data (ebml->cache, buf_data, data_size))
-      GST_WARNING ("Error writing data to cache");
-    if (map.data)
-      gst_buffer_unmap (buf, &map);
+    gst_byte_writer_put_data (ebml->cache, buf_data, data_size);
     gst_buffer_unref (buf);
     return;
   }
 
-  if (buf_data && map.data)
-    gst_buffer_unmap (buf, &map);
-
   if (ebml->last_write_result == GST_FLOW_OK) {
-    buf = gst_buffer_make_writable (buf);
+    buf = gst_buffer_make_metadata_writable (buf);
+    gst_buffer_set_caps (buf, ebml->caps);
     GST_BUFFER_OFFSET (buf) = ebml->pos - data_size;
     GST_BUFFER_OFFSET_END (buf) = ebml->pos;
     if (ebml->writing_streamheader) {
-      GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_HEADER);
+      GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_IN_CAPS);
     }
     GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_DELTA_UNIT);
 
     if (GST_BUFFER_OFFSET (buf) != ebml->last_pos) {
-      gst_ebml_writer_send_segment_event (ebml, GST_BUFFER_OFFSET (buf));
+      gst_ebml_writer_send_new_segment_event (ebml, GST_BUFFER_OFFSET (buf));
       GST_BUFFER_FLAG_SET (buf, GST_BUFFER_FLAG_DISCONT);
     }
     ebml->last_pos = ebml->pos;
@@ -569,18 +554,14 @@ gst_ebml_write_uint (GstEbmlWrite * ebml, guint32 id, guint64 num)
   GstBuffer *buf;
   guint8 *data_start, *data_end;
   guint size = gst_ebml_write_get_uint_size (num);
-  GstMapInfo map;
 
-  buf = gst_ebml_write_element_new (ebml, &map, sizeof (num));
-  data_end = data_start = map.data;
+  buf = gst_ebml_write_element_new (ebml, &data_start, sizeof (num));
+  data_end = data_start;
 
   /* write */
   gst_ebml_write_element_id (&data_end, id);
   gst_ebml_write_element_size (&data_end, size);
   gst_ebml_write_set_uint (&data_end, num, size);
-  gst_buffer_unmap (buf, &map);
-  gst_buffer_set_size (buf, (data_end - data_start));
-
   gst_ebml_write_element_push (ebml, buf, data_start, data_end);
 }
 
@@ -598,8 +579,6 @@ gst_ebml_write_sint (GstEbmlWrite * ebml, guint32 id, gint64 num)
 {
   GstBuffer *buf;
   guint8 *data_start, *data_end;
-  GstMapInfo map;
-
   /* if the signed number is on the edge of a extra-byte,
    * then we'll fall over when detecting it. Example: if I
    * have a number (-)0x8000 (G_MINSHORT), then my abs()<<1
@@ -607,8 +586,8 @@ gst_ebml_write_sint (GstEbmlWrite * ebml, guint32 id, gint64 num)
   guint64 unum = (num < 0 ? (-num - 1) << 1 : num << 1);
   guint size = gst_ebml_write_get_uint_size (unum);
 
-  buf = gst_ebml_write_element_new (ebml, &map, sizeof (num));
-  data_end = data_start = map.data;
+  buf = gst_ebml_write_element_new (ebml, &data_start, sizeof (num));
+  data_end = data_start;
 
   /* make unsigned */
   if (num >= 0) {
@@ -623,9 +602,6 @@ gst_ebml_write_sint (GstEbmlWrite * ebml, guint32 id, gint64 num)
   gst_ebml_write_element_id (&data_end, id);
   gst_ebml_write_element_size (&data_end, size);
   gst_ebml_write_set_uint (&data_end, unum, size);
-  gst_buffer_unmap (buf, &map);
-  gst_buffer_set_size (buf, (data_end - data_start));
-
   gst_ebml_write_element_push (ebml, buf, data_start, data_end);
 }
 
@@ -642,19 +618,15 @@ void
 gst_ebml_write_float (GstEbmlWrite * ebml, guint32 id, gdouble num)
 {
   GstBuffer *buf;
-  GstMapInfo map;
   guint8 *data_start, *data_end;
 
-  buf = gst_ebml_write_element_new (ebml, &map, sizeof (num));
-  data_end = data_start = map.data;
+  buf = gst_ebml_write_element_new (ebml, &data_start, sizeof (num));
+  data_end = data_start;
 
   gst_ebml_write_element_id (&data_end, id);
   gst_ebml_write_element_size (&data_end, 8);
   num = GDOUBLE_TO_BE (num);
   gst_ebml_write_element_data (&data_end, (guint8 *) & num, 8);
-  gst_buffer_unmap (buf, &map);
-  gst_buffer_set_size (buf, (data_end - data_start));
-
   gst_ebml_write_element_push (ebml, buf, data_start, data_end);
 }
 
@@ -672,18 +644,14 @@ gst_ebml_write_ascii (GstEbmlWrite * ebml, guint32 id, const gchar * str)
 {
   gint len = strlen (str) + 1;  /* add trailing '\0' */
   GstBuffer *buf;
-  GstMapInfo map;
   guint8 *data_start, *data_end;
 
-  buf = gst_ebml_write_element_new (ebml, &map, len);
-  data_end = data_start = map.data;
+  buf = gst_ebml_write_element_new (ebml, &data_start, len);
+  data_end = data_start;
 
   gst_ebml_write_element_id (&data_end, id);
   gst_ebml_write_element_size (&data_end, len);
   gst_ebml_write_element_data (&data_end, (guint8 *) str, len);
-  gst_buffer_unmap (buf, &map);
-  gst_buffer_set_size (buf, (data_end - data_start));
-
   gst_ebml_write_element_push (ebml, buf, data_start, data_end);
 }
 
@@ -735,18 +703,14 @@ gst_ebml_write_master_start (GstEbmlWrite * ebml, guint32 id)
 {
   guint64 pos = ebml->pos;
   GstBuffer *buf;
-  GstMapInfo map;
   guint8 *data_start, *data_end;
 
-  buf = gst_ebml_write_element_new (ebml, &map, 0);
-  data_end = data_start = map.data;
+  buf = gst_ebml_write_element_new (ebml, &data_start, 0);
+  data_end = data_start;
 
   gst_ebml_write_element_id (&data_end, id);
   pos += data_end - data_start;
   gst_ebml_write_element_size (&data_end, GST_EBML_SIZE_UNKNOWN);
-  gst_buffer_unmap (buf, &map);
-  gst_buffer_set_size (buf, (data_end - data_start));
-
   gst_ebml_write_element_push (ebml, buf, data_start, data_end);
 
   return pos;
@@ -766,12 +730,12 @@ gst_ebml_write_master_finish_full (GstEbmlWrite * ebml, guint64 startpos,
     guint64 extra_size)
 {
   guint64 pos = ebml->pos;
-  guint8 *data = g_malloc (8);
-  GstBuffer *buf = gst_buffer_new_wrapped (data, 8);
+  GstBuffer *buf;
 
   gst_ebml_write_seek (ebml, startpos);
 
-  GST_WRITE_UINT64_BE (data,
+  buf = gst_buffer_new_and_alloc (8);
+  GST_WRITE_UINT64_BE (GST_BUFFER_DATA (buf),
       (G_GINT64_CONSTANT (1) << 56) | (pos - startpos - 8 + extra_size));
 
   gst_ebml_write_element_push (ebml, buf, NULL, NULL);
@@ -798,18 +762,14 @@ gst_ebml_write_binary (GstEbmlWrite * ebml,
     guint32 id, guint8 * binary, guint64 length)
 {
   GstBuffer *buf;
-  GstMapInfo map;
   guint8 *data_start, *data_end;
 
-  buf = gst_ebml_write_element_new (ebml, &map, length);
-  data_end = data_start = map.data;
+  buf = gst_ebml_write_element_new (ebml, &data_start, length);
+  data_end = data_start;
 
   gst_ebml_write_element_id (&data_end, id);
   gst_ebml_write_element_size (&data_end, length);
   gst_ebml_write_element_data (&data_end, binary, length);
-  gst_buffer_unmap (buf, &map);
-  gst_buffer_set_size (buf, (data_end - data_start));
-
   gst_ebml_write_element_push (ebml, buf, data_start, data_end);
 }
 
@@ -831,17 +791,13 @@ void
 gst_ebml_write_buffer_header (GstEbmlWrite * ebml, guint32 id, guint64 length)
 {
   GstBuffer *buf;
-  GstMapInfo map;
   guint8 *data_start, *data_end;
 
-  buf = gst_ebml_write_element_new (ebml, &map, 0);
-  data_end = data_start = map.data;
+  buf = gst_ebml_write_element_new (ebml, &data_start, 0);
+  data_end = data_start;
 
   gst_ebml_write_element_id (&data_end, id);
   gst_ebml_write_element_size (&data_end, length);
-  gst_buffer_unmap (buf, &map);
-  gst_buffer_set_size (buf, (data_end - data_start));
-
   gst_ebml_write_element_push (ebml, buf, data_start, data_end);
 }
 
@@ -879,12 +835,11 @@ void
 gst_ebml_replace_uint (GstEbmlWrite * ebml, guint64 pos, guint64 num)
 {
   guint64 oldpos = ebml->pos;
+  GstBuffer *buf = gst_buffer_new_and_alloc (8);
   guint8 *data_start, *data_end;
-  GstBuffer *buf;
 
-  data_start = g_malloc (8);
+  data_start = GST_BUFFER_DATA (buf);
   data_end = data_start;
-  buf = gst_buffer_new_wrapped (data_start, 8);
 
   gst_ebml_write_seek (ebml, pos);
   gst_ebml_write_set_uint (&data_end, num, 8);

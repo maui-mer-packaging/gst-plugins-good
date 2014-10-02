@@ -26,7 +26,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 videotestsrc num-buffers=3 ! cairorender ! "application/pdf" ! filesink location=test.pdf
+ * gst-launch videotestsrc num-buffers=3 ! cairorender ! "application/pdf" ! filesink location=test.pdf
  * ]|
  * </refsect2>
  */
@@ -351,11 +351,11 @@ gst_cairo_render_base_init (gpointer g_class)
 {
   GstElementClass *ec = GST_ELEMENT_CLASS (g_class);
 
-  gst_element_class_set_static_metadata (ec, "Cairo encoder",
+  gst_element_class_set_details_simple (ec, "Cairo encoder",
       "Codec/Encoder", "Encodes streams using Cairo",
       "Lutz Mueller <lutz@topfrose.de>");
-  gst_element_class_add_pad_template (ec, gst_static_pad_template_get (&t_snk));
-  gst_element_class_add_pad_template (ec, gst_static_pad_template_get (&t_src));
+  gst_element_class_add_static_pad_template (ec, &t_snk);
+  gst_element_class_add_static_pad_template (ec, &t_src);
 }
 
 static void

@@ -4,10 +4,22 @@ else
 AALIB_DIR =
 endif
 
+if USE_ANNODEX
+ANNODEX_DIR = annodex
+else
+ANNODEX_DIR =
+endif
+
 if USE_CAIRO
 CAIRO_DIR = cairo
 else
 CAIRO_DIR =
+endif
+
+if USE_ESD
+ESD_DIR = esd
+else
+ESD_DIR =
 endif
 
 if USE_FLAC
@@ -16,10 +28,22 @@ else
 FLAC_DIR =
 endif
 
+if USE_GCONF
+GCONF_DIR = gconf
+else
+GCONF_DIR =
+endif
+
 if USE_GDK_PIXBUF
 GDK_PIXBUF_DIR = gdk_pixbuf
 else
 GDK_PIXBUF_DIR =
+endif
+
+if USE_HAL
+HAL_DIR = hal
+else
+HAL_DIR =
 endif
 
 if USE_JACK
@@ -45,6 +69,12 @@ LIBDV_DIR = dv
 else
 LIBDV_DIR =
 endif
+
+# if USE_LIBMNG
+# LIBMNG_DIR = libmng
+# else
+LIBMNG_DIR =
+# endif
 
 if USE_LIBPNG
 LIBPNG_DIR = libpng
@@ -95,12 +125,6 @@ else
 TAGLIB_DIR =
 endif
 
-if USE_VPX
-VPX_DIR=vpx
-else
-VPX_DIR=
-endif
-
 if USE_WAVPACK
 WAVPACK_DIR=wavpack
 else
@@ -109,10 +133,14 @@ endif
 
 SUBDIRS = \
 	$(AALIB_DIR) \
+	$(ANNODEX_DIR) \
 	$(CAIRO_DIR) \
 	$(DV1394_DIR) \
+	$(ESD_DIR) \
 	$(FLAC_DIR) \
+	$(GCONF_DIR) \
 	$(GDK_PIXBUF_DIR) \
+	$(HAL_DIR) \
 	$(JACK_DIR) \
 	$(JPEG_DIR) \
 	$(LIBCACA_DIR) \
@@ -125,15 +153,18 @@ SUBDIRS = \
 	$(SOUP_DIR) \
 	$(SPEEX_DIR) \
 	$(TAGLIB_DIR) \
-	$(VPX_DIR) \
 	$(WAVPACK_DIR)
 
 DIST_SUBDIRS = \
 	aalib \
+	annodex \
 	cairo \
 	dv \
+	esd \
 	flac \
+	gconf \
 	gdk_pixbuf \
+	hal \
 	jack \
 	jpeg \
 	libcaca \
@@ -144,7 +175,6 @@ DIST_SUBDIRS = \
 	soup \
 	speex \
 	taglib \
-	vpx \
 	wavpack
 
 include $(top_srcdir)/common/parallel-subdirs.mak

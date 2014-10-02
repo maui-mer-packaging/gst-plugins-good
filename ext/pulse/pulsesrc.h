@@ -30,6 +30,7 @@
 #include <pulse/pulseaudio.h>
 #include <pulse/thread-mainloop.h>
 
+#include "pulsemixerctrl.h"
 #include "pulseprobe.h"
 
 G_BEGIN_DECLS
@@ -68,17 +69,19 @@ struct _GstPulseSrc
   size_t read_buffer_length;
 
   gchar *device_description;
+  GstPulseMixerCtrl *mixer;
   GstPulseProbe *probe;
 
+#ifdef HAVE_PULSE_1_0
   gdouble volume;
   gboolean volume_set:1;
   gboolean mute:1;
   gboolean mute_set:1;
 
   gint notify; /* atomic */
+#endif
 
   gboolean corked:1;
-  gboolean stream_connected:1;
   gboolean operation_success:1;
   gboolean paused:1;
   gboolean in_read:1;

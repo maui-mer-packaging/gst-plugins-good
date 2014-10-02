@@ -34,7 +34,12 @@ gboolean have_eos = FALSE;
 GstPad *mysrcpad, *mysinkpad;
 
 #define VIDEO_CAPS_TEMPLATE_STRING \
-  GST_VIDEO_CAPS_MAKE ("{ I420, AYUV, YUY2, UYVY, YVYU, xRGB }")
+  GST_VIDEO_CAPS_YUV ("I420") ";" \
+  GST_VIDEO_CAPS_YUV ("AYUV") ";" \
+  GST_VIDEO_CAPS_YUV ("YUY2") ";" \
+  GST_VIDEO_CAPS_YUV ("UYVY") ";" \
+  GST_VIDEO_CAPS_YUV ("YVYU") ";" \
+  GST_VIDEO_CAPS_xRGB
 
 static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
@@ -56,9 +61,9 @@ setup_filter (const gchar * name, const gchar * prop, va_list var_args)
   GST_DEBUG ("setup_element");
   element = gst_check_setup_element (name);
   g_object_set_valist (G_OBJECT (element), prop, var_args);
-  mysrcpad = gst_check_setup_src_pad (element, &srctemplate);
+  mysrcpad = gst_check_setup_src_pad (element, &srctemplate, NULL);
   gst_pad_set_active (mysrcpad, TRUE);
-  mysinkpad = gst_check_setup_sink_pad (element, &sinktemplate);
+  mysinkpad = gst_check_setup_sink_pad (element, &sinktemplate, NULL);
   gst_pad_set_active (mysinkpad, TRUE);
 
   return element;
@@ -81,23 +86,17 @@ check_filter_caps (const gchar * name, GstCaps * caps, gint size,
   GstElement *filter;
   GstBuffer *inbuffer, *outbuffer;
   gint i;
-  GstSegment segment;
 
   filter = setup_filter (name, prop, varargs);
   fail_unless (gst_element_set_state (filter,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
       "could not set to playing");
 
-  /* ensure segment (format) properly setup */
-  gst_segment_init (&segment, GST_FORMAT_TIME);
-  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_segment (&segment)));
-
-  gst_pad_set_caps (mysrcpad, caps);
-
   for (i = 0; i < num_buffers; ++i) {
     inbuffer = gst_buffer_new_and_alloc (size);
     /* makes valgrind's memcheck happier */
-    gst_buffer_memset (inbuffer, 0, 0, size);
+    memset (GST_BUFFER_DATA (inbuffer), 0, GST_BUFFER_SIZE (inbuffer));
+    gst_buffer_set_caps (inbuffer, caps);
     GST_BUFFER_TIMESTAMP (inbuffer) = 0;
     ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
     fail_unless (gst_pad_push (mysrcpad, inbuffer) == GST_FLOW_OK);
@@ -112,7 +111,7 @@ check_filter_caps (const gchar * name, GstCaps * caps, gint size,
 
     switch (i) {
       case 0:
-        fail_unless (gst_buffer_get_size (outbuffer) == size);
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == size);
         /* no check on filter operation itself */
         break;
       default:
@@ -141,32 +140,30 @@ check_filter (const gchar * name, gint num_buffers, const gchar * prop, ...)
   385, 289}, {
   385, 385}};
   gint i, n, r;
+  GstVideoFormat format;
   gint size;
-  GstCaps *allcaps, *templ = gst_caps_from_string (VIDEO_CAPS_TEMPLATE_STRING);
+  GstCaps *templ = gst_caps_from_string (VIDEO_CAPS_TEMPLATE_STRING);
   va_list varargs;
 
-  allcaps = gst_caps_normalize (templ);
-
-  n = gst_caps_get_size (allcaps);
+  n = gst_caps_get_size (templ);
 
   for (i = 0; i < n; i++) {
-    GstStructure *s = gst_caps_get_structure (allcaps, i);
+    GstStructure *s = gst_caps_get_structure (templ, i);
     GstCaps *caps = gst_caps_new_empty ();
 
     gst_caps_append_structure (caps, gst_structure_copy (s));
 
     /* try various resolutions */
     for (r = 0; r < G_N_ELEMENTS (resolutions); ++r) {
-      GstVideoInfo info;
-
       caps = gst_caps_make_writable (caps);
       gst_caps_set_simple (caps, "width", G_TYPE_INT, resolutions[r].width,
           "height", G_TYPE_INT, resolutions[r].height,
           "framerate", GST_TYPE_FRACTION, 25, 1, NULL);
 
       GST_DEBUG ("Testing with caps: %" GST_PTR_FORMAT, caps);
-      gst_video_info_from_caps (&info, caps);
-      size = GST_VIDEO_INFO_SIZE (&info);
+      gst_video_format_parse_caps (caps, &format, NULL, NULL);
+      size = gst_video_format_get_size (format, resolutions[r].width,
+          resolutions[r].height);
 
       va_start (varargs, prop);
       check_filter_caps (name, caps, size, num_buffers, prop, varargs);
@@ -176,7 +173,7 @@ check_filter (const gchar * name, gint num_buffers, const gchar * prop, ...)
     gst_caps_unref (caps);
   }
 
-  gst_caps_unref (allcaps);
+  gst_caps_unref (templ);
 }
 
 GST_START_TEST (test_videobalance)

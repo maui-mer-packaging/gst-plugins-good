@@ -345,18 +345,15 @@ got_buffer (GstElement * fakesink, GstBuffer * buf, GstPad * pad,
     gpointer user_data)
 {
   GstStructure *s;
-  GstCaps *caps;
 
   /* Caps can be anything if we don't except icy caps */
   if (!icy_caps)
     return;
 
   /* Otherwise they _must_ be "application/x-icy" */
-  caps = gst_pad_get_current_caps (pad);
-  fail_unless (caps != NULL);
-  s = gst_caps_get_structure (caps, 0);
+  fail_unless (GST_BUFFER_CAPS (buf) != NULL);
+  s = gst_caps_get_structure (GST_BUFFER_CAPS (buf), 0);
   fail_unless_equals_string (gst_structure_get_name (s), "application/x-icy");
-  gst_caps_unref (caps);
 }
 
 GST_START_TEST (test_icy_stream)
@@ -369,6 +366,7 @@ GST_START_TEST (test_icy_stream)
 
   src = gst_element_factory_make ("souphttpsrc", NULL);
   fail_unless (src != NULL);
+  g_object_set (src, "iradio-mode", TRUE, NULL);
 
   sink = gst_element_factory_make ("fakesink", NULL);
   fail_unless (sink != NULL);
@@ -446,6 +444,11 @@ souphttpsrc_suite (void)
   TCase *tc_chain, *tc_internet;
 
   g_type_init ();
+
+#if !GLIB_CHECK_VERSION (2, 31, 0)
+  if (!g_thread_supported ())
+    g_thread_init (NULL);
+#endif
 
   s = suite_create ("souphttpsrc");
   tc_chain = tcase_create ("general");

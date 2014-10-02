@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>jackaudiosink</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-jackaudiosrc.html" title="jackaudiosrc">
 <link rel="next" href="gst-plugins-good-plugins-jpegdec.html" title="jpegdec">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-jackaudiosrc.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-jpegdec.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,12 +48,11 @@
 <a name="gst-plugins-good-plugins-jackaudiosink.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSink.html">GstBaseSink</a>
-                           +----GstAudioBaseSink
-                                 +----GstJackAudioSink
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSink.html">GstBaseSink</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstbaseaudiosink.html#GstBaseAudioSink">GstBaseAudioSink</a>
+                           +----GstJackAudioSink
 </pre>
 </div>
 <div class="refsect1">
@@ -63,7 +62,6 @@
   "<a class="link" href="gst-plugins-good-plugins-jackaudiosink.html#GstJackAudioSink--connect" title='The "connect" property'>connect</a>"                  <span class="type">GstJackConnect</span>        : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-jackaudiosink.html#GstJackAudioSink--server" title='The "server" property'>server</a>"                   <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-jackaudiosink.html#GstJackAudioSink--client-name" title='The "client-name" property'>client-name</a>"              <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write
-  "<a class="link" href="gst-plugins-good-plugins-jackaudiosink.html#GstJackAudioSink--transport" title='The "transport" property'>transport</a>"                <span class="type">GstJackTransport</span>      : Read / Write
 </pre>
 </div>
 <div class="refsect1">
@@ -71,7 +69,7 @@
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp11343152"></a><h3>Element Information</h3>
+<a name="idp14829632"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -94,7 +92,7 @@
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp14929600"></a><h3>Element Pads</h3>
+<a name="idp12622304"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -112,7 +110,7 @@
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string)F32LE, layout=(string)interleaved, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+<td>audio/x-raw-float, endianness=(int)1234, width=(int)32, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
 </tr>
 </tbody>
 </table></div>
@@ -157,12 +155,6 @@
 <pre class="programlisting">  "client-name"              <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write</pre>
 <p>The client name of the Jack instance (NULL = default).</p>
 <p>Default value: NULL</p>
-</div>
-<hr>
-<div class="refsect2">
-<a name="GstJackAudioSink--transport"></a><h3>The <code class="literal">"transport"</code> property</h3>
-<pre class="programlisting">  "transport"                <span class="type">GstJackTransport</span>      : Read / Write</pre>
-<p>Jack transport behaviour of the client.</p>
 </div>
 </div>
 </div>

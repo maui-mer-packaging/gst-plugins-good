@@ -23,9 +23,8 @@
 #define _GST_JACK_UTIL_H_
 
 #include <gst/gst.h>
-#include <gst/audio/gstaudioringbuffer.h>
 
 void
-gst_jack_set_layout (GstAudioRingBuffer * buffer, GstAudioRingBufferSpec *spec);
+gst_jack_set_layout_on_caps (GstCaps **caps, gint channels);
 
 #endif  // _GST_JACK_UTIL_H_

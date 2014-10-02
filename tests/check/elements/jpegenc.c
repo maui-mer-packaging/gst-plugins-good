@@ -67,8 +67,8 @@ setup_jpegenc (GstStaticPadTemplate * sinktemplate)
 
   GST_DEBUG ("setup_jpegenc");
   jpegenc = gst_check_setup_element ("jpegenc");
-  mysinkpad = gst_check_setup_sink_pad (jpegenc, sinktemplate);
-  mysrcpad = gst_check_setup_src_pad (jpegenc, &any_srctemplate);
+  mysinkpad = gst_check_setup_sink_pad (jpegenc, sinktemplate, NULL);
+  mysrcpad = gst_check_setup_src_pad (jpegenc, &any_srctemplate, NULL);
   gst_pad_set_active (mysrcpad, TRUE);
   gst_pad_set_active (mysinkpad, TRUE);
 
@@ -94,7 +94,6 @@ create_video_buffer (GstCaps * caps)
   GstElement *pipeline;
   GstElement *cf;
   GstElement *sink;
-  GstSample *sample;
   GstBuffer *buffer;
 
   pipeline =
@@ -110,18 +109,12 @@ create_video_buffer (GstCaps * caps)
 
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
-  sample = gst_app_sink_pull_sample (GST_APP_SINK (sink));
+  buffer = gst_app_sink_pull_buffer (GST_APP_SINK (sink));
 
   gst_element_set_state (pipeline, GST_STATE_NULL);
   gst_object_unref (pipeline);
   gst_object_unref (sink);
   gst_object_unref (cf);
-
-  buffer = gst_sample_get_buffer (sample);
-  gst_buffer_ref (buffer);
-
-  gst_sample_unref (sample);
-
   return buffer;
 }
 
@@ -142,7 +135,7 @@ GST_START_TEST (test_jpegenc_getcaps)
   jpegenc = setup_jpegenc (&any_sinktemplate);
   sinkpad = gst_element_get_static_pad (jpegenc, "sink");
   /* this should assert if non-subset */
-  caps = gst_pad_query_caps (sinkpad, NULL);
+  caps = gst_pad_get_caps (sinkpad);
   gst_caps_unref (caps);
   gst_object_unref (sinkpad);
   cleanup_jpegenc (jpegenc);
@@ -150,7 +143,7 @@ GST_START_TEST (test_jpegenc_getcaps)
   jpegenc = setup_jpegenc (&jpeg_sinktemplate);
   sinkpad = gst_element_get_static_pad (jpegenc, "sink");
   /* this should assert if non-subset */
-  caps = gst_pad_query_caps (sinkpad, NULL);
+  caps = gst_pad_get_caps (sinkpad);
   gst_caps_unref (caps);
   gst_object_unref (sinkpad);
   cleanup_jpegenc (jpegenc);
@@ -159,7 +152,7 @@ GST_START_TEST (test_jpegenc_getcaps)
   jpegenc = setup_jpegenc (&jpeg_restrictive_sinktemplate);
   sinkpad = gst_element_get_static_pad (jpegenc, "sink");
   /* this should assert if non-subset */
-  caps = gst_pad_query_caps (sinkpad, NULL);
+  caps = gst_pad_get_caps (sinkpad);
   structure = gst_caps_get_structure (caps, 0);
 
   /* check the width */
@@ -192,11 +185,11 @@ GST_START_TEST (test_jpegenc_different_caps)
   gst_element_set_state (jpegenc, GST_STATE_PLAYING);
 
   /* push first buffer with 800x600 resolution */
-  caps = gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT,
+  caps = gst_caps_new_simple ("video/x-raw-yuv", "width", G_TYPE_INT,
       800, "height", G_TYPE_INT, 600, "framerate",
-      GST_TYPE_FRACTION, 1, 1, "format", G_TYPE_STRING, "I420", NULL);
-  fail_unless (gst_pad_set_caps (mysrcpad, caps));
-  fail_unless ((buffer = create_video_buffer (caps)) != NULL);
+      GST_TYPE_FRACTION, 1, 1, "format", GST_TYPE_FOURCC,
+      GST_MAKE_FOURCC ('I', '4', '2', '0'), NULL);
+  buffer = create_video_buffer (caps);
   gst_caps_unref (caps);
   fail_unless (gst_pad_push (mysrcpad, buffer) == GST_FLOW_OK);
 
@@ -205,11 +198,11 @@ GST_START_TEST (test_jpegenc_different_caps)
   allowed_caps = gst_pad_get_allowed_caps (mysrcpad);
 
   /* the caps we want to negotiate to */
-  caps = gst_caps_new_simple ("video/x-raw", "width", G_TYPE_INT,
+  caps = gst_caps_new_simple ("video/x-raw-yuv", "width", G_TYPE_INT,
       640, "height", G_TYPE_INT, 480, "framerate",
-      GST_TYPE_FRACTION, 1, 1, "format", G_TYPE_STRING, "I420", NULL);
+      GST_TYPE_FRACTION, 1, 1, "format", GST_TYPE_FOURCC,
+      GST_MAKE_FOURCC ('I', '4', '2', '0'), NULL);
   fail_unless (gst_caps_can_intersect (allowed_caps, caps));
-  fail_unless (gst_pad_set_caps (mysrcpad, caps));
 
   /* push second buffer with 640x480 resolution */
   buffer = create_video_buffer (caps);

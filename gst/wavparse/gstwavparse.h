@@ -66,9 +66,7 @@ struct _GstWavParse {
    * the format for sure */
   GstCaps     *caps;
   GstTagList  *tags;
-  GstToc      *toc;
-  GList       *cues;
-  GList       *labls;
+  GstEvent    *close_segment;
   GstEvent    *start_segment;
 
   /* WAVE decoding state */
@@ -112,15 +110,14 @@ struct _GstWavParse {
   gboolean got_fmt;
   gboolean streaming;
 
-  /* configured segment, start/stop expressed in time or bytes */
+  /* configured segment, start/stop expressed in time */
   GstSegment segment;
+  gboolean segment_running;
 
   /* for late pad configuration */
   gboolean first;
   /* discont after seek */
   gboolean discont;
-
-  gboolean ignore_length;
 };
 
 struct _GstWavParseClass {

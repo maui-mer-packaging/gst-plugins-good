@@ -66,7 +66,7 @@ struct _GstQTMoovRecover
   GstPipeline pipeline;
 
   GstTask *task;
-  GRecMutex task_mutex;
+  GStaticRecMutex task_mutex;
 
   /* properties */
   gboolean  faststart_mode;

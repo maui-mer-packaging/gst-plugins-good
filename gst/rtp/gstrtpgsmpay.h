@@ -22,7 +22,7 @@
 #define __GST_RTP_GSM_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasepayload.h>
+#include <gst/rtp/gstbasertppayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,12 +42,12 @@ typedef struct _GstRTPGSMPayClass GstRTPGSMPayClass;
 
 struct _GstRTPGSMPay
 {
-  GstRTPBasePayload payload;
+  GstBaseRTPPayload payload;
 };
 
 struct _GstRTPGSMPayClass
 {
-  GstRTPBasePayloadClass parent_class;
+  GstBaseRTPPayloadClass parent_class;
 };
 
 GType gst_rtp_gsm_pay_get_type (void);

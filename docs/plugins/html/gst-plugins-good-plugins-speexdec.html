@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>speexdec</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-speexenc.html" title="speexenc">
 <link rel="next" href="gst-plugins-good-plugins-splitfilesrc.html" title="splitfilesrc">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-speexenc.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-splitfilesrc.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,11 +48,10 @@
 <a name="gst-plugins-good-plugins-speexdec.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudiodecoder.html#GstAudioDecoder">GstAudioDecoder</a>
-                           +----GstSpeexDec
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstAudioDecoder
+                     +----GstSpeexDec
 </pre>
 </div>
 <div class="refsect1">
@@ -66,7 +65,7 @@
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp21877984"></a><h3>Element Information</h3>
+<a name="idp5823968"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -89,7 +88,7 @@
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp17338864"></a><h3>Element Pads</h3>
+<a name="idp22506656"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -128,7 +127,7 @@
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string)S16LE, layout=(string)interleaved, rate=(int)[ 6000, 48000 ], channels=(int)[ 1, 2 ]</td>
+<td>audio/x-raw-int, rate=(int)[ 6000, 48000 ], channels=(int)[ 1, 2 ], endianness=(int)1234, signed=(boolean)true, width=(int)16, depth=(int)16</td>
 </tr>
 </tbody>
 </table></div>

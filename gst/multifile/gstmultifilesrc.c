@@ -25,16 +25,15 @@
  * Reads buffers from sequentially named files. If used together with an image
  * decoder, one needs to use the #GstMultiFileSrc:caps property or a capsfilter
  * to force to caps containing a framerate. Otherwise image decoders send EOS
- * after the first picture. We also need a videorate element to set timestamps
- * on all buffers after the first one in accordance with the framerate.
+ * after the first picture.
  *
  * File names are created by replacing "\%d" with the index using printf().
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 multifilesrc location="img.%04d.png" index=0 caps="image/png,framerate=\(fraction\)12/1" ! \
- *     pngdec ! videoconvert ! videorate ! theoraenc ! oggmux ! \
+ * gst-launch multifilesrc location="img.%04d.png" index=0 caps="image/png,framerate=\(fraction\)12/1" ! \
+ *     pngdec ! ffmpegcolorspace ! theoraenc ! oggmux ! \
  *     filesink location="images.ogg"
  * ]| This pipeline creates a video file "images.ogg" by joining multiple PNG
  * files named img.0000.png, img.0001.png, etc.
@@ -57,7 +56,7 @@ static void gst_multi_file_src_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_multi_file_src_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-static GstCaps *gst_multi_file_src_getcaps (GstBaseSrc * src, GstCaps * filter);
+static GstCaps *gst_multi_file_src_getcaps (GstBaseSrc * src);
 static gboolean gst_multi_file_src_query (GstBaseSrc * src, GstQuery * query);
 
 
@@ -84,15 +83,30 @@ enum
 #define DEFAULT_LOCATION "%05d"
 #define DEFAULT_INDEX 0
 
-#define gst_multi_file_src_parent_class parent_class
-G_DEFINE_TYPE (GstMultiFileSrc, gst_multi_file_src, GST_TYPE_PUSH_SRC);
 
+GST_BOILERPLATE (GstMultiFileSrc, gst_multi_file_src, GstPushSrc,
+    GST_TYPE_PUSH_SRC);
+
+static void
+gst_multi_file_src_base_init (gpointer g_class)
+{
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (g_class);
+
+  GST_DEBUG_CATEGORY_INIT (gst_multi_file_src_debug, "multifilesrc", 0,
+      "multifilesrc element");
+
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &gst_multi_file_src_pad_template);
+  gst_element_class_set_details_simple (gstelement_class, "Multi-File Source",
+      "Source/File",
+      "Read a sequentially named set of files into buffers",
+      "David Schleef <ds@schleef.org>");
+}
 
 static void
 gst_multi_file_src_class_init (GstMultiFileSrcClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstPushSrcClass *gstpushsrc_class = GST_PUSH_SRC_CLASS (klass);
   GstBaseSrcClass *gstbasesrc_class = GST_BASE_SRC_CLASS (klass);
 
@@ -139,19 +153,15 @@ gst_multi_file_src_class_init (GstMultiFileSrcClass * klass)
 
   gstpushsrc_class->create = gst_multi_file_src_create;
 
-  GST_DEBUG_CATEGORY_INIT (gst_multi_file_src_debug, "multifilesrc", 0,
-      "multifilesrc element");
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_multi_file_src_pad_template));
-  gst_element_class_set_static_metadata (gstelement_class, "Multi-File Source",
-      "Source/File",
-      "Read a sequentially named set of files into buffers",
-      "David Schleef <ds@schleef.org>");
+  if (sizeof (off_t) < 8) {
+    GST_LOG ("No large file support, sizeof (off_t) = %" G_GSIZE_FORMAT,
+        sizeof (off_t));
+  }
 }
 
 static void
-gst_multi_file_src_init (GstMultiFileSrc * multifilesrc)
+gst_multi_file_src_init (GstMultiFileSrc * multifilesrc,
+    GstMultiFileSrcClass * g_class)
 {
   multifilesrc->start_index = DEFAULT_INDEX;
   multifilesrc->index = DEFAULT_INDEX;
@@ -174,23 +184,16 @@ gst_multi_file_src_dispose (GObject * object)
 }
 
 static GstCaps *
-gst_multi_file_src_getcaps (GstBaseSrc * src, GstCaps * filter)
+gst_multi_file_src_getcaps (GstBaseSrc * src)
 {
   GstMultiFileSrc *multi_file_src = GST_MULTI_FILE_SRC (src);
 
   GST_DEBUG_OBJECT (src, "returning %" GST_PTR_FORMAT, multi_file_src->caps);
 
   if (multi_file_src->caps) {
-    if (filter)
-      return gst_caps_intersect_full (filter, multi_file_src->caps,
-          GST_CAPS_INTERSECT_FIRST);
-    else
-      return gst_caps_ref (multi_file_src->caps);
+    return gst_caps_ref (multi_file_src->caps);
   } else {
-    if (filter)
-      return gst_caps_ref (filter);
-    else
-      return gst_caps_new_any ();
+    return gst_caps_new_any ();
   }
 }
 
@@ -364,10 +367,10 @@ gst_multi_file_src_create (GstPushSrc * src, GstBuffer ** buffer)
           if (error != NULL)
             g_error_free (error);
 
-          return GST_FLOW_EOS;
+          return GST_FLOW_UNEXPECTED;
         }
       } else {
-        return GST_FLOW_EOS;
+        return GST_FLOW_UNEXPECTED;
       }
     } else {
       goto handle_error;
@@ -382,11 +385,13 @@ gst_multi_file_src_create (GstPushSrc * src, GstBuffer ** buffer)
   }
 
   buf = gst_buffer_new ();
-  gst_buffer_append_memory (buf,
-      gst_memory_new_wrapped (0, data, size, 0, size, data, g_free));
+  GST_BUFFER_DATA (buf) = (unsigned char *) data;
+  GST_BUFFER_MALLOCDATA (buf) = GST_BUFFER_DATA (buf);
+  GST_BUFFER_SIZE (buf) = size;
   GST_BUFFER_OFFSET (buf) = multifilesrc->offset;
   GST_BUFFER_OFFSET_END (buf) = multifilesrc->offset + size;
   multifilesrc->offset += size;
+  gst_buffer_set_caps (buf, multifilesrc->caps);
 
   GST_DEBUG_OBJECT (multifilesrc, "read file \"%s\".", filename);
 

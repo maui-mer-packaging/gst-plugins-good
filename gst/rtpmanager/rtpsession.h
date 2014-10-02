@@ -21,6 +21,7 @@
 #define __RTP_SESSION_H__
 
 #include <gst/gst.h>
+#include <gst/netbuffer/gstnetbuffer.h>
 
 #include "rtpsource.h"
 
@@ -34,8 +35,8 @@ typedef struct _RTPSessionClass RTPSessionClass;
 #define RTP_IS_SESSION_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE((klass),RTP_TYPE_SESSION))
 #define RTP_SESSION_CAST(sess)       ((RTPSession *)(sess))
 
-#define RTP_SESSION_LOCK(sess)     (g_mutex_lock (&(sess)->lock))
-#define RTP_SESSION_UNLOCK(sess)   (g_mutex_unlock (&(sess)->lock))
+#define RTP_SESSION_LOCK(sess)     (g_mutex_lock ((sess)->lock))
+#define RTP_SESSION_UNLOCK(sess)   (g_mutex_unlock ((sess)->lock))
 
 /**
  * RTPSessionProcessRTP:
@@ -79,7 +80,7 @@ typedef GstFlowReturn (*RTPSessionSendRTP) (RTPSession *sess, RTPSource *src, gp
  *
  * Returns: a #GstFlowReturn.
  */
-typedef GstFlowReturn (*RTPSessionSendRTCP) (RTPSession *sess, RTPSource *src, GstBuffer *buffer,
+typedef GstFlowReturn (*RTPSessionSendRTCP) (RTPSession *sess, RTPSource *src, GstBuffer *buffer, 
     gboolean eos, gpointer user_data);
 
 /**
@@ -113,7 +114,7 @@ typedef gint (*RTPSessionClockRate) (RTPSession *sess, guint8 payload, gpointer 
  * @sess: an #RTPSession
  * @user_data: user data specified when registering
  *
- * This callback will be called when @sess needs to cancel the current timeout.
+ * This callback will be called when @sess needs to cancel the current timeout. 
  * The currently running timeout should be canceled and a new reporting interval
  * should be requested from @sess.
  */
@@ -184,12 +185,10 @@ typedef struct {
 struct _RTPSession {
   GObject       object;
 
-  GMutex        lock;
+  GMutex       *lock;
 
   guint         header_len;
   guint         mtu;
-
-  guint         probation;
 
   /* bandwidths */
   gboolean     recalc_bandwidth;

@@ -1,18 +1,18 @@
-AC_PREREQ(2.62)
+AC_PREREQ(2.60)
 
 dnl please read gstreamer/docs/random/autotools before changing this file
 
 dnl initialize autoconf
 dnl releases only do -Wall, git and prerelease does -Werror too
 dnl use a three digit version number for releases, and four for git/pre
-AC_INIT(GStreamer Good Plug-ins, 0.11.99,
+AC_INIT(GStreamer Good Plug-ins, 0.10.31,
     http://bugzilla.gnome.org/enter_bug.cgi?product=GStreamer,
     gst-plugins-good)
 
 AG_GST_INIT
 
 dnl initialize automake
-AM_INIT_AUTOMAKE([-Wno-portability 1.11 no-dist-gzip dist-xz tar-ustar])
+AM_INIT_AUTOMAKE([-Wno-portability 1.10])
 
 dnl define PACKAGE_VERSION_* variables
 AS_VERSION
@@ -27,7 +27,7 @@ dnl define the output header for config
 AM_CONFIG_HEADER([config.h])
 
 dnl AM_MAINTAINER_MODE only provides the option to configure to enable it
-AM_MAINTAINER_MODE([enable])
+AM_MAINTAINER_MODE
 
 dnl sets host_* variables
 AC_CANONICAL_HOST
@@ -37,19 +37,25 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],
   [AM_DEFAULT_VERBOSITY=1
    AC_SUBST(AM_DEFAULT_VERBOSITY)])
 
-dnl our libraries and install dirs use GST_API_VERSION in the filename
-dnl to allow side-by-side installation of different API versions
-GST_API_VERSION=1.0
-AC_SUBST(GST_API_VERSION)
-AC_DEFINE_UNQUOTED(GST_API_VERSION, "$GST_API_VERSION",
-  [GStreamer API Version])
+dnl our libraries and install dirs use major.minor as a version
+GST_MAJORMINOR=$PACKAGE_VERSION_MAJOR.$PACKAGE_VERSION_MINOR
+dnl we override it here if we need to for the release candidate of new series
+GST_MAJORMINOR=0.10
+AC_SUBST(GST_MAJORMINOR)
 
 AG_GST_LIBTOOL_PREPARE
-AS_LIBTOOL(GST, 0, 0, 0)
+
+dnl FIXME: this macro doesn't actually work;
+dnl the generated libtool script has no support for the listed tags.
+dnl So this needs to be fixed first if we want to use this
+dnl AS_LIBTOOL_TAGS
+
+AC_LIBTOOL_WIN32_DLL
+AM_PROG_LIBTOOL
 
 dnl *** required versions of GStreamer stuff ***
-GST_REQ=0.11.99
-GSTPB_REQ=0.11.99
+GST_REQ=0.10.36
+GSTPB_REQ=0.10.36
 
 dnl *** autotools stuff ****
 
@@ -63,11 +69,9 @@ dnl set up gettext
 dnl the version check needs to stay here because autopoint greps for it
 AM_GNU_GETTEXT_VERSION([0.17])
 AM_GNU_GETTEXT([external])
-AG_GST_GETTEXT([gst-plugins-good-$GST_API_VERSION])
+AG_GST_GETTEXT([gst-plugins-good-$GST_MAJORMINOR])
 
 dnl *** check for arguments to configure ***
-
-AG_GST_ARG_DISABLE_FATAL_WARNINGS
 
 AG_GST_ARG_DEBUG
 AG_GST_ARG_PROFILING
@@ -112,7 +116,7 @@ dnl determine c++ preprocessor
 dnl FIXME: do we need this ?
 AC_PROG_CXXCPP
 
-AC_PROG_OBJC
+AS_PROG_OBJC
 
 dnl check if the compiler supports '-c' and '-o' options
 AM_PROG_CC_C_O
@@ -126,15 +130,19 @@ AG_GST_CHECK_DOWHILE_MACROS
 AC_PATH_PROG(VALGRIND_PATH, valgrind, no)
 AM_CONDITIONAL(HAVE_VALGRIND, test ! "x$VALGRIND_PATH" = "xno")
 
+dnl check for gconftool-2
+dnl this macro defines an am conditional, so it needs to be run always
+AM_GCONF_SOURCE_2
+
 dnl check for documentation tools
-GTK_DOC_CHECK([1.12])
+GTK_DOC_CHECK([1.3])
 AS_PATH_PYTHON([2.1])
 AG_GST_PLUGIN_DOCS([1.3],[2.1])
 
 dnl *** checks for libraries ***
 
 dnl check for libm, for sin()
-LT_LIB_M
+AC_CHECK_LIBM
 AC_SUBST(LIBM)
 
 dnl *** checks for header files ***
@@ -145,11 +153,13 @@ AC_HEADER_STDC
 dnl used by ext/wavpack
 AX_CREATE_STDINT_H
 
-dnl used in gst/udp
-AC_CHECK_HEADERS([sys/time.h])
+dnl used in gst/rtp/gstasteriskh263.c
+AC_CHECK_HEADERS([netinet/in.h])
+AC_CHECK_HEADERS([winsock2.h], HAVE_WINSOCK2_H=yes)
+AM_CONDITIONAL(HAVE_WINSOCK2_H, test "x$HAVE_WINSOCK2_H" = "xyes")
 
 dnl used in gst/udp
-AC_CHECK_HEADERS([sys/socket.h])
+AC_CHECK_HEADERS([sys/time.h])
 
 dnl *** checks for types/defines ***
 
@@ -196,24 +206,23 @@ AC_CHECK_TYPE([struct ip_mreqn], [
 
 dnl *** checks for dependency libraries ***
 
-
-dnl GLib
-GLIB_REQ=2.32.0
-AG_GST_GLIB_CHECK([$GLIB_REQ])
+dnl GLib is required
+AG_GST_GLIB_CHECK([2.24])
+PKG_CHECK_MODULES(GIO, [ gio-2.0 >= 2.20 ], , AC_MSG_ERROR([gio is required]))
 
 dnl Orc
-ORC_CHECK([0.4.16])
+ORC_CHECK([0.4.11])
 
 dnl checks for gstreamer
 dnl uninstalled is selected preferentially -- see pkg-config(1)
-AG_GST_CHECK_GST($GST_API_VERSION, [$GST_REQ], yes)
-AG_GST_CHECK_GST_BASE($GST_API_VERSION, [$GST_REQ], yes)
-AG_GST_CHECK_GST_CONTROLLER($GST_API_VERSION, [$GST_REQ], yes)
-AG_GST_CHECK_GST_NET($GST_API_VERSION, [$GST_REQ], yes)
-AG_GST_CHECK_GST_CHECK($GST_API_VERSION, [$GST_REQ], no)
-AG_GST_CHECK_GST_PLUGINS_BASE($GST_API_VERSION, [$GSTPB_REQ], yes)
+AG_GST_CHECK_GST($GST_MAJORMINOR, [$GST_REQ], yes)
+AG_GST_CHECK_GST_BASE($GST_MAJORMINOR, [$GST_REQ], yes)
+AG_GST_CHECK_GST_GDP($GST_MAJORMINOR, [$GST_REQ], yes)
+AG_GST_CHECK_GST_CONTROLLER($GST_MAJORMINOR, [$GST_REQ], yes)
+AG_GST_CHECK_GST_CHECK($GST_MAJORMINOR, [$GST_REQ], no)
+AG_GST_CHECK_GST_PLUGINS_BASE($GST_MAJORMINOR, [$GSTPB_REQ], yes)
 
-GST_TOOLS_DIR=`$PKG_CONFIG --variable=toolsdir gstreamer-$GST_API_VERSION`
+GST_TOOLS_DIR=`$PKG_CONFIG --variable=toolsdir gstreamer-$GST_MAJORMINOR`
 if test -z $GST_TOOLS_DIR; then
   AC_MSG_ERROR([no tools dir defined in GStreamer pkg-config file; core upgrade needed.])
 fi
@@ -226,24 +235,50 @@ AM_CONDITIONAL(HAVE_GST_CHECK, test "x$HAVE_GST_CHECK" = "xyes")
 
 dnl Check for documentation xrefs
 GLIB_PREFIX="`$PKG_CONFIG --variable=prefix glib-2.0`"
-GST_PREFIX="`$PKG_CONFIG --variable=prefix gstreamer-$GST_API_VERSION`"
-GSTPB_PREFIX="`$PKG_CONFIG --variable=prefix gstreamer-plugins-base-$GST_API_VERSION`"
+GST_PREFIX="`$PKG_CONFIG --variable=prefix gstreamer-$GST_MAJORMINOR`"
+GSTPB_PREFIX="`$PKG_CONFIG --variable=prefix gstreamer-plugins-base-$GST_MAJORMINOR`"
 AC_SUBST(GLIB_PREFIX)
 AC_SUBST(GST_PREFIX)
 AC_SUBST(GSTPB_PREFIX)
 
 dnl GTK is optional and used in examples
 HAVE_GTK=no
-GTK_REQ=3.0.0
+GTK2_REQ=2.14.0
+GTK3_REQ=2.91.3
 if test "x$BUILD_EXAMPLES" = "xyes"; then
-  PKG_CHECK_MODULES(GTK, gtk+-3.0 >= $GTK_REQ, HAVE_GTK=yes, HAVE_GTK=no)
+  AC_MSG_CHECKING([which gtk+ version to compile examples against (optional)])
+  AC_ARG_WITH([gtk],
+    AC_HELP_STRING([--with-gtk=3.0|2.0],
+                   [which gtk+ version to compile against (default: 2.0)]),
+    [case "$with_gtk" in
+        2.0) GTK_REQ=$GTK2_REQ ;;
+        3.0) GTK_REQ=$GTK3_REQ ;;
+        *) AC_MSG_ERROR([invalid gtk+ version specified]);;
+    esac],
+    [with_gtk=2.0
+     GTK_REQ=$GTK2_REQ])
+  AC_MSG_RESULT([$with_gtk (>= $GTK_REQ)])
+  PKG_CHECK_MODULES(GTK, gtk+-$with_gtk >= $GTK_REQ, HAVE_GTK=yes, HAVE_GTK=no)
   dnl some examples need gtk+-x11
-  PKG_CHECK_MODULES(GTK_X11, gtk+-x11-3.0 >= $GTK_REQ, HAVE_GTK_X11=yes, HAVE_GTK_X11=no)
+  PKG_CHECK_MODULES(GTK_X11, gtk+-x11-$with_gtk >= $GTK_REQ, HAVE_GTK_X11=yes, HAVE_GTK_X11=no)
   AC_SUBST(GTK_LIBS)
   AC_SUBST(GTK_CFLAGS)
 fi
 AM_CONDITIONAL(HAVE_GTK, test "x$HAVE_GTK" = "xyes")
 AM_CONDITIONAL(HAVE_GTK_X11, test "x$HAVE_GTK_X11" = "xyes")
+
+dnl should we install schemas ?
+translit(dnm, m, l) AM_CONDITIONAL(USE_GCONFTOOL, true)
+AG_GST_CHECK_FEATURE(GCONFTOOL, [GConf schemas], , [
+  AC_PATH_PROG(GCONFTOOL, gconftool-2, no)
+  if test x$GCONFTOOL = xno; then
+    AC_MSG_WARN(Not installing GConf schemas)
+    HAVE_GCONFTOOL="no"
+  else
+    HAVE_GCONFTOOL="yes"
+  fi
+  AC_SUBST(HAVE_GCONFTOOL)
+])
 
 dnl *** set variables based on configure arguments ***
 
@@ -260,32 +295,30 @@ AG_GST_SET_PACKAGE_RELEASE_DATETIME_WITH_NANO([$PACKAGE_VERSION_NANO],
   ["${srcdir}/gst-plugins-good.doap"],
   [$PACKAGE_VERSION_MAJOR.$PACKAGE_VERSION_MINOR.$PACKAGE_VERSION_MICRO])
 
-# set by AG_GST_PARSE_SUBSYSTEM_DISABLES above
-dnl make sure it doesn't complain about unused variables if debugging is disabled
-NO_WARNINGS=""
-AG_GST_CHECK_GST_DEBUG_DISABLED([NO_WARNINGS="-Wno-unused"], [NO_WARNINGS=""])
-
 dnl define an ERROR_CFLAGS Makefile variable
 dnl -Wundef: too many broken headers
-AG_GST_SET_ERROR_CFLAGS($FATAL_WARNINGS, [
-      -Wmissing-declarations -Wmissing-prototypes -Wredundant-decls
-      -Wwrite-strings -Wold-style-definition -Waggregate-return
-      -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar
-      -Wnested-externs $NO_WARNINGS])
+if test "x$HAVE_OSX_VIDEO" != "xyes"; then
+  AG_GST_SET_ERROR_CFLAGS($GST_GIT, [
+        -Wmissing-declarations -Wmissing-prototypes -Wredundant-decls
+        -Wwrite-strings -Wold-style-definition -Waggregate-return
+        -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar
+        -Wnested-externs ])
+else
+  dnl work-around for us passing GST_CFLAGS to the ObjC-compiler, which
+  dnl doesn't understand all warning flags that the C compiler knows about
+  dnl (e.g. -Waddress) or causes problems with some flags (-Waggregate-return)
+  AG_GST_SET_ERROR_CFLAGS($GST_GIT, [
+        -Wmissing-declarations -Wmissing-prototypes -Wredundant-decls
+        -Wwrite-strings -Wold-style-definition
+        -Winit-self -Wmissing-include-dirs -Wno-multichar
+        -Wnested-externs ])
+fi
 
 dnl define an ERROR_CXXFLAGS Makefile variable
-AG_GST_SET_ERROR_CXXFLAGS($FATAL_WARNINGS, [
+AG_GST_SET_ERROR_CXXFLAGS($GST_GIT, [
         -Wmissing-declarations -Wredundant-decls
         -Wwrite-strings
-        -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar
-        $NO_WARNINGS])
-
-dnl define an ERROR_OBJCFLAGS Makefile variable
-AG_GST_SET_ERROR_OBJCFLAGS($FATAL_WARNINGS, [
-      -Wmissing-declarations -Wmissing-prototypes -Wredundant-decls
-      -Wwrite-strings -Wold-style-definition
-      -Winit-self -Wmissing-include-dirs -Wno-multichar
-      -Wnested-externs $NO_WARNINGS])
+        -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar ])
 
 dnl define correct level for debugging messages
 AG_GST_SET_LEVEL_DEFAULT($GST_GIT)
@@ -295,13 +328,9 @@ AG_GST_DEFAULT_ELEMENTS
 
 dnl *** plug-ins to include ***
 
-dnl Non ported plugins (non-dependant, then dependant)
-dnl Make sure you have a space before and after all plugins
-GST_PLUGINS_NONPORTED="cairo cairo_gobject osx_audio "
-AC_SUBST(GST_PLUGINS_NONPORTED)
-
 dnl these are all the gst plug-ins, compilable without additional libs
 dnl videofilter is at the top because others depend on it
+AG_GST_CHECK_PLUGIN(videofilter)
 AG_GST_CHECK_PLUGIN(alpha)
 AG_GST_CHECK_PLUGIN(apetag)
 AG_GST_CHECK_PLUGIN(audiofx)
@@ -315,13 +344,13 @@ AG_GST_CHECK_PLUGIN(deinterlace)
 AG_GST_CHECK_PLUGIN(effectv)
 AG_GST_CHECK_PLUGIN(equalizer)
 AG_GST_CHECK_PLUGIN(flv)
+AG_GST_CHECK_PLUGIN(id3demux)
+AG_GST_CHECK_PLUGIN(icydemux)
+AG_GST_CHECK_PLUGIN(interleave)
 AG_GST_CHECK_PLUGIN(flx)
 AG_GST_CHECK_PLUGIN(goom)
 AG_GST_CHECK_PLUGIN(goom2k1)
-AG_GST_CHECK_PLUGIN(icydemux)
-AG_GST_CHECK_PLUGIN(id3demux)
 AG_GST_CHECK_PLUGIN(imagefreeze)
-AG_GST_CHECK_PLUGIN(interleave)
 AG_GST_CHECK_PLUGIN(isomp4)
 AG_GST_CHECK_PLUGIN(law)
 AG_GST_CHECK_PLUGIN(level)
@@ -339,11 +368,29 @@ AG_GST_CHECK_PLUGIN(spectrum)
 AG_GST_CHECK_PLUGIN(udp)
 AG_GST_CHECK_PLUGIN(videobox)
 AG_GST_CHECK_PLUGIN(videocrop)
-AG_GST_CHECK_PLUGIN(videofilter)
 AG_GST_CHECK_PLUGIN(videomixer)
 AG_GST_CHECK_PLUGIN(wavenc)
 AG_GST_CHECK_PLUGIN(wavparse)
 AG_GST_CHECK_PLUGIN(y4m)
+
+dnl *** checks for socket and nsl libraries ***
+AC_CHECK_FUNC(socket,,[AC_CHECK_LIB(socket,socket)])
+
+dnl disable gst plugins we might not be able to build on this
+dnl platform: udp and rtsp (ugly but minimally invasive)
+dnl FIXME: maybe move to sys
+AC_CHECK_HEADERS([sys/socket.h], HAVE_SYS_SOCKET_H=yes)
+AC_CHECK_HEADERS([winsock2.h], HAVE_WINSOCK2_H=yes)
+
+if test "x$HAVE_SYS_SOCKET_H" != "xyes" -a "x$HAVE_WINSOCK2_H" != "xyes"; then
+  AG_GST_DISABLE_PLUGIN(udp)
+  AG_GST_DISABLE_PLUGIN(rtsp)
+fi
+
+if test "x$HAVE_WINSOCK2_H" = "xyes"; then
+  WIN32_LIBS="-lws2_32"
+  AC_SUBST(WIN32_LIBS)
+fi
 
 dnl disable experimental plug-ins
 if test "x$BUILD_EXPERIMENTAL" != "xyes"; then
@@ -367,14 +414,18 @@ AG_GST_CHECK_FEATURE(DIRECTSOUND, [DirectSound plug-in], directsoundsink, [
   LDFLAGS="$LDFLAGS $DIRECTSOUND_LDFLAGS"
   LIBS="$LIBS -ldsound -ldxerr9 -luser32"
   AC_MSG_CHECKING(for DirectSound LDFLAGS)
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+  AC_LINK_IFELSE([
 #include <windows.h>
 #include <dxerr9.h>
 #include <dsound.h>
-]], [[
+
+int main ()
+{
   DXGetErrorString9 (0);
   DirectSoundCreate(NULL, NULL, NULL);
-]])
+
+  return 0;
+}
 ],
     [HAVE_DIRECTSOUND="yes"],
     [HAVE_DIRECTSOUND="no"])
@@ -391,12 +442,6 @@ AG_GST_CHECK_FEATURE(DIRECTSOUND, [DirectSound plug-in], directsoundsink, [
     AC_SUBST(DIRECTSOUND_LIBS)
   fi
   AC_SUBST(HAVE_DIRECTSOUND)
-])
-
-dnl *** Win32 WaveOut ***
-translit(dnm, m, l) AM_CONDITIONAL(USE_WAVEFORM, true)
-AG_GST_CHECK_FEATURE(WAVEFORM, [Win32 WaveForm], waveformsink, [
-  AC_CHECK_HEADER(mmsystem.h, HAVE_WAVEFORM="yes", HAVE_WAVEFORM="no", [#include <windows.h>])
 ])
 
 dnl *** OSS audio *** (Linux, *BSD)
@@ -673,6 +718,12 @@ AG_GST_CHECK_FEATURE(AALIB, [aalib ASCII Art library], aasink, [
   AS_SCRUB_INCLUDE(AALIB_CFLAGS)
 ])
 
+dnl *** annodex ***
+translit(dnm, m, l) AM_CONDITIONAL(USE_ANNODEX, true)
+AG_GST_CHECK_FEATURE(ANNODEX, [XML library], annodex, [
+  AG_GST_PKG_CHECK_MODULES(ANNODEX, libxml-2.0 >= 2.4.9)
+])
+
 dnl *** cairo ***
 translit(dnm, m, l) AM_CONDITIONAL(USE_CAIRO, true)
 AG_GST_CHECK_FEATURE(CAIRO, [Cairo graphics rendering], cairo, [
@@ -686,16 +737,39 @@ AG_GST_CHECK_FEATURE(CAIRO_GOBJECT,
   AG_GST_PKG_CHECK_MODULES(CAIRO_GOBJECT, cairo-gobject >= 1.10.0)
 ])
 
+dnl **** ESound ****
+translit(dnm, m, l) AM_CONDITIONAL(USE_ESD, true)
+AG_GST_CHECK_FEATURE(ESD, [ESounD sound daemon], esdsink, [
+  AG_GST_PKG_CHECK_MODULES(ESD, esound >= 0.2.12)
+  if test $HAVE_ESD = no
+  then
+    AM_PATH_ESD(0.2.12, HAVE_ESD="yes")
+    AS_SCRUB_INCLUDE(ESD_CFLAGS)
+  fi
+])
+
 dnl *** FLAC ***
 translit(dnm, m, l) AM_CONDITIONAL(USE_FLAC, true)
 AG_GST_CHECK_FEATURE(FLAC, [FLAC lossless audio], flac, [
   AG_GST_PKG_CHECK_MODULES(FLAC, flac >= 1.1.4)
 ])
 
+dnl *** GConf ***
+translit(dnm, m, l) AM_CONDITIONAL(USE_GCONF, true)
+AG_GST_CHECK_FEATURE(GCONF, [GConf libraries], gconfelements, [
+  AG_GST_PKG_CHECK_MODULES(GCONF, gconf-2.0)
+])
+
 dnl *** GDK pixbuf ***
 translit(dnm, m, l) AM_CONDITIONAL(USE_GDK_PIXBUF, true)
 AG_GST_CHECK_FEATURE(GDK_PIXBUF, [GDK pixbuf], gdkpixbuf, [
   AG_GST_PKG_CHECK_MODULES(GDK_PIXBUF, gdk-pixbuf-2.0 >= 2.8.0)
+])
+
+dnl *** HAL ***
+translit(dnm, m, l) AM_CONDITIONAL(USE_HAL, true)
+AG_GST_CHECK_FEATURE(HAL, [HAL libraries], halelements, [
+  AG_GST_PKG_CHECK_MODULES(HAL, [hal >= 0.5.6, dbus-1 >= 0.32])
 ])
 
 dnl *** Jack ***
@@ -761,7 +835,15 @@ AG_GST_CHECK_FEATURE(PULSE, [pulseaudio plug-in], pulseaudio, [
   dnl used in ext/pulse/pulseutil.c
   AC_CHECK_HEADERS([process.h])
 
-  AG_GST_PKG_CHECK_MODULES(PULSE, libpulse >= 1.0)
+  AG_GST_PKG_CHECK_MODULES(PULSE, libpulse >= 0.9.16)
+  AG_GST_PKG_CHECK_MODULES(PULSE_0_9_20, libpulse >= 0.9.20)
+  if test x$HAVE_PULSE_0_9_20 = xyes; then
+    AC_DEFINE(HAVE_PULSE_0_9_20, 1, [defined if pulseaudio >= 0.9.20 is available])
+  fi
+  AG_GST_PKG_CHECK_MODULES(PULSE_1_0, libpulse >= 0.98)
+  if test x$HAVE_PULSE_1_0 = xyes; then
+    AC_DEFINE(HAVE_PULSE_1_0, 1, [defined if pulseaudio >= 1.0 is available])
+  fi
 ])
 
 dnl *** dv1394 ***
@@ -828,7 +910,7 @@ AG_GST_CHECK_FEATURE(SOUP, [soup http client plugin (2.4)], souphttpsrc, [
     HAVE_SOUP="yes"
     AC_DEFINE(HAVE_LIBSOUP_GNOME, 1, [soup gnome integration])
   ],[
-    PKG_CHECK_MODULES(SOUP, libsoup-2.4 >= 2.26.1, HAVE_SOUP="yes", [
+    PKG_CHECK_MODULES(SOUP, libsoup-2.4 >= 2.26, HAVE_SOUP="yes", [
       HAVE_SOUP="no"
     ])
   ])
@@ -897,31 +979,6 @@ AG_GST_CHECK_FEATURE(TAGLIB, [taglib tagging library], taglib, [
   fi
 ])
 
-dnl *** vpx ***
-translit(dnm, m, l) AM_CONDITIONAL(USE_VPX, vpx)
-AG_GST_CHECK_FEATURE(VPX, [VPX decoder], vpx, [
-  PKG_CHECK_MODULES(VPX, vpx >= 1.1.0, [HAVE_VPX="yes"], [HAVE_VPX="no"])
-
-  if test $HAVE_VPX = "yes"; then
-    OLD_LIBS="$LIBS"
-    OLD_CFLAGS="$CFLAGS"
-    CFLAGS="$CFLAGS $VPX_CFLAGS"
-    LIBS="$LIBS $VPX_LIBS"
-    AC_CHECK_LIB(vpx, vpx_codec_vp8_cx_algo, [
-      HAVE_VP8=yes
-      AC_DEFINE(HAVE_VP8_ENCODER, 1, [Defined if the VP8 encoder is available])
-    ])
-    AC_CHECK_LIB(vpx, vpx_codec_vp8_dx_algo, [
-      HAVE_VP8=yes
-      AC_DEFINE(HAVE_VP8_DECODER, 1, [Defined if the VP8 decoder is available])
-    ])
-    LIBS="$OLD_LIBS"
-    CFLAGS="$OLD_CFLAGS"
-  fi
-  AC_SUBST(VPX_LIBS)
-  AC_SUBST(VPX_CFLAGS)
-])
-
 dnl *** wavpack ***
 translit(dnm, m, l) AM_CONDITIONAL(USE_WAVPACK, true)
 AG_GST_CHECK_FEATURE(WAVPACK, [wavpack plug-in], wavpack, [
@@ -960,14 +1017,19 @@ else
 dnl not building plugins with external dependencies,
 dnl but we still need to set the conditionals
 AM_CONDITIONAL(USE_AALIB, false)
+AM_CONDITIONAL(USE_ANNODEX, false)
 AM_CONDITIONAL(USE_BZ2, false)
 AM_CONDITIONAL(USE_CAIRO, false)
 AM_CONDITIONAL(USE_CAIRO_GOBJECT, false)
 AM_CONDITIONAL(USE_DIRECTSOUND, false)
 AM_CONDITIONAL(USE_DV1394, false)
+AM_CONDITIONAL(USE_ESD, false)
 AM_CONDITIONAL(USE_FLAC, false)
+AM_CONDITIONAL(USE_GCONF, false)
+AM_CONDITIONAL(USE_GCONFTOOL, false)
 AM_CONDITIONAL(USE_GDK_PIXBUF, false)
 AM_CONDITIONAL(USE_GST_V4L2, false)
+AM_CONDITIONAL(USE_HAL, false)
 AM_CONDITIONAL(USE_JACK, false)
 AM_CONDITIONAL(USE_JPEG, false)
 AM_CONDITIONAL(USE_LIBCACA, false)
@@ -984,8 +1046,6 @@ AM_CONDITIONAL(USE_SOUP, false)
 AM_CONDITIONAL(USE_SPEEX, false)
 AM_CONDITIONAL(USE_SUNAUDIO, false)
 AM_CONDITIONAL(USE_TAGLIB, false)
-AM_CONDITIONAL(USE_VPX, false)
-AM_CONDITIONAL(USE_WAVEFORM, false)
 AM_CONDITIONAL(USE_WAVPACK, false)
 AM_CONDITIONAL(USE_X, false)
 AM_CONDITIONAL(USE_XSHM, false)
@@ -1018,14 +1078,12 @@ else
 fi
 AC_SUBST(DEPRECATED_CFLAGS)
 
-dnl every flag in GST_OPTION_CFLAGS, GST_OPTION_CXXFLAGS and GST_OPTION_OBJCFLAGS can be overridden
+dnl every flag in GST_OPTION_CFLAGS and GST_OPTION_CXXFLAGS can be overridden
 dnl at make time with e.g. make ERROR_CFLAGS=""
 GST_OPTION_CFLAGS="\$(WARNING_CFLAGS) \$(ERROR_CFLAGS) \$(DEBUG_CFLAGS) \$(PROFILE_CFLAGS) \$(GCOV_CFLAGS) \$(OPT_CFLAGS) \$(DEPRECATED_CFLAGS)"
 GST_OPTION_CXXFLAGS="\$(WARNING_CXXFLAGS) \$(ERROR_CXXFLAGS) \$(DEBUG_CFLAGS) \$(PROFILE_CFLAGS) \$(GCOV_CFLAGS) \$(OPT_CFLAGS) \$(DEPRECATED_CFLAGS)"
-GST_OPTION_OBJCFLAGS="\$(WARNING_OBJCFLAGS) \$(ERROR_OBJCFLAGS) \$(DEBUG_CFLAGS) \$(PROFILE_CFLAGS) \$(GCOV_CFLAGS) \$(OPT_CFLAGS) \$(DEPRECATED_CFLAGS)"
 AC_SUBST(GST_OPTION_CFLAGS)
 AC_SUBST(GST_OPTION_CXXFLAGS)
-AC_SUBST(GST_OPTION_OBJCFLAGS)
 
 dnl our libraries need to be versioned correctly
 AC_SUBST(GST_LT_LDFLAGS)
@@ -1034,13 +1092,10 @@ dnl FIXME: do we want to rename to GST_ALL_* ?
 dnl prefer internal headers to already installed ones
 dnl also add builddir include for enumtypes and marshal
 dnl add ERROR_CFLAGS, but overridable
-GST_CFLAGS="$GST_CFLAGS -DGST_USE_UNSTABLE_API"
 GST_CXXFLAGS="-I\$(top_srcdir)/gst-libs $GST_CFLAGS $GLIB_EXTRA_CFLAGS \$(GST_OPTION_CXXFLAGS)"
-GST_OBJCFLAGS="-I\$(top_srcdir)/gst-libs $GST_CFLAGS $GLIB_EXTRA_CFLAGS \$(GST_OPTION_OBJCFLAGS)"
 GST_CFLAGS="-I\$(top_srcdir)/gst-libs $GST_CFLAGS $GLIB_EXTRA_CFLAGS \$(GST_OPTION_CFLAGS)"
 AC_SUBST(GST_CFLAGS)
 AC_SUBST(GST_CXXFLAGS)
-AC_SUBST(GST_OBJCFLAGS)
 AC_SUBST(GST_LIBS)
 
 dnl LDFLAGS really should only contain flags, not libs - they get added before
@@ -1103,10 +1158,14 @@ gst/flx/Makefile
 gst/y4m/Makefile
 ext/Makefile
 ext/aalib/Makefile
+ext/annodex/Makefile
 ext/cairo/Makefile
 ext/dv/Makefile
+ext/esd/Makefile
 ext/flac/Makefile
+ext/gconf/Makefile
 ext/gdk_pixbuf/Makefile
+ext/hal/Makefile
 ext/jack/Makefile
 ext/jpeg/Makefile
 ext/libcaca/Makefile
@@ -1117,7 +1176,6 @@ ext/shout2/Makefile
 ext/soup/Makefile
 ext/speex/Makefile
 ext/taglib/Makefile
-ext/vpx/Makefile
 ext/wavpack/Makefile
 sys/Makefile
 sys/directsound/Makefile
@@ -1145,6 +1203,8 @@ tests/examples/spectrum/Makefile
 tests/examples/v4l2/Makefile
 tests/files/Makefile
 tests/icles/Makefile
+gconf/Makefile
+gconf/gstreamer.schemas
 common/Makefile
 common/m4/Makefile
 m4/Makefile
@@ -1164,7 +1224,7 @@ sed \
     -e 's/.* GST_DATADIR$/#define GST_DATADIR PREFIX "\\\\share"/' \
     -e 's/.* GST_LEVEL_DEFAULT$/#define GST_LEVEL_DEFAULT GST_LEVEL_ERROR/' \
     -e 's/.* GST_LICENSE$/#define GST_LICENSE "'$GST_LICENSE'"/' \
-    -e 's/.* GST_API_VERSION$/#define GST_API_VERSION "'$GST_API_VERSION'"/' \
+    -e 's/.* GST_MAJORMINOR$/#define GST_MAJORMINOR "'$GST_MAJORMINOR'"/' \
     -e "s,.* GST_PACKAGE_NAME$,#define GST_PACKAGE_NAME \"${GST_PACKAGE_NAME}\"," \
     -e 's/.* GST_PACKAGE_ORIGIN$/#define GST_PACKAGE_ORIGIN "Unknown package origin"/' \
     -e "s,.* GST_PACKAGE_RELEASE_DATETIME$,#define GST_PACKAGE_RELEASE_DATETIME \"${GST_PACKAGE_RELEASE_DATETIME}\"," \
@@ -1178,6 +1238,7 @@ sed \
     -e 's/.* HAVE_SYS_STAT_H$/#define HAVE_SYS_STAT_H 1/' \
     -e 's/.* HAVE_SYS_TYPES_H$/#define HAVE_SYS_TYPES_H 1/' \
     -e 's/.* HAVE_WIN32$/#define HAVE_WIN32 1/' \
+    -e 's/.* HAVE_WINSOCK2_H$/#define HAVE_WINSOCK2_H 1/' \
     -e 's/.* HOST_CPU$/#define HOST_CPU "i686"/' \
     -e 's/.* LIBDIR$/#ifdef _DEBUG\n#  define LIBDIR PREFIX "\\\\debug\\\\lib"\n#else\n#  define LIBDIR PREFIX "\\\\lib"\n#endif/' \
     -e 's/.* LOCALEDIR$/#define LOCALEDIR PREFIX "\\\\share\\\\locale"/' \
@@ -1187,7 +1248,7 @@ sed \
     -e "s/.* PACKAGE_STRING$/#define PACKAGE_STRING \"$PACKAGE_STRING\"/" \
     -e 's/.* PACKAGE_TARNAME$/#define PACKAGE_TARNAME "'$PACKAGE_TARNAME'"/' \
     -e 's/.* PACKAGE_VERSION$/#define PACKAGE_VERSION "'$PACKAGE_VERSION'"/' \
-    -e 's/.* PLUGINDIR$/#ifdef _DEBUG\n#  define PLUGINDIR PREFIX "\\\\debug\\\\lib\\\\gstreamer-0.11"\n#else\n#  define PLUGINDIR PREFIX "\\\\lib\\\\gstreamer-0.11"\n#endif/' \
+    -e 's/.* PLUGINDIR$/#ifdef _DEBUG\n#  define PLUGINDIR PREFIX "\\\\debug\\\\lib\\\\gstreamer-0.10"\n#else\n#  define PLUGINDIR PREFIX "\\\\lib\\\\gstreamer-0.10"\n#endif/' \
     -e 's/.* USE_BINARY_REGISTRY$/#define USE_BINARY_REGISTRY/' \
     -e 's/.* VERSION$/#define VERSION "'$VERSION'"/' \
     -e "s/.* DEFAULT_AUDIOSINK$/#define DEFAULT_AUDIOSINK \"directsoundsink\"/" \

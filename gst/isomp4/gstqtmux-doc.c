@@ -61,7 +61,7 @@
  * ISO 14496-12 (except for some media specific parts).
  * In turn, the latter ISO Base Media format was further specialized as a
  * Motion JPEG-2000 file format in ISO 15444-3 (mj2mux)
- * and in various 3GPP(2) specs (3gppmux).
+ * and in various 3GPP(2) specs (gppmux).
  * The fragmented file features defined (only) in ISO Base Media are used by
  * ISMV files making up (a.o.) Smooth Streaming (ismlmux).
  *
@@ -98,7 +98,7 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 gst-launch-1.0 v4l2src num-buffers=50 ! queue ! x264enc ! mp4mux ! filesink location=video.mp4
+ * gst-launch gst-launch v4l2src num-buffers=50 ! queue ! x264enc ! mp4mux ! filesink location=video.mp4
  * ]|
  * Records a video stream captured from a v4l2 device, encodes it into H.264
  * and muxes it into an mp4 file.
@@ -125,7 +125,7 @@
  * ISO 14496-12 (except for some media specific parts).
  * In turn, the latter ISO Base Media format was further specialized as a
  * Motion JPEG-2000 file format in ISO 15444-3 (mj2mux)
- * and in various 3GPP(2) specs (3gppmux).
+ * and in various 3GPP(2) specs (gppmux).
  * The fragmented file features defined (only) in ISO Base Media are used by
  * ISMV files making up (a.o.) Smooth Streaming (ismlmux).
  *
@@ -162,7 +162,7 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 v4l2src num-buffers=50 ! queue ! ffenc_h263 ! 3gppmux ! filesink location=video.3gp
+ * gst-launch v4l2src num-buffers=50 ! queue ! ffenc_h263 ! gppmux ! filesink location=video.3gp
  * ]|
  * Records a video stream captured from a v4l2 device, encodes it into H.263
  * and muxes it into an 3gp file.
@@ -189,7 +189,7 @@
  * ISO 14496-12 (except for some media specific parts).
  * In turn, the latter ISO Base Media format was further specialized as a
  * Motion JPEG-2000 file format in ISO 15444-3 (mj2mux)
- * and in various 3GPP(2) specs (3gppmux).
+ * and in various 3GPP(2) specs (gppmux).
  * The fragmented file features defined (only) in ISO Base Media are used by
  * ISMV files making up (a.o.) Smooth Streaming (ismlmux).
  *
@@ -226,7 +226,7 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 v4l2src num-buffers=50 ! queue ! jp2kenc ! mj2mux ! filesink location=video.mj2
+ * gst-launch v4l2src num-buffers=50 ! queue ! jp2kenc ! mj2mux ! filesink location=video.mj2
  * ]|
  * Records a video stream captured from a v4l2 device, encodes it into JPEG-2000
  * and muxes it into an mj2 file.
@@ -253,7 +253,7 @@
  * ISO 14496-12 (except for some media specific parts).
  * In turn, the latter ISO Base Media format was further specialized as a
  * Motion JPEG-2000 file format in ISO 15444-3 (mj2mux)
- * and in various 3GPP(2) specs (3gppmux).
+ * and in various 3GPP(2) specs (gppmux).
  * The fragmented file features defined (only) in ISO Base Media are used by
  * ISMV files making up (a.o.) Smooth Streaming (ismlmux).
  *
@@ -290,7 +290,7 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 v4l2src num-buffers=50 ! queue ! jp2kenc ! mj2mux ! filesink location=video.mj2
+ * gst-launch v4l2src num-buffers=50 ! queue ! jp2kenc ! mj2mux ! filesink location=video.mj2
  * ]|
  * Records a video stream captured from a v4l2 device, encodes it into JPEG-2000
  * and muxes it into an mj2 file.

@@ -27,7 +27,7 @@
  * <refsect2>
  * <title>Sample pipelines</title>
  * |[
- * gst-launch-1.0 videotestsrc ! video/x-raw, framerate='(fraction)'5/1 ! jpegenc ! multipartmux ! filesink location=/tmp/test.multipart
+ * gst-launch videotestsrc ! video/x-raw-yuv, framerate='(fraction)'5/1 ! jpegenc ! multipartmux ! filesink location=/tmp/test.multipart
  * ]| a pipeline to mux 5 JPEG frames per second into a multipart stream
  * stored to a file.
  * </refsect2>
@@ -57,7 +57,7 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS ("multipart/x-mixed-replace")
     );
 
-static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink_%u",
+static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink_%d",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
     GST_STATIC_CAPS_ANY         /* we can take anything, really */
@@ -75,12 +75,16 @@ static const MimeTypeMap mimetypes[] = {
   {NULL, NULL}
 };
 
+static void gst_multipart_mux_base_init (gpointer g_class);
+static void gst_multipart_mux_class_init (GstMultipartMuxClass * klass);
+static void gst_multipart_mux_init (GstMultipartMux * multipart_mux);
+
 static void gst_multipart_mux_finalize (GObject * object);
 
 static gboolean gst_multipart_mux_handle_src_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
+    GstEvent * event);
 static GstPad *gst_multipart_mux_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * name, const GstCaps * caps);
+    GstPadTemplate * templ, const gchar * name);
 static GstStateChangeReturn gst_multipart_mux_change_state (GstElement *
     element, GstStateChange transition);
 
@@ -92,8 +96,44 @@ static void gst_multipart_mux_set_property (GObject * object, guint prop_id,
 static void gst_multipart_mux_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-#define gst_multipart_mux_parent_class parent_class
-G_DEFINE_TYPE (GstMultipartMux, gst_multipart_mux, GST_TYPE_ELEMENT);
+static GstElementClass *parent_class = NULL;
+
+GType
+gst_multipart_mux_get_type (void)
+{
+  static GType multipart_mux_type = 0;
+
+  if (!multipart_mux_type) {
+    static const GTypeInfo multipart_mux_info = {
+      sizeof (GstMultipartMuxClass),
+      gst_multipart_mux_base_init,
+      NULL,
+      (GClassInitFunc) gst_multipart_mux_class_init,
+      NULL,
+      NULL,
+      sizeof (GstMultipartMux),
+      0,
+      (GInstanceInitFunc) gst_multipart_mux_init,
+    };
+
+    multipart_mux_type =
+        g_type_register_static (GST_TYPE_ELEMENT, "GstMultipartMux",
+        &multipart_mux_info, 0);
+  }
+  return multipart_mux_type;
+}
+
+static void
+gst_multipart_mux_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (element_class, &src_factory);
+  gst_element_class_add_static_pad_template (element_class, &sink_factory);
+
+  gst_element_class_set_details_simple (element_class, "Multipart muxer",
+      "Codec/Muxer", "mux multipart streams", "Wim Taymans <wim@fluendo.com>");
+}
 
 static void
 gst_multipart_mux_class_init (GstMultipartMuxClass * klass)
@@ -117,14 +157,6 @@ gst_multipart_mux_class_init (GstMultipartMuxClass * klass)
 
   gstelement_class->request_new_pad = gst_multipart_mux_request_new_pad;
   gstelement_class->change_state = gst_multipart_mux_change_state;
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_factory));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sink_factory));
-
-  gst_element_class_set_static_metadata (gstelement_class, "Multipart muxer",
-      "Codec/Muxer", "mux multipart streams", "Wim Taymans <wim@fluendo.com>");
 
   /* populate mime types */
   klass->mimetypes = g_hash_table_new (g_str_hash, g_str_equal);
@@ -171,20 +203,20 @@ gst_multipart_mux_finalize (GObject * object)
 
 static GstPad *
 gst_multipart_mux_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps)
+    GstPadTemplate * templ, const gchar * req_name)
 {
   GstMultipartMux *multipart_mux;
   GstPad *newpad;
   GstElementClass *klass = GST_ELEMENT_GET_CLASS (element);
   gchar *name;
 
-  if (templ != gst_element_class_get_pad_template (klass, "sink_%u"))
+  if (templ != gst_element_class_get_pad_template (klass, "sink_%d"))
     goto wrong_template;
 
   multipart_mux = GST_MULTIPART_MUX (element);
 
   /* create new pad with the name */
-  name = g_strdup_printf ("sink_%u", multipart_mux->numpads);
+  name = g_strdup_printf ("sink_%02d", multipart_mux->numpads);
   newpad = gst_pad_new_from_template (templ, name);
   g_free (name);
 
@@ -195,10 +227,9 @@ gst_multipart_mux_request_new_pad (GstElement * element,
 
     multipartpad = (GstMultipartPadData *)
         gst_collect_pads_add_pad (multipart_mux->collect, newpad,
-        sizeof (GstMultipartPadData), NULL, TRUE);
+        sizeof (GstMultipartPadData));
 
     /* save a pointer to our data in the pad */
-    multipartpad->pad = newpad;
     gst_pad_set_element_private (newpad, multipartpad);
     multipart_mux->numpads++;
   }
@@ -218,10 +249,12 @@ wrong_template:
 
 /* handle events */
 static gboolean
-gst_multipart_mux_handle_src_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_multipart_mux_handle_src_event (GstPad * pad, GstEvent * event)
 {
+  GstMultipartMux *multipart_mux;
   GstEventType type;
+
+  multipart_mux = GST_MULTIPART_MUX (gst_pad_get_parent (pad));
 
   type = event ? GST_EVENT_TYPE (event) : GST_EVENT_UNKNOWN;
 
@@ -233,7 +266,9 @@ gst_multipart_mux_handle_src_event (GstPad * pad, GstObject * parent,
       break;
   }
 
-  return gst_pad_event_default (pad, parent, event);
+  gst_object_unref (multipart_mux);
+
+  return gst_pad_event_default (pad, event);
 }
 
 static const gchar *
@@ -393,7 +428,6 @@ gst_multipart_mux_collected (GstCollectPads * pads, GstMultipartMux * mux)
   GstBuffer *footerbuf = NULL;
   GstBuffer *databuf = NULL;
   GstStructure *structure = NULL;
-  GstCaps *caps;
   const gchar *mime;
 
   GST_DEBUG_OBJECT (mux, "all pads are collected");
@@ -424,8 +458,8 @@ gst_multipart_mux_collected (GstCollectPads * pads, GstMultipartMux * mux)
 
   /* see if we need to push a segment */
   if (mux->need_segment) {
+    GstEvent *event;
     GstClockTime time;
-    GstSegment segment;
 
     if (best->timestamp != -1)
       time = best->timestamp;
@@ -434,35 +468,32 @@ gst_multipart_mux_collected (GstCollectPads * pads, GstMultipartMux * mux)
 
     /* for the segment, we take the first timestamp we see, we don't know the
      * length and the position is 0 */
-    gst_segment_init (&segment, GST_FORMAT_TIME);
-    segment.start = time;
+    event = gst_event_new_new_segment (FALSE, 1.0, GST_FORMAT_TIME,
+        time, -1, 0);
 
-    gst_pad_push_event (mux->srcpad, gst_event_new_segment (&segment));
+    gst_pad_push_event (mux->srcpad, event);
 
     mux->need_segment = FALSE;
   }
 
-  caps = gst_pad_get_current_caps (best->pad);
-  if (caps == NULL)
+  structure = gst_caps_get_structure (GST_BUFFER_CAPS (best->buffer), 0);
+  if (!structure)
     goto no_caps;
-
-  structure = gst_caps_get_structure (caps, 0);
-  if (!structure) {
-    gst_caps_unref (caps);
-    goto no_caps;
-  }
 
   /* get the mime type for the structure */
   mime = gst_multipart_mux_get_mime (mux, structure);
-  gst_caps_unref (caps);
 
   header = g_strdup_printf ("--%s\r\nContent-Type: %s\r\n"
-      "Content-Length: %" G_GSIZE_FORMAT "\r\n\r\n",
-      mux->boundary, mime, gst_buffer_get_size (best->buffer));
+      "Content-Length: %u\r\n\r\n",
+      mux->boundary, mime, GST_BUFFER_SIZE (best->buffer));
   headerlen = strlen (header);
 
-  headerbuf = gst_buffer_new_allocate (NULL, headerlen, NULL);
-  gst_buffer_fill (headerbuf, 0, header, headerlen);
+  ret = gst_pad_alloc_buffer_and_set_caps (mux->srcpad, GST_BUFFER_OFFSET_NONE,
+      headerlen, GST_PAD_CAPS (mux->srcpad), &headerbuf);
+  if (ret != GST_FLOW_OK)
+    goto alloc_failed;
+
+  memcpy (GST_BUFFER_DATA (headerbuf), header, headerlen);
   g_free (header);
 
   /* the header has the same timestamp as the data buffer (which we will push
@@ -483,26 +514,31 @@ gst_multipart_mux_collected (GstCollectPads * pads, GstMultipartMux * mux)
 
   /* take best->buffer, we don't need to unref it later as we will push it
    * now. */
-  databuf = gst_buffer_make_writable (best->buffer);
+  databuf = gst_buffer_make_metadata_writable (best->buffer);
   best->buffer = NULL;
 
+  gst_buffer_set_caps (databuf, GST_PAD_CAPS (mux->srcpad));
   /* we need to updated the timestamp to match the running_time */
   GST_BUFFER_TIMESTAMP (databuf) = best->timestamp;
   GST_BUFFER_OFFSET (databuf) = mux->offset;
-  mux->offset += gst_buffer_get_size (databuf);
+  mux->offset += GST_BUFFER_SIZE (databuf);
   GST_BUFFER_OFFSET_END (databuf) = mux->offset;
   GST_BUFFER_FLAG_SET (databuf, GST_BUFFER_FLAG_DELTA_UNIT);
 
-  GST_DEBUG_OBJECT (mux, "pushing %" G_GSIZE_FORMAT " bytes data buffer",
-      gst_buffer_get_size (databuf));
+  GST_DEBUG_OBJECT (mux, "pushing %u bytes data buffer",
+      GST_BUFFER_SIZE (databuf));
   ret = gst_pad_push (mux->srcpad, databuf);
   if (ret != GST_FLOW_OK)
     /* push always takes ownership of the buffer, even after an error, so we
      * don't need to unref headerbuf here. */
     goto beach;
 
-  footerbuf = gst_buffer_new_allocate (NULL, 2, NULL);
-  gst_buffer_fill (footerbuf, 0, "\r\n", 2);
+  ret = gst_pad_alloc_buffer_and_set_caps (mux->srcpad, GST_BUFFER_OFFSET_NONE,
+      2, GST_PAD_CAPS (mux->srcpad), &footerbuf);
+  if (ret != GST_FLOW_OK)
+    goto alloc_failed;
+
+  memcpy (GST_BUFFER_DATA (footerbuf), "\r\n", 2);
 
   /* the footer has the same timestamp as the data buffer and has a
    * duration of 0 */
@@ -535,7 +571,7 @@ eos:
   {
     GST_DEBUG_OBJECT (mux, "Pushing EOS");
     gst_pad_push_event (mux->srcpad, gst_event_new_eos ());
-    ret = GST_FLOW_EOS;
+    ret = GST_FLOW_UNEXPECTED;
     goto beach;
   }
 nego_error:
@@ -550,6 +586,13 @@ no_caps:
     GST_WARNING_OBJECT (mux, "no caps on the incoming buffer %p", best->buffer);
     GST_ELEMENT_ERROR (mux, CORE, NEGOTIATION, (NULL), (NULL));
     ret = GST_FLOW_NOT_NEGOTIATED;
+    goto beach;
+  }
+alloc_failed:
+  {
+    GST_WARNING_OBJECT (mux,
+        "failed allocating a %" G_GSIZE_FORMAT " bytes buffer", headerlen);
+    g_free (header);
     goto beach;
   }
 }

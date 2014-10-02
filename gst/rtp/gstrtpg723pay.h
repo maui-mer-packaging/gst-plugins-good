@@ -22,7 +22,7 @@
 #define __GST_RTP_G723_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbaseaudiopayload.h>
+#include <gst/rtp/gstbasertpaudiopayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,7 +42,7 @@ typedef struct _GstRTPG723PayClass GstRTPG723PayClass;
 
 struct _GstRTPG723Pay
 {
-  GstRTPBasePayload payload;
+  GstBaseRTPPayload payload;
 
   GstAdapter  *adapter;
   GstClockTime duration;
@@ -52,7 +52,7 @@ struct _GstRTPG723Pay
 
 struct _GstRTPG723PayClass
 {
-  GstRTPBasePayloadClass parent_class;
+  GstBaseRTPPayloadClass parent_class;
 };
 
 GType gst_rtp_g723_pay_get_type (void);

@@ -69,11 +69,11 @@ typedef struct _GstMatroskaDemux {
   GArray                  *clusters;
 
   /* keeping track of playback position */
+  gboolean                 segment_running;
   GstClockTime             last_stop_end;
   GstClockTime             stream_start_time;
 
-  /* Stop time for reverse playback */
-  GstClockTime             to_time;
+  GstEvent                *close_segment;
   GstEvent                *new_segment;
 
   /* some state saving */
@@ -81,15 +81,13 @@ typedef struct _GstMatroskaDemux {
   guint64                  cluster_offset;
   guint64                  first_cluster_offset;
   guint64                  next_cluster_offset;
-  GstClockTime             requested_seek_time;
-  guint64                  seek_offset;
 
   /* index stuff */
   gboolean                 seekable;
   gboolean                 building_index;
   guint64                  index_offset;
   GstEvent                *seek_event;
-  gboolean                 need_segment;
+  gboolean                 need_newsegment;
 
   /* reverse playback */
   GArray                  *seek_index;

@@ -55,10 +55,10 @@ bus_handler (GstBus * bus, GstMessage * message, gpointer data)
           ntl = gst_tag_list_merge (received_tags, tl, GST_TAG_MERGE_PREPEND);
           if (ntl) {
             GST_LOG ("taglists merged: %" GST_PTR_FORMAT, ntl);
-            gst_tag_list_unref (received_tags);
+            gst_tag_list_free (received_tags);
             received_tags = ntl;
           }
-          gst_tag_list_unref (tl);
+          gst_tag_list_free (tl);
         }
       }
       break;
@@ -91,8 +91,8 @@ test_mux_tags (const gchar * tag_str, const gchar * caps,
 
   GST_DEBUG ("testing xmp muxing on : %s", muxer);
 
-  launch_str = g_strdup_printf ("fakesrc num-buffers=1 format=time ! "
-      "%s ! %s name=mux ! filesink location=%s name=sink", caps, muxer, file);
+  launch_str = g_strdup_printf ("fakesrc num-buffers=1 ! %s ! %s name=mux ! "
+      "filesink location=%s name=sink", caps, muxer, file);
   pipeline = gst_parse_launch (launch_str, NULL);
   g_free (launch_str);
   fail_unless (pipeline != NULL);
@@ -112,10 +112,10 @@ test_mux_tags (const gchar * tag_str, const gchar * caps,
 
   setter = GST_TAG_SETTER (mux);
   fail_unless (setter != NULL);
-  sent_tags = gst_tag_list_new_from_string (tag_str);
+  sent_tags = gst_structure_from_string (tag_str, NULL);
   fail_unless (sent_tags != NULL);
   gst_tag_setter_merge_tags (setter, sent_tags, GST_TAG_MERGE_REPLACE);
-  gst_tag_list_unref (sent_tags);
+  gst_tag_list_free (sent_tags);
 
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
   g_main_loop_run (loop);
@@ -143,7 +143,7 @@ test_demux_tags (const gchar * tag_str, const gchar * demuxer,
   GstBus *bus;
   GMainLoop *loop;
   GstTagList *sent_tags;
-  gint i, j, k, n_recv, n_sent;
+  gint i, j, n_recv, n_sent;
   const gchar *name_sent, *name_recv;
   const GValue *value_sent, *value_recv;
   gboolean found;
@@ -155,7 +155,7 @@ test_demux_tags (const gchar * tag_str, const gchar * demuxer,
   GST_DEBUG ("testing tags : %s", tag_str);
 
   if (received_tags) {
-    gst_tag_list_unref (received_tags);
+    gst_tag_list_free (received_tags);
     received_tags = NULL;
   }
 
@@ -176,7 +176,7 @@ test_demux_tags (const gchar * tag_str, const gchar * demuxer,
   bus_watch = gst_bus_add_watch (bus, bus_handler, loop);
   gst_object_unref (bus);
 
-  sent_tags = gst_tag_list_new_from_string (tag_str);
+  sent_tags = gst_structure_from_string (tag_str, NULL);
   fail_unless (sent_tags != NULL);
 
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
@@ -186,55 +186,41 @@ test_demux_tags (const gchar * tag_str, const gchar * demuxer,
 
   /* verify tags */
   fail_unless (received_tags != NULL);
-  n_recv = gst_tag_list_n_tags (received_tags);
-  n_sent = gst_tag_list_n_tags (sent_tags);
+  n_recv = gst_structure_n_fields (received_tags);
+  n_sent = gst_structure_n_fields (sent_tags);
   fail_unless (n_recv >= n_sent);
   /* FIXME: compare taglits values */
   for (i = 0; i < n_sent; i++) {
-    name_sent = gst_tag_list_nth_tag_name (sent_tags, i);
-
+    name_sent = gst_structure_nth_field_name (sent_tags, i);
+    value_sent = gst_structure_get_value (sent_tags, name_sent);
     found = FALSE;
     for (j = 0; j < n_recv; j++) {
-      name_recv = gst_tag_list_nth_tag_name (received_tags, j);
-
+      name_recv = gst_structure_nth_field_name (received_tags, j);
       if (!strcmp (name_sent, name_recv)) {
-        guint sent_len, recv_len;
-
-        sent_len = gst_tag_list_get_tag_size (sent_tags, name_sent);
-        recv_len = gst_tag_list_get_tag_size (received_tags, name_recv);
-
-        fail_unless (sent_len == recv_len,
-            "tag item %s has been received with different size", name_sent);
-
-        for (k = 0; k < sent_len; k++) {
-          value_sent = gst_tag_list_get_value_index (sent_tags, name_sent, k);
-          value_recv =
-              gst_tag_list_get_value_index (received_tags, name_recv, k);
-
-          comparison = gst_value_compare (value_sent, value_recv);
-          if (comparison != GST_VALUE_EQUAL) {
-            gchar *vs = g_strdup_value_contents (value_sent);
-            gchar *vr = g_strdup_value_contents (value_recv);
-            GST_DEBUG ("sent = %s:'%s', recv = %s:'%s'",
-                G_VALUE_TYPE_NAME (value_sent), vs,
-                G_VALUE_TYPE_NAME (value_recv), vr);
-            g_free (vs);
-            g_free (vr);
-          }
-          fail_unless (comparison == GST_VALUE_EQUAL,
-              "tag item %s has been received with different type or value",
-              name_sent);
-          found = TRUE;
-          break;
+        value_recv = gst_structure_get_value (received_tags, name_recv);
+        comparison = gst_value_compare (value_sent, value_recv);
+        if (comparison != GST_VALUE_EQUAL) {
+          gchar *vs = g_strdup_value_contents (value_sent);
+          gchar *vr = g_strdup_value_contents (value_recv);
+          GST_DEBUG ("sent = %s:'%s', recv = %s:'%s'",
+              G_VALUE_TYPE_NAME (value_sent), vs,
+              G_VALUE_TYPE_NAME (value_recv), vr);
+          g_free (vs);
+          g_free (vr);
         }
+        fail_unless (comparison == GST_VALUE_EQUAL,
+            "tag item %s has been received with different type or value",
+            name_sent);
+        found = TRUE;
+        break;
       }
     }
     fail_unless (found, "tag item %s is lost", name_sent);
   }
 
-  gst_tag_list_unref (received_tags);
+  gst_tag_list_free (received_tags);
   received_tags = NULL;
-  gst_tag_list_unref (sent_tags);
+  gst_tag_list_free (sent_tags);
 
   gst_element_set_state (pipeline, GST_STATE_NULL);
 
@@ -281,14 +267,13 @@ test_tags (const gchar * tag_str, const gchar * caps, const gchar * muxer,
 
 GST_START_TEST (test_common_tags)
 {
-  if (!gst_registry_check_feature_version (gst_registry_get (), "qtdemux", 0,
-          10, 23)) {
+  if (!gst_default_registry_check_feature_version ("qtdemux", 0, 10, 23)) {
     GST_INFO ("Skipping test, qtdemux either not available or too old");
     return;
   }
   test_tags (COMMON_TAGS, H264_CAPS, "qtmux", "qtdemux");
   test_tags (COMMON_TAGS, H264_CAPS, "mp4mux", "qtdemux");
-  test_tags (COMMON_TAGS, H264_CAPS, "3gppmux", "qtdemux");
+  test_tags (COMMON_TAGS, H264_CAPS, "gppmux", "qtdemux");
 }
 
 GST_END_TEST;
@@ -303,14 +288,13 @@ GST_END_TEST;
 
 GST_START_TEST (test_geo_location_tags)
 {
-  if (!gst_registry_check_feature_version (gst_registry_get (), "qtdemux", 0,
-          10, 23)) {
+  if (!gst_default_registry_check_feature_version ("qtdemux", 0, 10, 23)) {
     GST_INFO ("Skipping test, qtdemux either not available or too old");
     return;
   }
   test_tags (GEO_LOCATION_TAGS, H264_CAPS, "qtmux", "qtdemux");
   test_tags (GEO_LOCATION_TAGS, H264_CAPS, "mp4mux", "qtdemux");
-  test_tags (GEO_LOCATION_TAGS, H264_CAPS, "3gppmux", "qtdemux");
+  test_tags (GEO_LOCATION_TAGS, H264_CAPS, "gppmux", "qtdemux");
 }
 
 GST_END_TEST;
@@ -321,15 +305,14 @@ GST_END_TEST;
 
 GST_START_TEST (test_user_tags)
 {
-  if (!gst_registry_check_feature_version (gst_registry_get (), "qtdemux", 0,
-          10, 23)) {
+  if (!gst_default_registry_check_feature_version ("qtdemux", 0, 10, 23)) {
     GST_INFO ("Skipping test, qtdemux either not available or too old");
     return;
   }
 
   test_tags (USER_TAGS, H264_CAPS, "qtmux", "qtdemux");
   test_tags (USER_TAGS, H264_CAPS, "mp4mux", "qtdemux");
-  test_tags (USER_TAGS, H264_CAPS, "3gppmux", "qtdemux");
+  test_tags (USER_TAGS, H264_CAPS, "gppmux", "qtdemux");
 }
 
 GST_END_TEST;

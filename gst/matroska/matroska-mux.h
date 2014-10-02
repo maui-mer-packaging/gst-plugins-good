@@ -53,14 +53,13 @@ typedef struct _GstMatroskaMetaSeekIndex {
   guint64  pos;
 } GstMatroskaMetaSeekIndex;
 
-typedef gboolean (*GstMatroskaCapsFunc) (GstPad *pad, GstCaps *caps);
-
 /* all information needed for one matroska stream */
 typedef struct
 {
   GstCollectData collect;       /* we extend the CollectData */
-  GstMatroskaCapsFunc capsfunc;
   GstMatroskaTrackContext *track;
+
+  GstBuffer *buffer;            /* the queued buffer for this pad */
 
   guint64 duration;
   GstClockTime start_ts;
@@ -78,6 +77,7 @@ typedef struct _GstMatroskaMux {
   /* pads */
   GstPad        *srcpad;
   GstCollectPads *collect;
+  GstPadEventFunction collect_event;
   GstEbmlWrite *ebml_write;
 
   guint          num_streams,
@@ -113,7 +113,6 @@ typedef struct _GstMatroskaMux {
   guint64        segment_pos,
                  seekhead_pos,
                  cues_pos,
-                 chapters_pos,
                  tags_pos,
                  info_pos,
                  tracks_pos,
@@ -129,6 +128,7 @@ typedef struct _GstMatroskaMux {
 
   /* GstForceKeyUnit event */
   GstEvent       *force_key_unit_event;
+
 } GstMatroskaMux;
 
 typedef struct _GstMatroskaMuxClass {

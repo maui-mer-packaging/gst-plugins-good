@@ -27,7 +27,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 dv1394src ! queue ! dvdemux name=d ! queue ! dvdec ! xvimagesink d. ! queue ! alsasink
+ * gst-launch dv1394src ! queue ! dvdemux name=d ! queue ! dvdec ! xvimagesink d. ! queue ! alsasink
  * ]| This pipeline captures from the firewire port and displays it (might need
  * format converters for audio/video).
  * </refsect2>
@@ -142,12 +142,43 @@ static GstFlowReturn gst_dv1394src_create (GstPushSrc * psrc, GstBuffer ** buf);
 static gboolean gst_dv1394src_query (GstBaseSrc * src, GstQuery * query);
 static void gst_dv1394src_update_device_name (GstDV1394Src * src);
 
-#define gst_dv1394src_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstDV1394Src, gst_dv1394src, GST_TYPE_PUSH_SRC,
-    G_IMPLEMENT_INTERFACE (GST_TYPE_URI_HANDLER,
-        gst_dv1394src_uri_handler_init));
+static void
+_do_init (GType type)
+{
+  static const GInterfaceInfo urihandler_info = {
+    gst_dv1394src_uri_handler_init,
+    NULL,
+    NULL,
+  };
+  g_type_add_interface_static (type, GST_TYPE_URI_HANDLER, &urihandler_info);
+
+  gst_1394_type_add_property_probe_interface (type);
+
+  GST_DEBUG_CATEGORY_INIT (dv1394src_debug, "dv1394src", 0,
+      "DV firewire source");
+}
+
+GST_BOILERPLATE_FULL (GstDV1394Src, gst_dv1394src, GstPushSrc,
+    GST_TYPE_PUSH_SRC, _do_init);
+
 
 static guint gst_dv1394src_signals[LAST_SIGNAL] = { 0 };
+
+
+static void
+gst_dv1394src_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (element_class, &src_factory);
+
+  gst_element_class_set_details_simple (element_class,
+      "Firewire (1394) DV video source", "Source/Video",
+      "Source for DV video data from firewire port",
+      "Erik Walthinsen <omega@temple-baptist.com>, "
+      "Daniel Fischer <dan@f3c.com>, " "Wim Taymans <wim@fluendo.com>, "
+      "Zaheer Abbas Merali <zaheerabbas at merali dot org>");
+}
 
 static void
 gst_dv1394src_class_init (GstDV1394SrcClass * klass)
@@ -219,23 +250,10 @@ gst_dv1394src_class_init (GstDV1394SrcClass * klass)
   gstbasesrc_class->query = gst_dv1394src_query;
 
   gstpushsrc_class->create = gst_dv1394src_create;
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_factory));
-
-  gst_element_class_set_static_metadata (gstelement_class,
-      "Firewire (1394) DV video source", "Source/Video",
-      "Source for DV video data from firewire port",
-      "Erik Walthinsen <omega@temple-baptist.com>, "
-      "Daniel Fischer <dan@f3c.com>, " "Wim Taymans <wim@fluendo.com>, "
-      "Zaheer Abbas Merali <zaheerabbas at merali dot org>");
-
-  GST_DEBUG_CATEGORY_INIT (dv1394src_debug, "dv1394src", 0,
-      "DV firewire source");
 }
 
 static void
-gst_dv1394src_init (GstDV1394Src * dv1394src)
+gst_dv1394src_init (GstDV1394Src * dv1394src, GstDV1394SrcClass * klass)
 {
   GstPad *srcpad = GST_BASE_SRC_PAD (dv1394src);
 
@@ -424,7 +442,7 @@ gst_dv1394src_iec61883_receive (unsigned char *data, int len,
 {
   GstDV1394Src *dv1394src = GST_DV1394SRC (cbdata);
 
-  if (G_UNLIKELY (!gst_pad_has_current_caps (GST_BASE_SRC_PAD (dv1394src)))) {
+  if (G_UNLIKELY (!GST_PAD_CAPS (GST_BASE_SRC_PAD (dv1394src)))) {
     GstCaps *caps;
     unsigned char *p = data;
 
@@ -455,12 +473,14 @@ gst_dv1394src_iec61883_receive (unsigned char *data, int len,
   if (G_LIKELY ((dv1394src->frame_sequence + 1) % (dv1394src->skip +
               dv1394src->consecutive) < dv1394src->consecutive)) {
     if (complete && len == dv1394src->frame_size) {
+      guint8 *bufdata;
       GstBuffer *buf;
 
       buf = gst_buffer_new_and_alloc (dv1394src->frame_size);
 
       GST_BUFFER_OFFSET (buf) = dv1394src->frame_sequence;
-      gst_buffer_fill (buf, 0, data, len);
+      bufdata = GST_BUFFER_DATA (buf);
+      memcpy (bufdata, data, len);
       dv1394src->buf = buf;
     }
   }
@@ -646,6 +666,7 @@ static GstFlowReturn
 gst_dv1394src_create (GstPushSrc * psrc, GstBuffer ** buf)
 {
   GstDV1394Src *dv1394src = GST_DV1394SRC (psrc);
+  GstCaps *caps;
   struct pollfd pollfds[2];
 
   pollfds[0].fd = raw1394_get_fd (dv1394src->handle);
@@ -687,6 +708,10 @@ gst_dv1394src_create (GstPushSrc * psrc, GstBuffer ** buf)
 
   g_assert (dv1394src->buf);
 
+  caps = gst_pad_get_caps (GST_BASE_SRC_PAD (psrc));
+  gst_buffer_set_caps (dv1394src->buf, caps);
+  gst_caps_unref (caps);
+
   *buf = dv1394src->buf;
   dv1394src->buf = NULL;
   return GST_FLOW_OK;
@@ -694,12 +719,12 @@ gst_dv1394src_create (GstPushSrc * psrc, GstBuffer ** buf)
 error_while_polling:
   {
     GST_ELEMENT_ERROR (dv1394src, RESOURCE, READ, (NULL), GST_ERROR_SYSTEM);
-    return GST_FLOW_EOS;
+    return GST_FLOW_UNEXPECTED;
   }
 told_to_stop:
   {
     GST_DEBUG_OBJECT (dv1394src, "told to stop, shutting down");
-    return GST_FLOW_FLUSHING;
+    return GST_FLOW_WRONG_STATE;
   }
 }
 
@@ -1049,21 +1074,21 @@ gethandle_failed:
 
 /*** GSTURIHANDLER INTERFACE *************************************************/
 
-static GstURIType
-gst_dv1394src_uri_get_type (GType type)
+static guint
+gst_dv1394src_uri_get_type (void)
 {
   return GST_URI_SRC;
 }
 
-static const gchar *const *
-gst_dv1394src_uri_get_protocols (GType type)
+static gchar **
+gst_dv1394src_uri_get_protocols (void)
 {
-  static const gchar *protocols[] = { (char *) "dv", NULL };
+  static gchar *protocols[] = { (char *) "dv", NULL };
 
   return protocols;
 }
 
-static gchar *
+static const gchar *
 gst_dv1394src_uri_get_uri (GstURIHandler * handler)
 {
   GstDV1394Src *gst_dv1394src = GST_DV1394SRC (handler);
@@ -1072,8 +1097,7 @@ gst_dv1394src_uri_get_uri (GstURIHandler * handler)
 }
 
 static gboolean
-gst_dv1394src_uri_set_uri (GstURIHandler * handler, const gchar * uri,
-    GError ** error)
+gst_dv1394src_uri_set_uri (GstURIHandler * handler, const gchar * uri)
 {
   gchar *protocol, *location;
   gboolean ret = TRUE;
@@ -1082,7 +1106,6 @@ gst_dv1394src_uri_set_uri (GstURIHandler * handler, const gchar * uri,
   protocol = gst_uri_get_protocol (uri);
   if (strcmp (protocol, "dv") != 0) {
     g_free (protocol);
-    g_set_error (error, GST_URI_ERROR, GST_URI_ERROR_BAD_URI, "Invalid DV URI");
     return FALSE;
   }
   g_free (protocol);

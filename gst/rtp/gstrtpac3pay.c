@@ -53,52 +53,56 @@ static void gst_rtp_ac3_pay_finalize (GObject * object);
 static GstStateChangeReturn gst_rtp_ac3_pay_change_state (GstElement * element,
     GstStateChange transition);
 
-static gboolean gst_rtp_ac3_pay_setcaps (GstRTPBasePayload * payload,
+static gboolean gst_rtp_ac3_pay_setcaps (GstBaseRTPPayload * payload,
     GstCaps * caps);
-static gboolean gst_rtp_ac3_pay_sink_event (GstRTPBasePayload * payload,
-    GstEvent * event);
+static gboolean gst_rtp_ac3_pay_handle_event (GstPad * pad, GstEvent * event);
 static GstFlowReturn gst_rtp_ac3_pay_flush (GstRtpAC3Pay * rtpac3pay);
-static GstFlowReturn gst_rtp_ac3_pay_handle_buffer (GstRTPBasePayload * payload,
+static GstFlowReturn gst_rtp_ac3_pay_handle_buffer (GstBaseRTPPayload * payload,
     GstBuffer * buffer);
 
-#define gst_rtp_ac3_pay_parent_class parent_class
-G_DEFINE_TYPE (GstRtpAC3Pay, gst_rtp_ac3_pay, GST_TYPE_RTP_BASE_PAYLOAD);
+GST_BOILERPLATE (GstRtpAC3Pay, gst_rtp_ac3_pay, GstBaseRTPPayload,
+    GST_TYPE_BASE_RTP_PAYLOAD)
+
+     static void gst_rtp_ac3_pay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_ac3_pay_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_ac3_pay_sink_template);
+
+  gst_element_class_set_details_simple (element_class,
+      "RTP AC3 audio payloader", "Codec/Payloader/Network/RTP",
+      "Payload AC3 audio as RTP packets (RFC 4184)",
+      "Wim Taymans <wim.taymans@gmail.com>");
+}
 
 static void
 gst_rtp_ac3_pay_class_init (GstRtpAC3PayClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
-  GstRTPBasePayloadClass *gstrtpbasepayload_class;
-
-  GST_DEBUG_CATEGORY_INIT (rtpac3pay_debug, "rtpac3pay", 0,
-      "AC3 Audio RTP Depayloader");
+  GstBaseRTPPayloadClass *gstbasertppayload_class;
 
   gobject_class = (GObjectClass *) klass;
   gstelement_class = (GstElementClass *) klass;
-  gstrtpbasepayload_class = (GstRTPBasePayloadClass *) klass;
+  gstbasertppayload_class = (GstBaseRTPPayloadClass *) klass;
 
   gobject_class->finalize = gst_rtp_ac3_pay_finalize;
 
   gstelement_class->change_state = gst_rtp_ac3_pay_change_state;
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_ac3_pay_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_ac3_pay_sink_template));
+  gstbasertppayload_class->set_caps = gst_rtp_ac3_pay_setcaps;
+  gstbasertppayload_class->handle_event = gst_rtp_ac3_pay_handle_event;
+  gstbasertppayload_class->handle_buffer = gst_rtp_ac3_pay_handle_buffer;
 
-  gst_element_class_set_static_metadata (gstelement_class,
-      "RTP AC3 audio payloader", "Codec/Payloader/Network/RTP",
-      "Payload AC3 audio as RTP packets (RFC 4184)",
-      "Wim Taymans <wim.taymans@gmail.com>");
-
-  gstrtpbasepayload_class->set_caps = gst_rtp_ac3_pay_setcaps;
-  gstrtpbasepayload_class->sink_event = gst_rtp_ac3_pay_sink_event;
-  gstrtpbasepayload_class->handle_buffer = gst_rtp_ac3_pay_handle_buffer;
+  GST_DEBUG_CATEGORY_INIT (rtpac3pay_debug, "rtpac3pay", 0,
+      "AC3 Audio RTP Depayloader");
 }
 
 static void
-gst_rtp_ac3_pay_init (GstRtpAC3Pay * rtpac3pay)
+gst_rtp_ac3_pay_init (GstRtpAC3Pay * rtpac3pay, GstRtpAC3PayClass * klass)
 {
   rtpac3pay->adapter = gst_adapter_new ();
 }
@@ -125,7 +129,7 @@ gst_rtp_ac3_pay_reset (GstRtpAC3Pay * pay)
 }
 
 static gboolean
-gst_rtp_ac3_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
+gst_rtp_ac3_pay_setcaps (GstBaseRTPPayload * payload, GstCaps * caps)
 {
   gboolean res;
   gint rate;
@@ -136,19 +140,18 @@ gst_rtp_ac3_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
   if (!gst_structure_get_int (structure, "rate", &rate))
     rate = 90000;               /* default */
 
-  gst_rtp_base_payload_set_options (payload, "audio", TRUE, "AC3", rate);
-  res = gst_rtp_base_payload_set_outcaps (payload, NULL);
+  gst_basertppayload_set_options (payload, "audio", TRUE, "AC3", rate);
+  res = gst_basertppayload_set_outcaps (payload, NULL);
 
   return res;
 }
 
 static gboolean
-gst_rtp_ac3_pay_sink_event (GstRTPBasePayload * payload, GstEvent * event)
+gst_rtp_ac3_pay_handle_event (GstPad * pad, GstEvent * event)
 {
-  gboolean res;
   GstRtpAC3Pay *rtpac3pay;
 
-  rtpac3pay = GST_RTP_AC3_PAY (payload);
+  rtpac3pay = GST_RTP_AC3_PAY (gst_pad_get_parent (pad));
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_EOS:
@@ -162,9 +165,10 @@ gst_rtp_ac3_pay_sink_event (GstRTPBasePayload * payload, GstEvent * event)
       break;
   }
 
-  res = GST_RTP_BASE_PAYLOAD_CLASS (parent_class)->sink_event (payload, event);
+  gst_object_unref (rtpac3pay);
 
-  return res;
+  /* FALSE to let the parent handle the event as well */
+  return FALSE;
 }
 
 struct frmsize_s
@@ -234,7 +238,7 @@ gst_rtp_ac3_pay_flush (GstRtpAC3Pay * rtpac3pay)
   /* number of frames */
   NF = rtpac3pay->NF;
 
-  mtu = GST_RTP_BASE_PAYLOAD_MTU (rtpac3pay);
+  mtu = GST_BASE_RTP_PAYLOAD_MTU (rtpac3pay);
 
   GST_LOG_OBJECT (rtpac3pay, "flushing %u bytes", avail);
 
@@ -243,7 +247,6 @@ gst_rtp_ac3_pay_flush (GstRtpAC3Pay * rtpac3pay)
     guint8 *payload;
     guint payload_len;
     guint packet_len;
-    GstRTPBuffer rtp = { NULL, };
 
     /* this will be the total length of the packet */
     packet_len = gst_rtp_buffer_calc_packet_len (2 + avail, 0, 0);
@@ -291,9 +294,8 @@ gst_rtp_ac3_pay_flush (GstRtpAC3Pay * rtpac3pay)
      *     3: other fragment
      * NF: amount of frames if FT = 0, else number of fragments.
      */
-    gst_rtp_buffer_map (outbuf, GST_MAP_WRITE, &rtp);
     GST_LOG_OBJECT (rtpac3pay, "FT %u, NF %u", FT, NF);
-    payload = gst_rtp_buffer_get_payload (&rtp);
+    payload = gst_rtp_buffer_get_payload (outbuf);
     payload[0] = (FT & 3);
     payload[1] = NF;
     payload_len -= 2;
@@ -303,33 +305,32 @@ gst_rtp_ac3_pay_flush (GstRtpAC3Pay * rtpac3pay)
 
     avail -= payload_len;
     if (avail == 0)
-      gst_rtp_buffer_set_marker (&rtp, TRUE);
-    gst_rtp_buffer_unmap (&rtp);
+      gst_rtp_buffer_set_marker (outbuf, TRUE);
 
     GST_BUFFER_TIMESTAMP (outbuf) = rtpac3pay->first_ts;
     GST_BUFFER_DURATION (outbuf) = rtpac3pay->duration;
 
-    ret = gst_rtp_base_payload_push (GST_RTP_BASE_PAYLOAD (rtpac3pay), outbuf);
+    ret = gst_basertppayload_push (GST_BASE_RTP_PAYLOAD (rtpac3pay), outbuf);
   }
 
   return ret;
 }
 
 static GstFlowReturn
-gst_rtp_ac3_pay_handle_buffer (GstRTPBasePayload * basepayload,
+gst_rtp_ac3_pay_handle_buffer (GstBaseRTPPayload * basepayload,
     GstBuffer * buffer)
 {
   GstRtpAC3Pay *rtpac3pay;
   GstFlowReturn ret;
-  gsize avail, left, NF;
-  GstMapInfo map;
-  guint8 *p;
+  guint size, avail, left, NF;
+  guint8 *data, *p;
   guint packet_len;
   GstClockTime duration, timestamp;
 
   rtpac3pay = GST_RTP_AC3_PAY (basepayload);
 
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
+  size = GST_BUFFER_SIZE (buffer);
+  data = GST_BUFFER_DATA (buffer);
   duration = GST_BUFFER_DURATION (buffer);
   timestamp = GST_BUFFER_TIMESTAMP (buffer);
 
@@ -340,8 +341,8 @@ gst_rtp_ac3_pay_handle_buffer (GstRTPBasePayload * basepayload,
 
   /* count the amount of incomming packets */
   NF = 0;
-  left = map.size;
-  p = map.data;
+  left = size;
+  p = data;
   while (TRUE) {
     guint bsid, fscod, frmsizecod, frame_size;
 
@@ -368,13 +369,11 @@ gst_rtp_ac3_pay_handle_buffer (GstRTPBasePayload * basepayload,
       break;
 
     NF++;
-    GST_DEBUG_OBJECT (rtpac3pay, "found frame %" G_GSIZE_FORMAT " of size %u",
-        NF, frame_size);
+    GST_DEBUG_OBJECT (rtpac3pay, "found frame %u of size %u", NF, frame_size);
 
     p += frame_size;
     left -= frame_size;
   }
-  gst_buffer_unmap (buffer, &map);
   if (NF == 0)
     goto no_frames;
 
@@ -382,11 +381,11 @@ gst_rtp_ac3_pay_handle_buffer (GstRTPBasePayload * basepayload,
 
   /* get packet length of previous data and this new data,
    * payload length includes a 4 byte header */
-  packet_len = gst_rtp_buffer_calc_packet_len (2 + avail + map.size, 0, 0);
+  packet_len = gst_rtp_buffer_calc_packet_len (2 + avail + size, 0, 0);
 
   /* if this buffer is going to overflow the packet, flush what we
    * have. */
-  if (gst_rtp_base_payload_is_filled (basepayload,
+  if (gst_basertppayload_is_filled (basepayload,
           packet_len, rtpac3pay->duration + duration)) {
     ret = gst_rtp_ac3_pay_flush (rtpac3pay);
     avail = 0;

@@ -21,11 +21,10 @@
 #define __BLEND_H__
 
 #include <gst/gst.h>
-#include <gst/video/video.h>
 
-typedef void (*BlendFunction) (GstVideoFrame *srcframe, gint xpos, gint ypos, gdouble src_alpha, GstVideoFrame * destframe);
-typedef void (*FillCheckerFunction) (GstVideoFrame * frame);
-typedef void (*FillColorFunction) (GstVideoFrame * frame, gint c1, gint c2, gint c3);
+typedef void (*BlendFunction) (const guint8 * src, gint xpos, gint ypos, gint src_width, gint src_height, gdouble src_alpha, guint8 * dest, gint dest_width, gint dest_height);
+typedef void (*FillCheckerFunction) (guint8 * dest, gint width, gint height);
+typedef void (*FillColorFunction) (guint8 * dest, gint width, gint height, gint c1, gint c2, gint c3);
 
 extern BlendFunction gst_video_mixer_blend_argb;
 extern BlendFunction gst_video_mixer_blend_bgra;
@@ -39,8 +38,6 @@ extern BlendFunction gst_video_mixer_overlay_bgra;
 #define gst_video_mixer_overlay_rgba gst_video_mixer_overlay_bgra
 extern BlendFunction gst_video_mixer_blend_i420;
 #define gst_video_mixer_blend_yv12 gst_video_mixer_blend_i420
-extern BlendFunction gst_video_mixer_blend_nv12;
-extern BlendFunction gst_video_mixer_blend_nv21;
 extern BlendFunction gst_video_mixer_blend_y41b;
 extern BlendFunction gst_video_mixer_blend_y42b;
 extern BlendFunction gst_video_mixer_blend_y444;
@@ -61,8 +58,6 @@ extern FillCheckerFunction gst_video_mixer_fill_checker_bgra;
 extern FillCheckerFunction gst_video_mixer_fill_checker_ayuv;
 extern FillCheckerFunction gst_video_mixer_fill_checker_i420;
 #define gst_video_mixer_fill_checker_yv12 gst_video_mixer_fill_checker_i420
-extern FillCheckerFunction gst_video_mixer_fill_checker_nv12;
-extern FillCheckerFunction gst_video_mixer_fill_checker_nv21;
 extern FillCheckerFunction gst_video_mixer_fill_checker_y41b;
 extern FillCheckerFunction gst_video_mixer_fill_checker_y42b;
 extern FillCheckerFunction gst_video_mixer_fill_checker_y444;
@@ -83,8 +78,6 @@ extern FillColorFunction gst_video_mixer_fill_color_rgba;
 extern FillColorFunction gst_video_mixer_fill_color_ayuv;
 extern FillColorFunction gst_video_mixer_fill_color_i420;
 extern FillColorFunction gst_video_mixer_fill_color_yv12;
-extern FillColorFunction gst_video_mixer_fill_color_nv12;
-#define gst_video_mixer_fill_color_nv21 gst_video_mixer_fill_color_nv12;
 extern FillColorFunction gst_video_mixer_fill_color_y41b;
 extern FillColorFunction gst_video_mixer_fill_color_y42b;
 extern FillColorFunction gst_video_mixer_fill_color_y444;

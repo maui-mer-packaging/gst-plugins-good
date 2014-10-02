@@ -25,7 +25,7 @@
 #include <jack/jack.h>
 
 #include <gst/gst.h>
-#include <gst/audio/gstaudiobasesink.h>
+#include <gst/audio/gstbaseaudiosink.h>
 
 #include "gstjack.h"
 #include "gstjackaudioclient.h"
@@ -48,7 +48,7 @@ typedef struct _GstJackAudioSinkClass GstJackAudioSinkClass;
  * Opaque #GstJackAudioSink.
  */
 struct _GstJackAudioSink {
-  GstAudioBaseSink element;
+  GstBaseAudioSink element;
 
   /*< private >*/
   /* cached caps */
@@ -59,7 +59,6 @@ struct _GstJackAudioSink {
   gchar           *server;
   jack_client_t   *jclient;
   gchar           *client_name;
-  guint            transport;
 
   /* our client */
   GstJackAudioClient *client;
@@ -71,7 +70,7 @@ struct _GstJackAudioSink {
 };
 
 struct _GstJackAudioSinkClass {
-  GstAudioBaseSinkClass parent_class;
+  GstBaseAudioSinkClass parent_class;
 };
 
 GType gst_jack_audio_sink_get_type (void);

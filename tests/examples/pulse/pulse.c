@@ -17,13 +17,8 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/* FIXME 0.11: suppress warnings for deprecated API such as GValueArray
- * with newer GLib versions (>= 2.31.0) */
-#define GLIB_DISABLE_DEPRECATION_WARNINGS
-
 #include <gst/gst.h>
 
-#if 0
 #include <gst/interfaces/propertyprobe.h>
 
 static void
@@ -62,17 +57,14 @@ test_element (const gchar * name)
   gst_element_set_state (element, GST_STATE_NULL);
   gst_object_unref (GST_OBJECT (element));
 }
-#endif
 
 int
 main (int argc, char *argv[])
 {
   gst_init (&argc, &argv);
 
-#if 0
   test_element ("pulsesink");
   test_element ("pulsesrc");
-#endif
 
   return 0;
 }

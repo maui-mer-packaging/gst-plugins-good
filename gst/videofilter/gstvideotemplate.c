@@ -123,7 +123,7 @@ gst_videotemplate_base_init (gpointer g_class)
   GstVideofilterClass *videofilter_class = GST_VIDEOFILTER_CLASS (g_class);
   int i;
 
-  gst_element_class_set_static_metadata (element_class, "Video filter template",
+  gst_element_class_set_details_simple (element_class, "Video filter template",
       "Filter/Effect/Video",
       "Template for a video filter", "David Schleef <ds@schleef.org>");
 
@@ -221,7 +221,7 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    videotemplate,
+    "videotemplate",
     "Template for a video filter",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)
 

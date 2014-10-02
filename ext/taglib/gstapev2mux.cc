@@ -33,12 +33,12 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 -v filesrc location=foo.ogg ! decodebin ! audioconvert ! lame ! apev2mux ! filesink location=foo.mp3
+ * gst-launch -v filesrc location=foo.ogg ! decodebin ! audioconvert ! lame ! apev2mux ! filesink location=foo.mp3
  * ]| A pipeline that transcodes a file from Ogg/Vorbis to mp3 format with an
  * APEv2 that contains the same as the the Ogg/Vorbis file. Make sure the
  * Ogg/Vorbis file actually has comments to preserve.
  * |[
- * gst-launch-1.0 -m filesrc location=foo.mp3 ! apedemux ! fakesink silent=TRUE 2&gt; /dev/null | grep taglist
+ * gst-launch -m filesrc location=foo.mp3 ! apedemux ! fakesink silent=TRUE 2&gt; /dev/null | grep taglist
  * ]| Verify that tags have been written.
  * </refsect2>
  */
@@ -64,34 +64,20 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("application/x-apetag"));
 
-static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
-    GST_PAD_SINK,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY"));
+GST_BOILERPLATE (GstApev2Mux, gst_apev2_mux, GstTagLibMux,
+    GST_TYPE_TAG_LIB_MUX);
 
-G_DEFINE_TYPE (GstApev2Mux, gst_apev2_mux, GST_TYPE_TAG_MUX);
-
-static GstBuffer *gst_apev2_mux_render_tag (GstTagMux * mux,
-    const GstTagList * taglist);
-static GstBuffer *gst_apev2_mux_render_end_tag (GstTagMux * mux,
-    const GstTagList * taglist);
+static GstBuffer *gst_apev2_mux_render_tag (GstTagLibMux * mux,
+    GstTagList * taglist);
 
 static void
-gst_apev2_mux_class_init (GstApev2MuxClass * klass)
+gst_apev2_mux_base_init (gpointer g_class)
 {
-  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
 
-  GST_TAG_MUX_CLASS (klass)->render_start_tag =
-      GST_DEBUG_FUNCPTR (gst_apev2_mux_render_tag);
-  GST_TAG_MUX_CLASS (klass)->render_end_tag =
-      GST_DEBUG_FUNCPTR (gst_apev2_mux_render_end_tag);
+  gst_element_class_add_static_pad_template (element_class, &src_template);
 
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&sink_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&src_template));
-
-  gst_element_class_set_static_metadata (element_class,
+  gst_element_class_set_details_simple (element_class,
       "TagLib-based APEv2 Muxer", "Formatter/Metadata",
       "Adds an APEv2 header to the beginning of files using taglib",
       "Sebastian Dröge <slomo@circular-chaos.org>");
@@ -101,7 +87,14 @@ gst_apev2_mux_class_init (GstApev2MuxClass * klass)
 }
 
 static void
-gst_apev2_mux_init (GstApev2Mux * apev2mux)
+gst_apev2_mux_class_init (GstApev2MuxClass * klass)
+{
+  GST_TAG_LIB_MUX_CLASS (klass)->render_tag =
+      GST_DEBUG_FUNCPTR (gst_apev2_mux_render_tag);
+}
+
+static void
+gst_apev2_mux_init (GstApev2Mux * apev2mux, GstApev2MuxClass * apev2mux_class)
 {
   /* nothing to do */
 }
@@ -346,7 +339,7 @@ add_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
 }
 
 static GstBuffer *
-gst_apev2_mux_render_tag (GstTagMux * mux, const GstTagList * taglist)
+gst_apev2_mux_render_tag (GstTagLibMux * mux, GstTagList * taglist)
 {
   APE::Tag apev2tag;
   ByteVector rendered_tag;
@@ -363,13 +356,18 @@ gst_apev2_mux_render_tag (GstTagMux * mux, const GstTagList * taglist)
 
   /* Create buffer with tag */
   buf = gst_buffer_new_and_alloc (tag_size);
-  gst_buffer_fill (buf, 0, rendered_tag.data (), tag_size);
+  memcpy (GST_BUFFER_DATA (buf), rendered_tag.data (), tag_size);
+  gst_buffer_set_caps (buf, GST_PAD_CAPS (mux->srcpad));
 
   return buf;
 }
 
-static GstBuffer *
-gst_apev2_mux_render_end_tag (GstTagMux * mux, const GstTagList * taglist)
+gboolean
+gst_apev2_mux_plugin_init (GstPlugin * plugin)
 {
-  return NULL;
+  if (!gst_element_register (plugin, "apev2mux", GST_RANK_NONE,
+          GST_TYPE_APEV2_MUX))
+    return FALSE;
+
+  return TRUE;
 }

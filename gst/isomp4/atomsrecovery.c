@@ -51,7 +51,7 @@
  *
  * 2) CRASH!
  *
- * 3) gst-launch-1.0 qtmoovrecover recovery-input=path.mrf broken-input=moovie.mov \
+ * 3) gst-launch qtmoovrecover recovery-input=path.mrf broken-input=moovie.mov \
         fixed-output=recovered.mov
  *
  * 4) (Hopefully) enjoy recovered.mov.
@@ -108,14 +108,10 @@ atoms_recov_write_ftyp_info (FILE * f, AtomFTYP * ftyp, GstBuffer * prefix)
   guint64 size = 0;
 
   if (prefix) {
-    GstMapInfo map;
-
-    gst_buffer_map (prefix, &map, GST_MAP_READ);
-    if (fwrite (map.data, 1, map.size, f) != map.size) {
-      gst_buffer_unmap (prefix, &map);
+    if (fwrite (GST_BUFFER_DATA (prefix), 1, GST_BUFFER_SIZE (prefix), f) !=
+        GST_BUFFER_SIZE (prefix)) {
       return FALSE;
     }
-    gst_buffer_unmap (prefix, &map);
   }
   if (!atom_ftyp_copy_data (ftyp, &data, &size, &offset)) {
     return FALSE;

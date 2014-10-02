@@ -84,8 +84,6 @@ struct _GstAudioFXBaseFIRFilter {
   guint64 start_off;            /* start offset after a discont */
   guint64 nsamples_out;         /* number of output samples since last discont */
   guint64 nsamples_in;          /* number of input samples since last discont */
-
-  GMutex lock;
 };
 
 struct _GstAudioFXBaseFIRFilterClass {
@@ -93,8 +91,7 @@ struct _GstAudioFXBaseFIRFilterClass {
 };
 
 GType gst_audio_fx_base_fir_filter_get_type (void);
-void gst_audio_fx_base_fir_filter_set_kernel (GstAudioFXBaseFIRFilter *filter, gdouble *kernel,
-                                              guint kernel_length, guint64 latency, const GstAudioInfo * info);
+void gst_audio_fx_base_fir_filter_set_kernel (GstAudioFXBaseFIRFilter *filter, gdouble *kernel, guint kernel_length, guint64 latency);
 void gst_audio_fx_base_fir_filter_push_residue (GstAudioFXBaseFIRFilter *filter);
 
 G_END_DECLS

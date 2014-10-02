@@ -100,13 +100,12 @@ struct _GstQTDemux {
 
   /* configured playback region */
   GstSegment segment;
+  gboolean segment_running;
   GstEvent *pending_newsegment;
 
-#if 0
   /* gst index support */
   GstIndex *element_index;
   gint index_id;
-#endif
 
   gint64 requested_seek_time;
   guint64 seek_offset;

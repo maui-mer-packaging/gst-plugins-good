@@ -85,25 +85,32 @@
   "rate = (int) [ 1, " G_STRINGIFY (r) " ]"
 
 #define PCM_CAPS \
-  "audio/x-raw, " \
-  "format = (string) { S8, U8 }, " \
-  "layout = (string) interleaved, " \
-  COMMON_AUDIO_CAPS (2, MAX) "; " \
-  "audio/x-raw, " \
-  "format = (string) { S16LE, S16BE }, " \
-  "layout = (string) interleaved, " \
-  COMMON_AUDIO_CAPS (2, MAX)
+  "audio/x-raw-int, " \
+  "width = (int) 8, " \
+  "depth = (int) 8, " \
+  COMMON_AUDIO_CAPS (2, MAX) ", " \
+  "signed = (boolean) { true, false }; " \
+  "audio/x-raw-int, " \
+  "width = (int) 16, " \
+  "depth = (int) 16, " \
+  "endianness = (int) { BIG_ENDIAN, LITTLE_ENDIAN }, " \
+  COMMON_AUDIO_CAPS (2, MAX) ", " \
+  "signed = (boolean) true " \
 
 #define PCM_CAPS_FULL \
   PCM_CAPS "; " \
-  "audio/x-raw, " \
-  "format = (string) { S24LE, S24BE }, " \
-  "layout = (string) interleaved, " \
-  COMMON_AUDIO_CAPS (2, MAX) "; " \
-  "audio/x-raw, " \
-  "format = (string) { S32LE, S32BE }, " \
-  "layout = (string) interleaved, " \
-  COMMON_AUDIO_CAPS (2, MAX)
+  "audio/x-raw-int, " \
+  "width = (int) 24, " \
+  "depth = (int) 24, " \
+  "endianness = (int) { BIG_ENDIAN, LITTLE_ENDIAN }, " \
+  COMMON_AUDIO_CAPS (2, MAX) ", " \
+  "signed = (boolean) true; " \
+  "audio/x-raw-int, " \
+  "width = (int) 32, " \
+  "depth = (int) 32, " \
+  "endianness = (int) { BIG_ENDIAN, LITTLE_ENDIAN }, " \
+  COMMON_AUDIO_CAPS (2, MAX) ", " \
+  "signed = (boolean) true "
 
 #define MP3_CAPS \
   "audio/mpeg, " \
@@ -146,8 +153,10 @@ GstQTMuxFormatProp gst_qt_mux_format_list[] = {
         "GstQTMux",
         GST_STATIC_CAPS ("video/quicktime, variant = (string) apple; "
             "video/quicktime"),
-        GST_STATIC_CAPS ("video/x-raw, "
-            "format = (string) { RGB, UYVY }, "
+        GST_STATIC_CAPS ("video/x-raw-rgb, "
+            COMMON_VIDEO_CAPS "; "
+            "video/x-raw-yuv, "
+            "format = (fourcc) UYVY, "
             COMMON_VIDEO_CAPS "; "
             MPEG4V_CAPS "; "
             H263_CAPS "; "
@@ -210,6 +219,21 @@ GstQTMuxFormatProp gst_qt_mux_format_list[] = {
         GST_STATIC_CAPS (AMR_CAPS "; " MP3_CAPS "; " AAC_CAPS)
       }
   ,
+#ifndef GST_REMOVE_DEPRECATED
+  /* 3GPP Technical Specification 26.244 V7.3.0
+   * (extended in 3GPP2 File Formats for Multimedia Services) */
+  {
+        GST_QT_MUX_FORMAT_3GP,
+        GST_RANK_NONE,
+        "gppmux",
+        "3GPP",
+        "GstGPPMux",
+        GST_STATIC_CAPS ("video/quicktime, variant = (string) 3gpp"),
+        GST_STATIC_CAPS (H263_CAPS "; " MPEG4V_CAPS "; " H264_CAPS),
+        GST_STATIC_CAPS (AMR_CAPS "; " MP3_CAPS "; " AAC_CAPS)
+      }
+  ,
+#endif
   /* ISO 15444-3: Motion-JPEG-2000 (also ISO base media extension) */
   {
         GST_QT_MUX_FORMAT_MJ2,
@@ -339,14 +363,12 @@ gst_qt_mux_map_format_to_header (GstQTMuxFormat format, GstBuffer ** _prefix,
       break;
     }
     case GST_QT_MUX_FORMAT_MJ2:
-    {
       major = FOURCC_mjp2;
       comp = mjp2_brands;
       version = 0;
       prefix = gst_buffer_new_and_alloc (sizeof (mjp2_prefix));
-      gst_buffer_fill (prefix, 0, mjp2_prefix, sizeof (mjp2_prefix));
+      memcpy (GST_BUFFER_DATA (prefix), mjp2_prefix, GST_BUFFER_SIZE (prefix));
       break;
-    }
     default:
       g_assert_not_reached ();
       break;

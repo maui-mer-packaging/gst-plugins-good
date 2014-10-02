@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gst-plugins-0.8.3\n"
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/\n"
-"POT-Creation-Date: 2012-09-17 16:41+0100\n"
+"POT-Creation-Date: 2012-02-21 00:10+0000\n"
 "PO-Revision-Date: 2004-09-27 13:32+0530\n"
 "Last-Translator: Gora Mohanty <gora_mohanty@yahoo.co.in>\n"
 "Language-Team: Oriya <gora_mohanty@yahoo.co.in>\n"
@@ -17,9 +17,18 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+msgid "Could not establish connection to sound server"
+msgstr ""
+
+msgid "Failed to query sound server capabilities"
+msgstr ""
+
 #. TRANSLATORS: 'song title' by 'artist name'
 #, c-format
 msgid "'%s' by '%s'"
+msgstr ""
+
+msgid "Internal data stream error."
 msgstr ""
 
 msgid "Failed to decode JPEG image"
@@ -52,9 +61,6 @@ msgid "Server sent bad data."
 msgstr ""
 
 msgid "No URL set."
-msgstr ""
-
-msgid "Internal data stream error."
 msgstr ""
 
 msgid "No or invalid input audio, AVI stream will be corrupt."
@@ -96,6 +102,81 @@ msgstr ""
 msgid "Internal data flow error."
 msgstr ""
 
+msgid "Volume"
+msgstr "ପ୍ରବଳତା"
+
+msgid "Bass"
+msgstr "ଅନୁଚ୍ଚ ସ୍ବର"
+
+msgid "Treble"
+msgstr "ଉଚ୍ଚ ସ୍ବର"
+
+msgid "Synth"
+msgstr "ସିନ୍ଥେସାଇଜର"
+
+msgid "PCM"
+msgstr "ପି.ସି.ଏମ."
+
+msgid "Speaker"
+msgstr "ସ୍ବରବର୍ଦ୍ଧକ ୟନ୍ତ୍ର"
+
+msgid "Line-in"
+msgstr "ଲାଇନ-ଇନ"
+
+msgid "Microphone"
+msgstr "ମାଇକ୍ରୋଫୋନ୍"
+
+msgid "CD"
+msgstr "ସି.ଡି."
+
+msgid "Mixer"
+msgstr "ମିଶ୍ରଣ ଯନ୍ତ୍ର"
+
+msgid "PCM-2"
+msgstr "ପି.ସି.ଏମ.-୨"
+
+msgid "Record"
+msgstr "ଅନୁଲିପିକରଣ"
+
+msgid "In-gain"
+msgstr "ନିବେଶ-ବୃଦ୍ଧି"
+
+msgid "Out-gain"
+msgstr "ନିର୍ଗମ-ବୃଦ୍ଧି"
+
+msgid "Line-1"
+msgstr "ଲାଇନ-୧"
+
+msgid "Line-2"
+msgstr "ଲାଇନ-୨"
+
+msgid "Line-3"
+msgstr "ଲାଇନ-୩"
+
+msgid "Digital-1"
+msgstr "ସାଂଖ୍ଯିକ-୧"
+
+msgid "Digital-2"
+msgstr "ସାଂଖ୍ଯିକ-୨"
+
+msgid "Digital-3"
+msgstr "ସାଂଖ୍ଯିକ-୩"
+
+msgid "Phone-in"
+msgstr "ଫୋନ-ନିବେଶ"
+
+msgid "Phone-out"
+msgstr "ଫୋନ-ନିର୍ଗମ"
+
+msgid "Video"
+msgstr "ଭିଡିଓ"
+
+msgid "Radio"
+msgstr "ରେଡିଓ"
+
+msgid "Monitor"
+msgstr "ପ୍ରଦର୍ଶିକା"
+
 msgid ""
 "Could not open audio device for playback. Device is being used by another "
 "application."
@@ -121,6 +202,326 @@ msgstr "ସି.ଡି. ଯନ୍ତ୍ର ପଢ଼ିବା ପାଇଁ ଖୋ
 msgid "Could not open audio device for recording."
 msgstr "ସି.ଡି. ଯନ୍ତ୍ର ପଢ଼ିବା ପାଇଁ ଖୋଲିହେଲା ନାହିଁ."
 
+#, fuzzy
+msgid "Could not open audio device for mixer control handling."
+msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ଲେଖିବା ପାଇଁ ଖୋଲିହେଲା ନାହିଁ."
+
+#, fuzzy
+msgid ""
+"Could not open audio device for mixer control handling. This version of the "
+"Open Sound System is not supported by this element."
+msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ଲେଖିବା ପାଇଁ ଖୋଲିହେଲା ନାହିଁ."
+
+msgid "Master"
+msgstr ""
+
+msgid "Front"
+msgstr ""
+
+#, fuzzy
+msgid "Rear"
+msgstr "ଅନୁଲିପିକରଣ"
+
+msgid "Headphones"
+msgstr ""
+
+msgid "Center"
+msgstr ""
+
+msgid "LFE"
+msgstr ""
+
+msgid "Surround"
+msgstr ""
+
+#, fuzzy
+msgid "Side"
+msgstr "ଭିଡିଓ"
+
+#, fuzzy
+msgid "Built-in Speaker"
+msgstr "ସ୍ବରବର୍ଦ୍ଧକ ୟନ୍ତ୍ର"
+
+msgid "AUX 1 Out"
+msgstr ""
+
+msgid "AUX 2 Out"
+msgstr ""
+
+msgid "AUX Out"
+msgstr ""
+
+msgid "3D Depth"
+msgstr ""
+
+msgid "3D Center"
+msgstr ""
+
+msgid "3D Enhance"
+msgstr ""
+
+msgid "Telephone"
+msgstr ""
+
+msgid "Line Out"
+msgstr ""
+
+#, fuzzy
+msgid "Line In"
+msgstr "ଲାଇନ-ଇନ"
+
+msgid "Internal CD"
+msgstr ""
+
+msgid "Video In"
+msgstr ""
+
+msgid "AUX 1 In"
+msgstr ""
+
+msgid "AUX 2 In"
+msgstr ""
+
+msgid "AUX In"
+msgstr ""
+
+msgid "Record Gain"
+msgstr ""
+
+#, fuzzy
+msgid "Output Gain"
+msgstr "ନିର୍ଗମ-ବୃଦ୍ଧି"
+
+#, fuzzy
+msgid "Microphone Boost"
+msgstr "ମାଇକ୍ରୋଫୋନ୍"
+
+msgid "Loopback"
+msgstr ""
+
+msgid "Diagnostic"
+msgstr ""
+
+msgid "Bass Boost"
+msgstr ""
+
+msgid "Playback Ports"
+msgstr ""
+
+msgid "Input"
+msgstr ""
+
+msgid "Record Source"
+msgstr ""
+
+#, fuzzy
+msgid "Monitor Source"
+msgstr "ପ୍ରଦର୍ଶିକା"
+
+msgid "Keyboard Beep"
+msgstr ""
+
+msgid "Simulate Stereo"
+msgstr ""
+
+msgid "Stereo"
+msgstr ""
+
+msgid "Surround Sound"
+msgstr ""
+
+#, fuzzy
+msgid "Microphone Gain"
+msgstr "ମାଇକ୍ରୋଫୋନ୍"
+
+#, fuzzy
+msgid "Speaker Source"
+msgstr "ସ୍ବରବର୍ଦ୍ଧକ ୟନ୍ତ୍ର"
+
+#, fuzzy
+msgid "Microphone Source"
+msgstr "ମାଇକ୍ରୋଫୋନ୍"
+
+msgid "Jack"
+msgstr ""
+
+msgid "Center / LFE"
+msgstr ""
+
+msgid "Stereo Mix"
+msgstr ""
+
+msgid "Mono Mix"
+msgstr ""
+
+msgid "Input Mix"
+msgstr ""
+
+msgid "SPDIF In"
+msgstr ""
+
+msgid "SPDIF Out"
+msgstr ""
+
+#, fuzzy
+msgid "Microphone 1"
+msgstr "ମାଇକ୍ରୋଫୋନ୍"
+
+#, fuzzy
+msgid "Microphone 2"
+msgstr "ମାଇକ୍ରୋଫୋନ୍"
+
+#, fuzzy
+msgid "Digital Out"
+msgstr "ସାଂଖ୍ଯିକ-୧"
+
+#, fuzzy
+msgid "Digital In"
+msgstr "ସାଂଖ୍ଯିକ-୧"
+
+msgid "HDMI"
+msgstr ""
+
+msgid "Modem"
+msgstr ""
+
+msgid "Handset"
+msgstr ""
+
+msgid "Other"
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "On"
+msgstr ""
+
+msgid "Off"
+msgstr ""
+
+msgid "Mute"
+msgstr ""
+
+msgid "Fast"
+msgstr ""
+
+#. TRANSLATORS: "Very Low" is a quality setting here
+msgid "Very Low"
+msgstr ""
+
+#. TRANSLATORS: "Low" is a quality setting here
+msgid "Low"
+msgstr ""
+
+#. TRANSLATORS: "Medium" is a quality setting here
+msgid "Medium"
+msgstr ""
+
+#. TRANSLATORS: "High" is a quality setting here
+msgid "High"
+msgstr ""
+
+#. TRANSLATORS: "Very High" is a quality setting here
+msgid "Very High"
+msgstr ""
+
+#. TRANSLATORS: "Production" is a quality setting here
+msgid "Production"
+msgstr ""
+
+#, fuzzy
+msgid "Front Panel Microphone"
+msgstr "ମାଇକ୍ରୋଫୋନ୍"
+
+msgid "Front Panel Line In"
+msgstr ""
+
+msgid "Front Panel Headphones"
+msgstr ""
+
+msgid "Front Panel Line Out"
+msgstr ""
+
+msgid "Green Connector"
+msgstr ""
+
+msgid "Pink Connector"
+msgstr ""
+
+msgid "Blue Connector"
+msgstr ""
+
+msgid "White Connector"
+msgstr ""
+
+msgid "Black Connector"
+msgstr ""
+
+msgid "Gray Connector"
+msgstr ""
+
+msgid "Orange Connector"
+msgstr ""
+
+msgid "Red Connector"
+msgstr ""
+
+msgid "Yellow Connector"
+msgstr ""
+
+msgid "Green Front Panel Connector"
+msgstr ""
+
+msgid "Pink Front Panel Connector"
+msgstr ""
+
+msgid "Blue Front Panel Connector"
+msgstr ""
+
+msgid "White Front Panel Connector"
+msgstr ""
+
+msgid "Black Front Panel Connector"
+msgstr ""
+
+msgid "Gray Front Panel Connector"
+msgstr ""
+
+msgid "Orange Front Panel Connector"
+msgstr ""
+
+msgid "Red Front Panel Connector"
+msgstr ""
+
+msgid "Yellow Front Panel Connector"
+msgstr ""
+
+msgid "Spread Output"
+msgstr ""
+
+msgid "Downmix"
+msgstr ""
+
+msgid "Virtual Mixer Input"
+msgstr ""
+
+msgid "Virtual Mixer Output"
+msgstr ""
+
+msgid "Virtual Mixer Channels"
+msgstr ""
+
+#. TRANSLATORS: name + number of a volume mixer control
+#, c-format
+msgid "%s %d Function"
+msgstr ""
+
+#. TRANSLATORS: name of a volume mixer control
+#, c-format
+msgid "%s Function"
+msgstr ""
+
 msgid ""
 "Could not open audio device for playback. This version of the Open Sound "
 "System is not supported by this element."
@@ -138,32 +539,10 @@ msgstr ""
 msgid "Error recording from audio device."
 msgstr ""
 
-msgid "Volume"
-msgstr "ପ୍ରବଳତା"
-
 msgid "Gain"
 msgstr ""
 
-msgid "Monitor"
-msgstr "ପ୍ରଦର୍ଶିକା"
-
-#, fuzzy
-msgid "Built-in Speaker"
-msgstr "ସ୍ବରବର୍ଦ୍ଧକ ୟନ୍ତ୍ର"
-
 msgid "Headphone"
-msgstr ""
-
-msgid "Line Out"
-msgstr ""
-
-msgid "SPDIF Out"
-msgstr ""
-
-msgid "AUX 1 Out"
-msgstr ""
-
-msgid "AUX 2 Out"
 msgstr ""
 
 #, fuzzy, c-format
@@ -171,70 +550,12 @@ msgid "Error reading %d bytes from device '%s'."
 msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
 
 #, c-format
-msgid "Failed to enumerate possible video formats device '%s' can work with"
-msgstr ""
-
-#, fuzzy, c-format
-msgid "Could not map buffers from device '%s'"
-msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
-
-#, c-format
-msgid "The driver of device '%s' does not support the IO method %d"
+msgid "Got unexpected frame size of %u instead of %u."
 msgstr ""
 
 #, c-format
-msgid "The driver of device '%s' does not support any known IO method."
+msgid "Error reading %d bytes on device '%s'."
 msgstr ""
-
-#, fuzzy, c-format
-msgid "Device '%s' does not support video capture"
-msgstr "\"%s\" ଯନ୍ତ୍ର ଗୋଟିଏ ଅନୁଲିପିକାର ନୁହେଁ."
-
-#, fuzzy, c-format
-msgid "Device '%s' is busy"
-msgstr "\"%s\" ଯନ୍ତ୍ର ଗୋଟିଏ ଅନୁଲିପିକାର ନୁହେଁ."
-
-#, fuzzy, c-format
-msgid "Device '%s' cannot capture at %dx%d"
-msgstr "\"%s\" ଯନ୍ତ୍ର ଗୋଟିଏ ଅନୁଲିପିକାର ନୁହେଁ."
-
-#, fuzzy, c-format
-msgid "Device '%s' cannot capture in the specified format"
-msgstr "\"%s\" ଯନ୍ତ୍ର ଗୋଟିଏ ଅନୁଲିପିକାର ନୁହେଁ."
-
-#, fuzzy, c-format
-msgid "Could not get parameters on device '%s'"
-msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
-
-msgid "Video device did not accept new frame rate setting."
-msgstr ""
-
-msgid "Video device could not create buffer pool."
-msgstr ""
-
-#, fuzzy, c-format
-msgid "Failed to get settings of tuner %d on device '%s'."
-msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ପର୍ଯ୍ଯାପ୍ତ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
-
-#, fuzzy, c-format
-msgid "Error getting capabilities for device '%s'."
-msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
-
-#, fuzzy, c-format
-msgid "Device '%s' is not a tuner."
-msgstr "\"%s\" ଯନ୍ତ୍ର ଗୋଟିଏ ଅନୁଲିପିକାର ନୁହେଁ."
-
-#, fuzzy, c-format
-msgid "Failed to get radio input on device '%s'. "
-msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ବନ୍ଦ କରିହେଲା ନାହିଁ."
-
-#, fuzzy, c-format
-msgid "Failed to set input %d on device %s."
-msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ବନ୍ଦ କରିହେଲା ନାହିଁ."
-
-#, fuzzy, c-format
-msgid "Failed to change mute state for device '%s'."
-msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
 
 #, c-format
 msgid ""
@@ -307,6 +628,10 @@ msgid "Failed to get current input on device '%s'. May be it is a radio device"
 msgstr ""
 
 #, fuzzy, c-format
+msgid "Failed to set input %d on device %s."
+msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ବନ୍ଦ କରିହେଲା ନାହିଁ."
+
+#, fuzzy, c-format
 msgid ""
 "Failed to get current output on device '%s'. May be it is a radio device"
 msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ପର୍ଯ୍ଯାପ୍ତ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
@@ -315,6 +640,33 @@ msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ପର୍ଯ୍ଯାପ୍ତ ଅସ୍
 msgid "Failed to set output %d on device %s."
 msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ବନ୍ଦ କରିହେଲା ନାହିଁ."
 
+#, fuzzy, c-format
+msgid "Could not enqueue buffers in device '%s'."
+msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
+
+#, fuzzy, c-format
+msgid "Failed trying to get video frames from device '%s'."
+msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ପର୍ଯ୍ଯାପ୍ତ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
+
+#, c-format
+msgid "Failed after %d tries. device %s. system error: %s"
+msgstr ""
+
+#, fuzzy, c-format
+msgid "Could not get parameters on device '%s'"
+msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
+
+msgid "Video input device did not accept new frame rate setting."
+msgstr ""
+
+#, fuzzy, c-format
+msgid "Could not map buffers from device '%s'"
+msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
+
+#, c-format
+msgid "The driver of device '%s' does not support any known capture method."
+msgstr ""
+
 msgid "Changing resolution at runtime is not yet supported."
 msgstr ""
 
@@ -322,147 +674,8 @@ msgid "Cannot operate without a clock"
 msgstr ""
 
 #, fuzzy
-#~ msgid "Failed trying to get video frames from device '%s'."
-#~ msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ପର୍ଯ୍ଯାପ୍ତ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
-
-#~ msgid "Bass"
-#~ msgstr "ଅନୁଚ୍ଚ ସ୍ବର"
-
-#~ msgid "Treble"
-#~ msgstr "ଉଚ୍ଚ ସ୍ବର"
-
-#~ msgid "Synth"
-#~ msgstr "ସିନ୍ଥେସାଇଜର"
-
-#~ msgid "PCM"
-#~ msgstr "ପି.ସି.ଏମ."
-
-#~ msgid "Speaker"
-#~ msgstr "ସ୍ବରବର୍ଦ୍ଧକ ୟନ୍ତ୍ର"
-
-#~ msgid "Line-in"
-#~ msgstr "ଲାଇନ-ଇନ"
-
-#~ msgid "Microphone"
-#~ msgstr "ମାଇକ୍ରୋଫୋନ୍"
-
-#~ msgid "CD"
-#~ msgstr "ସି.ଡି."
-
-#~ msgid "Mixer"
-#~ msgstr "ମିଶ୍ରଣ ଯନ୍ତ୍ର"
-
-#~ msgid "PCM-2"
-#~ msgstr "ପି.ସି.ଏମ.-୨"
-
-#~ msgid "Record"
-#~ msgstr "ଅନୁଲିପିକରଣ"
-
-#~ msgid "In-gain"
-#~ msgstr "ନିବେଶ-ବୃଦ୍ଧି"
-
-#~ msgid "Out-gain"
-#~ msgstr "ନିର୍ଗମ-ବୃଦ୍ଧି"
-
-#~ msgid "Line-1"
-#~ msgstr "ଲାଇନ-୧"
-
-#~ msgid "Line-2"
-#~ msgstr "ଲାଇନ-୨"
-
-#~ msgid "Line-3"
-#~ msgstr "ଲାଇନ-୩"
-
-#~ msgid "Digital-1"
-#~ msgstr "ସାଂଖ୍ଯିକ-୧"
-
-#~ msgid "Digital-2"
-#~ msgstr "ସାଂଖ୍ଯିକ-୨"
-
-#~ msgid "Digital-3"
-#~ msgstr "ସାଂଖ୍ଯିକ-୩"
-
-#~ msgid "Phone-in"
-#~ msgstr "ଫୋନ-ନିବେଶ"
-
-#~ msgid "Phone-out"
-#~ msgstr "ଫୋନ-ନିର୍ଗମ"
-
-#~ msgid "Video"
-#~ msgstr "ଭିଡିଓ"
-
-#~ msgid "Radio"
-#~ msgstr "ରେଡିଓ"
-
-#, fuzzy
-#~ msgid "Could not open audio device for mixer control handling."
-#~ msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ଲେଖିବା ପାଇଁ ଖୋଲିହେଲା ନାହିଁ."
-
-#, fuzzy
-#~ msgid ""
-#~ "Could not open audio device for mixer control handling. This version of "
-#~ "the Open Sound System is not supported by this element."
-#~ msgstr "\"%s\" ଧ୍ବନି ଯନ୍ତ୍ର ଲେଖିବା ପାଇଁ ଖୋଲିହେଲା ନାହିଁ."
-
-#, fuzzy
-#~ msgid "Rear"
-#~ msgstr "ଅନୁଲିପିକରଣ"
-
-#, fuzzy
-#~ msgid "Side"
-#~ msgstr "ଭିଡିଓ"
-
-#, fuzzy
-#~ msgid "Line In"
-#~ msgstr "ଲାଇନ-ଇନ"
-
-#, fuzzy
-#~ msgid "Output Gain"
-#~ msgstr "ନିର୍ଗମ-ବୃଦ୍ଧି"
-
-#, fuzzy
-#~ msgid "Microphone Boost"
-#~ msgstr "ମାଇକ୍ରୋଫୋନ୍"
-
-#, fuzzy
-#~ msgid "Monitor Source"
-#~ msgstr "ପ୍ରଦର୍ଶିକା"
-
-#, fuzzy
-#~ msgid "Microphone Gain"
-#~ msgstr "ମାଇକ୍ରୋଫୋନ୍"
-
-#, fuzzy
-#~ msgid "Speaker Source"
-#~ msgstr "ସ୍ବରବର୍ଦ୍ଧକ ୟନ୍ତ୍ର"
-
-#, fuzzy
-#~ msgid "Microphone Source"
-#~ msgstr "ମାଇକ୍ରୋଫୋନ୍"
-
-#, fuzzy
-#~ msgid "Microphone 1"
-#~ msgstr "ମାଇକ୍ରୋଫୋନ୍"
-
-#, fuzzy
-#~ msgid "Microphone 2"
-#~ msgstr "ମାଇକ୍ରୋଫୋନ୍"
-
-#, fuzzy
-#~ msgid "Digital Out"
-#~ msgstr "ସାଂଖ୍ଯିକ-୧"
-
-#, fuzzy
-#~ msgid "Digital In"
-#~ msgstr "ସାଂଖ୍ଯିକ-୧"
-
-#, fuzzy
-#~ msgid "Front Panel Microphone"
-#~ msgstr "ମାଇକ୍ରୋଫୋନ୍"
-
-#, fuzzy
-#~ msgid "Could not enqueue buffers in device '%s'."
-#~ msgstr "\"%s\" ଯନ୍ତ୍ରରୁ ଅସ୍ଥାୟୀ ସଞ୍ଚୟ ସ୍ଥାନ ଆଣିହେଲା ନାହିଁ."
+#~ msgid "Device '%s' cannot capture at %dx%d"
+#~ msgstr "\"%s\" ଯନ୍ତ୍ର ଗୋଟିଏ ଅନୁଲିପିକାର ନୁହେଁ."
 
 #, fuzzy
 #~ msgid "Could not get buffers from device '%s'."

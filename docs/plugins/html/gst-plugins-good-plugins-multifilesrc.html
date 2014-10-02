@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>multifilesrc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-multifilesink.html" title="multifilesink">
 <link rel="next" href="gst-plugins-good-plugins-multipartdemux.html" title="multipartdemux">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-multifilesink.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-multipartdemux.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,12 +48,11 @@
 <a name="gst-plugins-good-plugins-multifilesrc.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSrc.html">GstBaseSrc</a>
-                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstPushSrc.html">GstPushSrc</a>
-                                 +----GstMultiFileSrc
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSrc.html">GstBaseSrc</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstPushSrc.html">GstPushSrc</a>
+                           +----GstMultiFileSrc
 </pre>
 </div>
 <div class="refsect1">
@@ -73,8 +72,7 @@
 Reads buffers from sequentially named files. If used together with an image
 decoder, one needs to use the <a class="link" href="gst-plugins-good-plugins-multifilesrc.html#GstMultiFileSrc--caps" title='The "caps" property'><span class="type">"caps"</span></a> property or a capsfilter
 to force to caps containing a framerate. Otherwise image decoders send EOS
-after the first picture. We also need a videorate element to set timestamps
-on all buffers after the first one in accordance with the framerate.
+after the first picture.
 </p>
 <p>
 File names are created by replacing "%d" with the index using <code class="function">printf()</code>.
@@ -82,7 +80,7 @@ File names are created by replacing "%d" with the index using <code class="funct
 <p>
 </p>
 <div class="refsect2">
-<a name="idp13778464"></a><h3>Example launch line</h3>
+<a name="idp5559360"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
@@ -90,8 +88,8 @@ File names are created by replacing "%d" with the index using <code class="funct
         <td class="listing_lines" align="right"><pre>1
 2
 3</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> multifilesrc location<span class="gtkdoc opt">=</span><span class="string">&quot;img.%04d.png&quot;</span> index<span class="gtkdoc opt">=</span><span class="number">0</span> caps<span class="gtkdoc opt">=</span><span class="string">&quot;image/png,framerate=\(fraction\)12/1&quot;</span> <span class="gtkdoc opt">!</span> \
-    pngdec <span class="gtkdoc opt">!</span> videoconvert <span class="gtkdoc opt">!</span> videorate <span class="gtkdoc opt">!</span> theoraenc <span class="gtkdoc opt">!</span> oggmux <span class="gtkdoc opt">!</span> \
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch multifilesrc location<span class="gtkdoc opt">=</span><span class="string">&quot;img.%04d.png&quot;</span> index<span class="gtkdoc opt">=</span><span class="number">0</span> caps<span class="gtkdoc opt">=</span><span class="string">&quot;image/png,framerate=\(fraction\)12/1&quot;</span> <span class="gtkdoc opt">!</span> \
+    pngdec <span class="gtkdoc opt">!</span> ffmpegcolorspace <span class="gtkdoc opt">!</span> theoraenc <span class="gtkdoc opt">!</span> oggmux <span class="gtkdoc opt">!</span> \
     filesink location<span class="gtkdoc opt">=</span><span class="string">&quot;images.ogg&quot;</span></pre></td>
       </tr>
     </tbody>
@@ -105,7 +103,7 @@ files named img.0000.png, img.0001.png, etc.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp13255472"></a><h3>Element Information</h3>
+<a name="idp14725200"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -128,7 +126,7 @@ files named img.0000.png, img.0001.png, etc.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp15950992"></a><h3>Element Pads</h3>
+<a name="idp17143520"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>

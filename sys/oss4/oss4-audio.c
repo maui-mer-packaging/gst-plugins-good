@@ -17,10 +17,6 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/* FIXME 0.11: suppress warnings for deprecated API such as GValueArray
- * with newer GLib versions (>= 2.31.0) */
-#define GLIB_DISABLE_DEPRECATION_WARNINGS
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -33,9 +29,10 @@
 #include <string.h>
 
 #include "gst/gst-i18n-plugin.h"
-#include <gst/audio/audio.h>
+#include <gst/audio/multichannel.h>
 
 #include "oss4-audio.h"
+#include "oss4-mixer.h"
 #include "oss4-property-probe.h"
 #include "oss4-sink.h"
 #include "oss4-source.h"
@@ -50,42 +47,33 @@ GST_DEBUG_CATEGORY (oss4_debug);
 
 typedef struct
 {
-  const GstAudioRingBufferFormatType gst_rbfmt;
-  const GstAudioFormat gst_rfmt;
+  const GstBufferFormat gst_fmt;
   const gint oss_fmt;
   const gchar name[16];
+  const gint depth;
+  const gint width;
+  const gint endianness;
+  const gboolean signedness;
 } GstOss4AudioFormat;
 
 /* *INDENT-OFF* */
 static const GstOss4AudioFormat fmt_map[] = {
   /* note: keep sorted by preference, prefered formats first */
   {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_MU_LAW, 0,
-      AFMT_MU_LAW, "audio/x-mulaw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_A_LAW, 0,
-      AFMT_A_LAW, "audio/x-alaw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S32LE,
-      AFMT_S32_LE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S32BE,
-      AFMT_S32_BE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S24_32LE,
-      AFMT_S24_LE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S24_32BE,
-      AFMT_S24_BE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S24LE,
-      AFMT_S24_PACKED, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S16LE,
-      AFMT_S16_LE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S16BE,
-      AFMT_S16_BE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_U16LE,
-      AFMT_U16_LE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_U16BE,
-      AFMT_U16_BE, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_S8,
-      AFMT_S8, "audio/x-raw"}, {
-  GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW, GST_AUDIO_FORMAT_U8,
-      AFMT_U8, "audio/x-raw"}
+  GST_MU_LAW, AFMT_MU_LAW, "audio/x-mulaw", 0, 0, 0, FALSE}, {
+  GST_A_LAW, AFMT_A_LAW, "audio/x-alaw", 0, 0, 0, FALSE}, {
+  GST_S32_LE, AFMT_S32_LE, "audio/x-raw-int", 32, 32, G_LITTLE_ENDIAN, TRUE}, {
+  GST_S32_BE, AFMT_S32_BE, "audio/x-raw-int", 32, 32, G_BIG_ENDIAN, TRUE}, {
+  GST_S24_LE, AFMT_S24_LE, "audio/x-raw-int", 24, 32, G_LITTLE_ENDIAN, TRUE}, {
+  GST_S24_BE, AFMT_S24_BE, "audio/x-raw-int", 24, 32, G_BIG_ENDIAN, TRUE}, {
+  GST_S24_3LE, AFMT_S24_PACKED, "audio/x-raw-int", 24, 24, G_LITTLE_ENDIAN,
+        TRUE}, {
+  GST_S16_LE, AFMT_S16_LE, "audio/x-raw-int", 16, 16, G_LITTLE_ENDIAN, TRUE}, {
+  GST_S16_BE, AFMT_S16_BE, "audio/x-raw-int", 16, 16, G_BIG_ENDIAN, TRUE}, {
+  GST_U16_LE, AFMT_U16_LE, "audio/x-raw-int", 16, 16, G_LITTLE_ENDIAN, FALSE}, {
+  GST_U16_BE, AFMT_U16_BE, "audio/x-raw-int", 16, 16, G_BIG_ENDIAN, FALSE}, {
+  GST_S8, AFMT_S8, "audio/x-raw-int", 8, 8, 0, TRUE}, {
+  GST_U8, AFMT_U8, "audio/x-raw-int", 8, 8, 0, FALSE}
 };
 /* *INDENT-ON* */
 
@@ -104,23 +92,24 @@ gst_oss4_append_format_to_caps (const GstOss4AudioFormat * fmt, GstCaps * caps)
 {
   GstStructure *s;
 
-  s = gst_structure_new_empty (fmt->name);
-  if (fmt->gst_rbfmt == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW) {
-    gst_structure_set (s, "format", G_TYPE_STRING,
-        gst_audio_format_to_string (fmt->gst_rfmt),
-        "layout", G_TYPE_STRING, "interleaved", NULL);
+  s = gst_structure_empty_new (fmt->name);
+  if (fmt->width != 0 && fmt->depth != 0) {
+    gst_structure_set (s, "width", G_TYPE_INT, fmt->width, "depth", G_TYPE_INT,
+        fmt->depth, "signed", G_TYPE_BOOLEAN, fmt->signedness, NULL);
+  }
+  if (fmt->endianness != 0) {
+    gst_structure_set (s, "endianness", G_TYPE_INT, fmt->endianness, NULL);
   }
   gst_caps_append_structure (caps, s);
 }
 
 static gint
-gst_oss4_audio_get_oss_format (GstAudioRingBufferFormatType fmt,
-    GstAudioFormat rfmt)
+gst_oss4_audio_get_oss_format (GstBufferFormat fmt)
 {
   guint i;
 
   for (i = 0; i < G_N_ELEMENTS (fmt_map); ++i) {
-    if (fmt_map[i].gst_rbfmt == fmt && fmt_map[i].gst_rfmt == rfmt)
+    if (fmt_map[i].gst_fmt == fmt)
       return fmt_map[i].oss_fmt;
   }
   return 0;
@@ -207,15 +196,15 @@ gst_oss4_audio_detect_rates (GstObject * obj, oss_audioinfo * ai,
 }
 
 static void
-gst_oss4_audio_get_channel_layout (GstObject * obj, guint64 layout,
-    guint num_channels, GstAudioChannelPosition * ch_layout)
+gst_oss4_audio_add_channel_layout (GstObject * obj, guint64 layout,
+    guint num_channels, GstStructure * s)
 {
   const GstAudioChannelPosition pos_map[16] = {
     GST_AUDIO_CHANNEL_POSITION_NONE,    /* 0 = dunno          */
     GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT,      /* 1 = left           */
     GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT,     /* 2 = right          */
     GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER,    /* 3 = center         */
-    GST_AUDIO_CHANNEL_POSITION_LFE1,    /* 4 = lfe            */
+    GST_AUDIO_CHANNEL_POSITION_LFE,     /* 4 = lfe            */
     GST_AUDIO_CHANNEL_POSITION_SIDE_LEFT,       /* 5 = left surround  */
     GST_AUDIO_CHANNEL_POSITION_SIDE_RIGHT,      /* 6 = right surround */
     GST_AUDIO_CHANNEL_POSITION_REAR_LEFT,       /* 7 = left rear      */
@@ -228,8 +217,11 @@ gst_oss4_audio_get_channel_layout (GstObject * obj, guint64 layout,
     GST_AUDIO_CHANNEL_POSITION_NONE,
     GST_AUDIO_CHANNEL_POSITION_NONE
   };
+  GstAudioChannelPosition ch_layout[8] = { 0, };
   guint speaker_pos;            /* speaker position as defined by OSS */
   guint i;
+
+  g_return_if_fail (num_channels <= G_N_ELEMENTS (ch_layout));
 
   for (i = 0; i < num_channels; ++i) {
     /* layout contains up to 16 speaker positions, with each taking up 4 bits */
@@ -242,7 +234,7 @@ gst_oss4_audio_get_channel_layout (GstObject * obj, guint64 layout,
 
     ch_layout[i] = pos_map[speaker_pos];
   }
-
+  gst_audio_set_channel_positions (s, ch_layout);
   return;
 
 no_layout:
@@ -257,63 +249,9 @@ no_layout:
     for (i = 0; i < num_channels; ++i) {
       ch_layout[i] = GST_AUDIO_CHANNEL_POSITION_NONE;
     }
+    gst_audio_set_channel_positions (s, ch_layout);
     return;
   }
-}
-
-static void
-gst_oss4_audio_set_ringbuffer_channel_layout (GstObject * obj, gint fd,
-    GstAudioRingBufferSpec * spec)
-{
-  guint num_channels;
-  guint64 layout = 0;
-  GstAudioRingBuffer *rb;
-  GstAudioChannelPosition ch_layout[8] = { 0, };
-
-  num_channels = GST_AUDIO_INFO_CHANNELS (&spec->info);
-  if (num_channels < 3 || num_channels > 9)
-    return;
-
-  if (spec->type != GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW)
-    return;
-
-  if (GST_IS_OSS4_SINK (obj)) {
-    rb = GST_AUDIO_BASE_SINK (obj)->ringbuffer;
-  } else if (GST_IS_OSS4_SOURCE (obj)) {
-    rb = GST_AUDIO_BASE_SRC (obj)->ringbuffer;
-  } else
-    g_return_if_reached ();
-
-  /* -1 = get info for currently open device (fd). This will fail with
-   * OSS build <= 1013 because of a bug in OSS */
-  if (ioctl (fd, SNDCTL_DSP_GET_CHNORDER, &layout) == -1) {
-    GST_WARNING_OBJECT (obj, "couldn't query channel layout, assuming default");
-    layout = CHNORDER_NORMAL;
-  }
-  GST_DEBUG_OBJECT (obj, "channel layout: %08" G_GINT64_MODIFIER "x", layout);
-
-
-  gst_oss4_audio_get_channel_layout (obj, layout, num_channels, ch_layout);
-  gst_audio_ring_buffer_set_channel_positions (rb, ch_layout);
-
-  return;
-}
-
-static void
-gst_oss4_audio_add_channel_layout (GstObject * obj, guint64 layout,
-    guint num_channels, GstStructure * s)
-{
-  GstAudioChannelPosition ch_layout[8] = { 0, };
-  guint64 mask;
-
-  g_return_if_fail (num_channels <= G_N_ELEMENTS (ch_layout));
-
-  gst_oss4_audio_get_channel_layout (obj, layout, num_channels, ch_layout);
-  if (gst_audio_channel_positions_to_mask (ch_layout, num_channels, FALSE,
-          &mask))
-    gst_structure_set (s, "channel-mask", GST_TYPE_BITMASK, mask, NULL);
-
-  return;
 }
 
 /* arbitrary max. limit */
@@ -461,8 +399,8 @@ done:
       chan_s = gst_caps_get_structure (chan_caps, j);
       if ((val = gst_structure_get_value (chan_s, "channels")))
         gst_structure_set_value (s, "channels", val);
-      if ((val = gst_structure_get_value (chan_s, "channel-mask")))
-        gst_structure_set_value (s, "channel-mask", val);
+      if ((val = gst_structure_get_value (chan_s, "channel-positions")))
+        gst_structure_set_value (s, "channel-positions", val);
 
       gst_caps_append_structure (out_caps, s);
       s = NULL;
@@ -516,7 +454,7 @@ gst_oss4_audio_probe_caps (GstObject * obj, int fd)
     }
   }
 
-  caps = gst_caps_simplify (caps);
+  gst_caps_do_simplify (caps);
   GST_LOG_OBJECT (obj, "formats: %" GST_PTR_FORMAT, caps);
 
   if (!gst_oss4_audio_detect_rates (obj, &ai, caps))
@@ -563,7 +501,7 @@ gst_oss4_audio_get_template_caps (void)
     gst_oss4_append_format_to_caps (&fmt_map[i], caps);
   }
 
-  caps = gst_caps_simplify (caps);
+  gst_caps_do_simplify (caps);
 
   for (i = 0; i < gst_caps_get_size (caps); ++i) {
     GstStructure *s;
@@ -579,25 +517,17 @@ gst_oss4_audio_get_template_caps (void)
 
 /* called by gst_oss4_sink_prepare() and gst_oss4_source_prepare() */
 gboolean
-gst_oss4_audio_set_format (GstObject * obj, int fd,
-    GstAudioRingBufferSpec * spec)
+gst_oss4_audio_set_format (GstObject * obj, int fd, GstRingBufferSpec * spec)
 {
   struct audio_buf_info info = { 0, };
-  int ofmt, fmt, chans, rate, width;
+  int fmt, chans, rate;
 
-  fmt = gst_oss4_audio_get_oss_format (spec->type,
-      GST_AUDIO_INFO_FORMAT (&spec->info));
-
+  fmt = gst_oss4_audio_get_oss_format (spec->format);
   if (fmt == 0)
     goto wrong_format;
 
-  ofmt = fmt;
-  chans = GST_AUDIO_INFO_CHANNELS (&spec->info);
-  rate = GST_AUDIO_INFO_RATE (&spec->info);
-  width = GST_AUDIO_INFO_WIDTH (&spec->info);
-
-  if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW &&
-      width != 32 && width != 24 && width != 16 && width != 8) {
+  if (spec->type == GST_BUFTYPE_LINEAR && spec->width != 32 &&
+      spec->width != 24 && spec->width != 16 && spec->width != 8) {
     goto dodgy_width;
   }
 
@@ -607,12 +537,14 @@ gst_oss4_audio_set_format (GstObject * obj, int fd,
     goto set_format_failed;
 
   /* channels */
-  GST_LOG_OBJECT (obj, "setting channels: %d", chans);
+  GST_LOG_OBJECT (obj, "setting channels: %d", spec->channels);
+  chans = spec->channels;
   if (ioctl (fd, SNDCTL_DSP_CHANNELS, &chans) == -1)
     goto set_channels_failed;
 
   /* rate */
-  GST_LOG_OBJECT (obj, "setting rate: %d", rate);
+  GST_LOG_OBJECT (obj, "setting rate: %d", spec->rate);
+  rate = spec->rate;
   if (ioctl (fd, SNDCTL_DSP_SPEED, &rate) == -1)
     goto set_rate_failed;
 
@@ -621,8 +553,8 @@ gst_oss4_audio_set_format (GstObject * obj, int fd,
   GST_DEBUG_OBJECT (obj, "effective rate     : %d", rate);
 
   /* make sure format, channels, and rate are the ones we requested */
-  if (fmt != ofmt || chans != GST_AUDIO_INFO_CHANNELS (&spec->info) ||
-      rate != GST_AUDIO_INFO_RATE (&spec->info)) {
+  if (fmt != gst_oss4_audio_get_oss_format (spec->format) ||
+      chans != spec->channels || rate != spec->rate) {
     /* This shouldn't happen, but hey */
     goto format_not_what_was_requested;
   }
@@ -643,10 +575,10 @@ gst_oss4_audio_set_format (GstObject * obj, int fd,
    * being too large, and the buffer will wrap.  */
   spec->segtotal = info.fragstotal + 4;
 
+  spec->bytes_per_sample = (spec->width / 8) * spec->channels;
+
   GST_DEBUG_OBJECT (obj, "got segsize: %d, segtotal: %d, value: %08x",
       spec->segsize, spec->segtotal, info.fragsize);
-
-  gst_oss4_audio_set_ringbuffer_channel_layout (obj, fd, spec);
 
   return TRUE;
 
@@ -654,14 +586,13 @@ gst_oss4_audio_set_format (GstObject * obj, int fd,
 wrong_format:
   {
     GST_ELEMENT_ERROR (obj, RESOURCE, SETTINGS, (NULL),
-        ("Unable to get format (%d, %d)", spec->type,
-            GST_AUDIO_INFO_FORMAT (&spec->info)));
+        ("Unable to get format %d", spec->format));
     return FALSE;
   }
 dodgy_width:
   {
     GST_ELEMENT_ERROR (obj, RESOURCE, SETTINGS, (NULL),
-        ("unexpected width %d", width));
+        ("unexpected width %d", spec->width));
     return FALSE;
   }
 set_format_failed:
@@ -729,7 +660,8 @@ gst_oss4_audio_find_device (GstObject * oss)
   GValueArray *arr;
   gchar *ret = NULL;
 
-  arr = gst_oss4_property_probe_get_values (GST_OBJECT (oss), "device");
+  arr = gst_property_probe_probe_and_get_values_name (GST_PROPERTY_PROBE (oss),
+      "device");
 
   if (arr != NULL) {
     if (arr->n_values > 0) {
@@ -767,7 +699,8 @@ plugin_init (GstPlugin * plugin)
   rank = GST_RANK_SECONDARY + 1;
 
   if (!gst_element_register (plugin, "oss4sink", rank, GST_TYPE_OSS4_SINK) ||
-      !gst_element_register (plugin, "oss4src", rank, GST_TYPE_OSS4_SOURCE)) {
+      !gst_element_register (plugin, "oss4src", rank, GST_TYPE_OSS4_SOURCE) ||
+      !gst_element_register (plugin, "oss4mixer", rank, GST_TYPE_OSS4_MIXER)) {
     return FALSE;
   }
 
@@ -776,6 +709,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    oss4,
+    "oss4",
     "Open Sound System (OSS) version 4 support for GStreamer",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

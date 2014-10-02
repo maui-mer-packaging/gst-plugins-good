@@ -465,7 +465,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>port</NICK>
 <BLURB>The port to send the packets to.</BLURB>
-<DEFAULT>5004</DEFAULT>
+<DEFAULT>4951</DEFAULT>
 </ARG>
 
 <ARG>
@@ -495,7 +495,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>Port</NICK>
 <BLURB>The port to receive the packets from, 0=allocate.</BLURB>
-<DEFAULT>5004</DEFAULT>
+<DEFAULT>4951</DEFAULT>
 </ARG>
 
 <ARG>
@@ -505,7 +505,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>URI</NICK>
 <BLURB>URI in the form of udp://multicast_group:port.</BLURB>
-<DEFAULT>"udp://0.0.0.0:5004"</DEFAULT>
+<DEFAULT>"udp://0.0.0.0:4951"</DEFAULT>
 </ARG>
 
 <ARG>
@@ -534,7 +534,7 @@
 <RANGE></RANGE>
 <FLAGS>rw</FLAGS>
 <NICK>Timeout</NICK>
-<BLURB>Post a message after timeout nanoseconds (0 = disabled).</BLURB>
+<BLURB>Post a message after timeout microseconds (0 = disabled).</BLURB>
 <DEFAULT>0</DEFAULT>
 </ARG>
 
@@ -596,36 +596,6 @@
 <NICK>Reuse</NICK>
 <BLURB>Enable reuse of the port.</BLURB>
 <DEFAULT>TRUE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstUDPSrc::close-socket</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Close socket</NICK>
-<BLURB>Close socket if passed as property on state change.</BLURB>
-<DEFAULT>TRUE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstUDPSrc::socket</NAME>
-<TYPE>GSocket*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Socket</NICK>
-<BLURB>Socket to use for UDP reception. (NULL == allocate).</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstUDPSrc::used-socket</NAME>
-<TYPE>GSocket*</TYPE>
-<RANGE></RANGE>
-<FLAGS>r</FLAGS>
-<NICK>Socket Handle</NICK>
-<BLURB>Socket currently in use for UDP reception. (NULL = no socket).</BLURB>
-<DEFAULT></DEFAULT>
 </ARG>
 
 <ARG>
@@ -760,8 +730,8 @@
 
 <ARG>
 <NAME>GstRTSPSrc::connection-speed</NAME>
-<TYPE>guint64</TYPE>
-<RANGE><= 18446744073709551</RANGE>
+<TYPE>guint</TYPE>
+<RANGE><= 2147483</RANGE>
 <FLAGS>rw</FLAGS>
 <NICK>Connection Speed</NICK>
 <BLURB>Network connection speed in kbps (0 = unknown).</BLURB>
@@ -866,36 +836,6 @@
 <NICK>Short Header</NICK>
 <BLURB>Only send the basic RTSP headers for broken encoders.</BLURB>
 <DEFAULT>FALSE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstRTSPSrc::do-rtsp-keep-alive</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Do RTSP Keep Alive</NICK>
-<BLURB>Send RTSP keep alive packets, disable for old incompatible server.</BLURB>
-<DEFAULT>TRUE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstRTSPSrc::drop-on-latency</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Drop buffers when maximum latency is reached</NICK>
-<BLURB>Tells the jitterbuffer to never exceed the given latency in size.</BLURB>
-<DEFAULT>FALSE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstRTSPSrc::probation</NAME>
-<TYPE>guint</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Number of probations</NICK>
-<BLURB>Consecutive packet sequence numbers to accept the source.</BLURB>
-<DEFAULT>2</DEFAULT>
 </ARG>
 
 <ARG>
@@ -1355,7 +1295,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>Snapshot</NICK>
 <BLURB>Send EOS after encoding a frame, useful for snapshots.</BLURB>
-<DEFAULT>FALSE</DEFAULT>
+<DEFAULT>TRUE</DEFAULT>
 </ARG>
 
 <ARG>
@@ -1955,7 +1895,7 @@
 <FLAGS>rwx</FLAGS>
 <NICK>Seekpoints</NICK>
 <BLURB>Add SEEKTABLE metadata (if > 0, number of entries, if < 0, interval in sec).</BLURB>
-<DEFAULT>-10</DEFAULT>
+<DEFAULT>0</DEFAULT>
 </ARG>
 
 <ARG>
@@ -2539,26 +2479,6 @@
 </ARG>
 
 <ARG>
-<NAME>GstDynUDPSink::close-socket</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Close socket</NICK>
-<BLURB>Close socket if passed as property on state change.</BLURB>
-<DEFAULT>TRUE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstDynUDPSink::socket</NAME>
-<TYPE>GSocket*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Socket</NICK>
-<BLURB>Socket to use for UDP sending. (NULL == allocate).</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
 <NAME>GstCdioCddaSrc::read-speed</NAME>
 <TYPE>gint</TYPE>
 <RANGE>[-1,100]</RANGE>
@@ -2696,36 +2616,6 @@
 <NICK>Buffer Size</NICK>
 <BLURB>Size of the kernel send buffer in bytes, 0=default.</BLURB>
 <DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstMultiUDPSink::close-socket</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Close socket</NICK>
-<BLURB>Close socket if passed as property on state change.</BLURB>
-<DEFAULT>TRUE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstMultiUDPSink::socket</NAME>
-<TYPE>GSocket*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Socket Handle</NICK>
-<BLURB>Socket to use for UDP sending. (NULL == allocate).</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstMultiUDPSink::used-socket</NAME>
-<TYPE>GSocket*</TYPE>
-<RANGE></RANGE>
-<FLAGS>r</FLAGS>
-<NICK>Used Socket Handle</NICK>
-<BLURB>Socket currently in use for UDP sending. (NULL == no socket).</BLURB>
-<DEFAULT></DEFAULT>
 </ARG>
 
 <ARG>
@@ -3080,7 +2970,7 @@
 
 <ARG>
 <NAME>GstAudioAmplify::clipping-method</NAME>
-<TYPE>GstAudioAmplifyClippingMethod</TYPE>
+<TYPE>GstAudioPanoramaClippingMethod</TYPE>
 <RANGE></RANGE>
 <FLAGS>rw</FLAGS>
 <NICK>Clipping method</NICK>
@@ -3399,16 +3289,6 @@
 </ARG>
 
 <ARG>
-<NAME>GstV4l2Src::io-mode</NAME>
-<TYPE>GstV4l2IOMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>IO mode</NICK>
-<BLURB>I/O mode.</BLURB>
-<DEFAULT>GST_V4L2_IO_AUTO</DEFAULT>
-</ARG>
-
-<ARG>
 <NAME>GstAudioChebBand::lower-frequency</NAME>
 <TYPE>gfloat</TYPE>
 <RANGE>[0,100000]</RANGE>
@@ -3620,8 +3500,8 @@
 
 <ARG>
 <NAME>GstRndBufferSize::max</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 1</RANGE>
+<TYPE>glong</TYPE>
+<RANGE>[1,G_MAXINT]</RANGE>
 <FLAGS>rwx</FLAGS>
 <NICK>maximum</NICK>
 <BLURB>maximum buffer size.</BLURB>
@@ -3630,8 +3510,8 @@
 
 <ARG>
 <NAME>GstRndBufferSize::min</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
+<TYPE>glong</TYPE>
+<RANGE>[0,G_MAXINT]</RANGE>
 <FLAGS>rwx</FLAGS>
 <NICK>mininum</NICK>
 <BLURB>mininum buffer size.</BLURB>
@@ -3640,12 +3520,12 @@
 
 <ARG>
 <NAME>GstRndBufferSize::seed</NAME>
-<TYPE>guint</TYPE>
-<RANGE></RANGE>
+<TYPE>gulong</TYPE>
+<RANGE><= G_MAXUINT</RANGE>
 <FLAGS>rwx</FLAGS>
 <NICK>random number seed</NICK>
 <BLURB>seed for randomness (initialized when going from READY to PAUSED).</BLURB>
-<DEFAULT>0</DEFAULT>
+<DEFAULT></DEFAULT>
 </ARG>
 
 <ARG>
@@ -3659,16 +3539,6 @@
 </ARG>
 
 <ARG>
-<NAME>GstAutoAudioSink::ts-offset</NAME>
-<TYPE>gint64</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>TS Offset</NICK>
-<BLURB>Timestamp offset in nanoseconds.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
 <NAME>GstAutoVideoSink::filter-caps</NAME>
 <TYPE>GstCaps*</TYPE>
 <RANGE></RANGE>
@@ -3676,16 +3546,6 @@
 <NICK>Filter caps</NICK>
 <BLURB>Filter sink candidates using these caps.</BLURB>
 <DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstAutoVideoSink::ts-offset</NAME>
-<TYPE>gint64</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>TS Offset</NICK>
-<BLURB>Timestamp offset in nanoseconds.</BLURB>
-<DEFAULT>0</DEFAULT>
 </ARG>
 
 <ARG>
@@ -20085,7 +19945,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>Client</NICK>
 <BLURB>The PulseAudio client name to use.</BLURB>
-<DEFAULT>"<unknown>"</DEFAULT>
+<DEFAULT>"lt-gst-plugins-good-plugins-scan"</DEFAULT>
 </ARG>
 
 <ARG>
@@ -20096,16 +19956,6 @@
 <NICK>stream properties</NICK>
 <BLURB>list of pulseaudio stream properties.</BLURB>
 <DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstPulseSink::client-name</NAME>
-<TYPE>gchar*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Client Name</NICK>
-<BLURB>The PulseAudio client name to use.</BLURB>
-<DEFAULT>"lt-gst-plugins-good-plugins-scan"</DEFAULT>
 </ARG>
 
 <ARG>
@@ -20155,7 +20005,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>Client</NICK>
 <BLURB>The PulseAudio client_name_to_use.</BLURB>
-<DEFAULT>"<unknown>"</DEFAULT>
+<DEFAULT>"lt-gst-plugins-good-plugins-scan"</DEFAULT>
 </ARG>
 
 <ARG>
@@ -20186,16 +20036,6 @@
 <NICK>Volume</NICK>
 <BLURB>Linear volume of this stream, 1.0=100%.</BLURB>
 <DEFAULT>1</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstPulseSrc::client-name</NAME>
-<TYPE>gchar*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Client Name</NICK>
-<BLURB>The PulseAudio client_name_to_use.</BLURB>
-<DEFAULT>"lt-gst-plugins-good-plugins-scan"</DEFAULT>
 </ARG>
 
 <ARG>
@@ -20504,7 +20344,7 @@
 <RANGE></RANGE>
 <FLAGS>rw</FLAGS>
 <NICK>A</NICK>
-<BLURB>Filter coefficients (denominator of transfer function).</BLURB>
+<BLURB>Filter coefficients (numerator of transfer function).</BLURB>
 <DEFAULT></DEFAULT>
 </ARG>
 
@@ -20514,7 +20354,7 @@
 <RANGE></RANGE>
 <FLAGS>rw</FLAGS>
 <NICK>B</NICK>
-<BLURB>Filter coefficients (numerator of transfer function).</BLURB>
+<BLURB>Filter coefficients (denominator of transfer function).</BLURB>
 <DEFAULT></DEFAULT>
 </ARG>
 
@@ -20969,16 +20809,6 @@
 </ARG>
 
 <ARG>
-<NAME>GstRtpBin::drop-on-latency</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Drop buffers when maximum latency is reached</NICK>
-<BLURB>Tells the jitterbuffer to never exceed the given latency in size.</BLURB>
-<DEFAULT>FALSE</DEFAULT>
-</ARG>
-
-<ARG>
 <NAME>GstRtpJitterBuffer::do-lost</NAME>
 <TYPE>gboolean</TYPE>
 <RANGE></RANGE>
@@ -21149,16 +20979,6 @@
 </ARG>
 
 <ARG>
-<NAME>GstRtpSession::probation</NAME>
-<TYPE>guint</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Number of probations</NICK>
-<BLURB>Consecutive packet sequence numbers to accept the source.</BLURB>
-<DEFAULT>2</DEFAULT>
-</ARG>
-
-<ARG>
 <NAME>GstV4l2Sink::device</NAME>
 <TYPE>gchar*</TYPE>
 <RANGE></RANGE>
@@ -21171,7 +20991,7 @@
 <ARG>
 <NAME>GstV4l2Sink::device-fd</NAME>
 <TYPE>gint</TYPE>
-<RANGE>>= G_MAXULONG</RANGE>
+<RANGE>>= -1</RANGE>
 <FLAGS>r</FLAGS>
 <NICK>File descriptor</NICK>
 <BLURB>File descriptor of the device.</BLURB>
@@ -21336,26 +21156,6 @@
 <NICK>Minimum queued bufs</NICK>
 <BLURB>Minimum number of queued bufs; v4l2sink won't dqbuf if the driver doesn't have more than this number (which normally you shouldn't change).</BLURB>
 <DEFAULT>1</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstV4l2Sink::io-mode</NAME>
-<TYPE>GstV4l2IOMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>IO mode</NICK>
-<BLURB>I/O mode.</BLURB>
-<DEFAULT>GST_V4L2_IO_AUTO</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstV4l2Sink::norm</NAME>
-<TYPE>V4L2_TV_norms</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>TV norm</NICK>
-<BLURB>video standard.</BLURB>
-<DEFAULT>none</DEFAULT>
 </ARG>
 
 <ARG>
@@ -21589,16 +21389,6 @@
 </ARG>
 
 <ARG>
-<NAME>GstJackAudioSrc::transport</NAME>
-<TYPE>GstJackTransport</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Transport mode</NICK>
-<BLURB>Jack transport behaviour of the client.</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
 <NAME>GstJackAudioSink::client</NAME>
 <TYPE>JackClient*</TYPE>
 <RANGE></RANGE>
@@ -21636,16 +21426,6 @@
 <NICK>Client name</NICK>
 <BLURB>The client name of the Jack instance (NULL = default).</BLURB>
 <DEFAULT>NULL</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstJackAudioSink::transport</NAME>
-<TYPE>GstJackTransport</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Transport mode</NICK>
-<BLURB>Jack transport behaviour of the client.</BLURB>
-<DEFAULT></DEFAULT>
 </ARG>
 
 <ARG>
@@ -22274,7 +22054,7 @@
 <RANGE></RANGE>
 <FLAGS>rw</FLAGS>
 <NICK>Maximum gap time</NICK>
-<BLURB>The demuxer sends out segment events for skipping gaps longer than this (0 = disabled).</BLURB>
+<BLURB>The demuxer sends out newsegment events for skipping gaps longer than this (0 = disabled).</BLURB>
 <DEFAULT>2000000000</DEFAULT>
 </ARG>
 
@@ -22335,7 +22115,7 @@
 <FLAGS>rw</FLAGS>
 <NICK>Client</NICK>
 <BLURB>The PulseAudio client name to use.</BLURB>
-<DEFAULT>"<unknown>"</DEFAULT>
+<DEFAULT>"lt-gst-plugins-good-plugins-scan"</DEFAULT>
 </ARG>
 
 <ARG>
@@ -22636,725 +22416,5 @@
 <NICK>user-pw</NICK>
 <BLURB>user password for authentication.</BLURB>
 <DEFAULT>""</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstWavParse::ignore-length</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Ignore length</NICK>
-<BLURB>Ignore length from the Wave header.</BLURB>
-<DEFAULT>FALSE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::location</NAME>
-<TYPE>gchar*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>location</NICK>
-<BLURB>Location of image file to overlay.</BLURB>
-<DEFAULT>NULL</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::offset-x</NAME>
-<TYPE>gint</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>X Offset</NICK>
-<BLURB>Horizontal offset of overlay image in pixels from top-left corner of video image.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::offset-y</NAME>
-<TYPE>gint</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Y Offset</NICK>
-<BLURB>Vertical offset of overlay image in pixels from top-left corner of video image.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::overlay-height</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Overlay Height</NICK>
-<BLURB>Height of overlay image in pixels (0 = same as overlay image).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::overlay-width</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Overlay Width</NICK>
-<BLURB>Width of overlay image in pixels (0 = same as overlay image).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::relative-x</NAME>
-<TYPE>gdouble</TYPE>
-<RANGE>[0,1]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Relative X Offset</NICK>
-<BLURB>Horizontal offset of overlay image in fractions of video image width, from top-left corner of video image.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::relative-y</NAME>
-<TYPE>gdouble</TYPE>
-<RANGE>[0,1]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Relative Y Offset</NICK>
-<BLURB>Vertical offset of overlay image in fractions of video image height, from top-left corner of video image.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstGdkPixbufOverlay::alpha</NAME>
-<TYPE>gdouble</TYPE>
-<RANGE>[0,1]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Alpha</NICK>
-<BLURB>Global alpha of overlay image.</BLURB>
-<DEFAULT>1</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::arnr-maxframes</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,15]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>AltRef max frames</NICK>
-<BLURB>AltRef maximum number of frames.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::arnr-strength</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,6]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>AltRef strength</NICK>
-<BLURB>AltRef strength.</BLURB>
-<DEFAULT>3</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::arnr-type</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[1,3]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>AltRef type</NICK>
-<BLURB>AltRef type.</BLURB>
-<DEFAULT>3</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::auto-alt-ref</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Auto alt reference frames</NICK>
-<BLURB>Automatically generate AltRef frames.</BLURB>
-<DEFAULT>FALSE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::buffer-initial-size</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Buffer initial size</NICK>
-<BLURB>Initial client buffer size (ms).</BLURB>
-<DEFAULT>4000</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::buffer-optimal-size</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Buffer optimal size</NICK>
-<BLURB>Optimal client buffer size (ms).</BLURB>
-<DEFAULT>5000</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::buffer-size</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Buffer size</NICK>
-<BLURB>Client buffer size (ms).</BLURB>
-<DEFAULT>6000</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::cpu-used</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[-16,16]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>CPU used</NICK>
-<BLURB>CPU used.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::cq-level</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,63]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Constrained quality level</NICK>
-<BLURB>Constrained quality level.</BLURB>
-<DEFAULT>10</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::deadline</NAME>
-<TYPE>gint64</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Deadline</NICK>
-<BLURB>Deadline per frame (usec, 0=disabled).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::dropframe-threshold</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,100]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Drop Frame Threshold</NICK>
-<BLURB>Temporal resampling threshold (buf %).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::end-usage</NAME>
-<TYPE>GstVP8EncEndUsage</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Rate control mode</NICK>
-<BLURB>Rate control mode.</BLURB>
-<DEFAULT>Variable Bit Rate (VBR) mode</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::error-resilient</NAME>
-<TYPE>GstVP8EncErFlags</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Error resilient</NICK>
-<BLURB>Error resilience flags.</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::h-scaling-mode</NAME>
-<TYPE>GstVP8EncScalingMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Horizontal scaling mode</NICK>
-<BLURB>Horizontal scaling mode.</BLURB>
-<DEFAULT>Normal</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::kf-max-dist</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Keyframe max distance</NICK>
-<BLURB>Maximum distance between keyframes (number of frames).</BLURB>
-<DEFAULT>128</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::kf-mode</NAME>
-<TYPE>GstVP8EncKfMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Keyframe Mode</NICK>
-<BLURB>Keyframe placement.</BLURB>
-<DEFAULT>Determine optimal placement automatically</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::lag-in-frames</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,25]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Lag in frames</NICK>
-<BLURB>Maximum number of frames to lag.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::max-intra-bitrate-pct</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Max Intra bitrate</NICK>
-<BLURB>Maximum Intra frame bitrate.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::max-quantizer</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,63]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Maximum Quantizer</NICK>
-<BLURB>Maximum Quantizer (worst).</BLURB>
-<DEFAULT>63</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::min-quantizer</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,63]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Minimum Quantizer</NICK>
-<BLURB>Minimum Quantizer (best).</BLURB>
-<DEFAULT>4</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::multipass-cache-file</NAME>
-<TYPE>gchar*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Multipass Cache File</NICK>
-<BLURB>Multipass cache file.</BLURB>
-<DEFAULT>"multipass.cache"</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::multipass-mode</NAME>
-<TYPE>GstVP8EncMultipassMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Multipass Mode</NICK>
-<BLURB>Multipass encode mode.</BLURB>
-<DEFAULT>One pass encoding (default)</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::noise-sensitivity</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,6]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Noise sensitivity</NICK>
-<BLURB>Noise sensisivity (frames to blur).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::overshoot-pct</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,1000]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Overshoot PCT</NICK>
-<BLURB>Datarate overshoot (max) target (%).</BLURB>
-<DEFAULT>100</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::resize-allowed</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Resize Allowed</NICK>
-<BLURB>Allow spatial resampling.</BLURB>
-<DEFAULT>FALSE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::resize-down-threshold</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,100]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Resize Down Threshold</NICK>
-<BLURB>Downscale threshold (buf %).</BLURB>
-<DEFAULT>60</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::resize-up-threshold</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,100]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Resize Up Threshold</NICK>
-<BLURB>Upscale threshold (buf %).</BLURB>
-<DEFAULT>30</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::sharpness</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,7]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Sharpness</NICK>
-<BLURB>Filter sharpness.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::static-threshold</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Static Threshold</NICK>
-<BLURB>Motion detection threshold.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::target-bitrate</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Target bitrate</NICK>
-<BLURB>Target bitrate (in bits/sec).</BLURB>
-<DEFAULT>256000</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::threads</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,64]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Threads</NICK>
-<BLURB>Number of threads to use.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::token-partitions</NAME>
-<TYPE>GstVP8EncTokenPartitions</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Token partitions</NICK>
-<BLURB>Number of token partitions.</BLURB>
-<DEFAULT>One token partition</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::ts-layer-id</NAME>
-<TYPE>GValueArray*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Coding layer identification</NICK>
-<BLURB>Sequence defining coding layer membership.</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::ts-number-layers</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[1,5]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Number of coding layers</NICK>
-<BLURB>Number of coding layers to use.</BLURB>
-<DEFAULT>1</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::ts-periodicity</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,16]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Layer periodicity</NICK>
-<BLURB>Length of sequence that defines layer membership periodicity.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::ts-rate-decimator</NAME>
-<TYPE>GValueArray*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Coding layer rate decimator</NICK>
-<BLURB>Rate decimation factors for each layer.</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::ts-target-bitrate</NAME>
-<TYPE>GValueArray*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Coding layer target bitrates</NICK>
-<BLURB>Target bitrates for coding layers (one per layer, decreasing).</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::tuning</NAME>
-<TYPE>GstVP8EncTuning</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Tuning</NICK>
-<BLURB>Tuning.</BLURB>
-<DEFAULT>Tune for PSNR</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::twopass-vbr-bias-pct</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,100]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>2-pass VBR bias</NICK>
-<BLURB>CBR/VBR bias (0=CBR, 100=VBR).</BLURB>
-<DEFAULT>50</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::twopass-vbr-maxsection-pct</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>2-pass GOP max bitrate</NICK>
-<BLURB>GOP maximum bitrate (% target).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::twopass-vbr-minsection-pct</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>2-pass GOP min bitrate</NICK>
-<BLURB>GOP minimum bitrate (% target).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::undershoot-pct</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,1000]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Undershoot PCT</NICK>
-<BLURB>Datarate undershoot (min) target (%).</BLURB>
-<DEFAULT>100</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::v-scaling-mode</NAME>
-<TYPE>GstVP8EncScalingMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Vertical scaling mode</NICK>
-<BLURB>Vertical scaling mode.</BLURB>
-<DEFAULT>Normal</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::horizontal-scaling-mode</NAME>
-<TYPE>GstVP8EncScalingMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Horizontal scaling mode</NICK>
-<BLURB>Horizontal scaling mode.</BLURB>
-<DEFAULT>Normal</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::keyframe-max-dist</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Keyframe max distance</NICK>
-<BLURB>Maximum distance between keyframes (number of frames).</BLURB>
-<DEFAULT>128</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::keyframe-mode</NAME>
-<TYPE>GstVP8EncKfMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Keyframe Mode</NICK>
-<BLURB>Keyframe placement.</BLURB>
-<DEFAULT>Determine optimal placement automatically</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::max-intra-bitrate</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Max Intra bitrate</NICK>
-<BLURB>Maximum Intra frame bitrate.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::overshoot</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,1000]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Overshoot PCT</NICK>
-<BLURB>Datarate overshoot (max) target (%).</BLURB>
-<DEFAULT>100</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::temporal-scalability-layer-id</NAME>
-<TYPE>GValueArray*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Coding layer identification</NICK>
-<BLURB>Sequence defining coding layer membership.</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::temporal-scalability-number-layers</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[1,5]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Number of coding layers</NICK>
-<BLURB>Number of coding layers to use.</BLURB>
-<DEFAULT>1</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::temporal-scalability-periodicity</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,16]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Coding layer periodicity</NICK>
-<BLURB>Length of sequence that defines layer membership periodicity.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::temporal-scalability-rate-decimator</NAME>
-<TYPE>GValueArray*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Coding layer rate decimator</NICK>
-<BLURB>Rate decimation factors for each layer.</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::temporal-scalability-target-bitrate</NAME>
-<TYPE>GValueArray*</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Coding layer target bitrates</NICK>
-<BLURB>Target bitrates for coding layers (one per layer, decreasing).</BLURB>
-<DEFAULT></DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::twopass-vbr-bias</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,100]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>2-pass VBR bias</NICK>
-<BLURB>CBR/VBR bias (0=CBR, 100=VBR).</BLURB>
-<DEFAULT>50</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::twopass-vbr-maxsection</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>2-pass GOP max bitrate</NICK>
-<BLURB>GOP maximum bitrate (% target).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::twopass-vbr-minsection</NAME>
-<TYPE>gint</TYPE>
-<RANGE>>= 0</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>2-pass GOP min bitrate</NICK>
-<BLURB>GOP minimum bitrate (% target).</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::undershoot</NAME>
-<TYPE>gint</TYPE>
-<RANGE>[0,1000]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Undershoot PCT</NICK>
-<BLURB>Datarate undershoot (min) target (%).</BLURB>
-<DEFAULT>100</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Enc::vertical-scaling-mode</NAME>
-<TYPE>GstVP8EncScalingMode</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Vertical scaling mode</NICK>
-<BLURB>Vertical scaling mode.</BLURB>
-<DEFAULT>Normal</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Dec::deblocking-level</NAME>
-<TYPE>guint</TYPE>
-<RANGE><= 16</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Deblocking Level</NICK>
-<BLURB>Deblocking level.</BLURB>
-<DEFAULT>4</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Dec::noise-level</NAME>
-<TYPE>guint</TYPE>
-<RANGE><= 16</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Noise Level</NICK>
-<BLURB>Noise level.</BLURB>
-<DEFAULT>0</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Dec::post-processing</NAME>
-<TYPE>gboolean</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Post Processing</NICK>
-<BLURB>Enable post processing.</BLURB>
-<DEFAULT>FALSE</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Dec::post-processing-flags</NAME>
-<TYPE>GstVP8DecPostProcessingFlags</TYPE>
-<RANGE></RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Post Processing Flags</NICK>
-<BLURB>Flags to control post processing.</BLURB>
-<DEFAULT>Deblock|Demacroblock|Multi-frame quality enhancement</DEFAULT>
-</ARG>
-
-<ARG>
-<NAME>GstVP8Dec::threads</NAME>
-<TYPE>guint</TYPE>
-<RANGE>[1,16]</RANGE>
-<FLAGS>rw</FLAGS>
-<NICK>Max Threads</NICK>
-<BLURB>Maximum number of decoding threads.</BLURB>
-<DEFAULT>1</DEFAULT>
 </ARG>
 

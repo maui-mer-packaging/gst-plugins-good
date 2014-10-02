@@ -6,8 +6,7 @@ libgstwavenc_la_CFLAGS =  \
 	$(GST_CFLAGS)
 libgstwavenc_la_LIBADD = 	\
 	$(GST_PLUGINS_BASE_LIBS) \
-	-lgstaudio-@GST_API_VERSION@ \
-	-lgstriff-@GST_API_VERSION@ \
+	-lgstriff-@GST_MAJORMINOR@ \
 	$(GST_LIBS)
 libgstwavenc_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
 libgstwavenc_la_LIBTOOLFLAGS = --tag=disable-static

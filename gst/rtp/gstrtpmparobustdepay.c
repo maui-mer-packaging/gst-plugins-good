@@ -69,17 +69,32 @@ typedef struct _GstADUFrame
   GstBuffer *buffer;
 } GstADUFrame;
 
-#define gst_rtp_mpa_robust_depay_parent_class parent_class
-G_DEFINE_TYPE (GstRtpMPARobustDepay, gst_rtp_mpa_robust_depay,
-    GST_TYPE_RTP_BASE_DEPAYLOAD);
+GST_BOILERPLATE (GstRtpMPARobustDepay, gst_rtp_mpa_robust_depay,
+    GstBaseRTPDepayload, GST_TYPE_BASE_RTP_DEPAYLOAD);
 
 static GstStateChangeReturn gst_rtp_mpa_robust_change_state (GstElement *
     element, GstStateChange transition);
 
-static gboolean gst_rtp_mpa_robust_depay_setcaps (GstRTPBaseDepayload *
+static gboolean gst_rtp_mpa_robust_depay_setcaps (GstBaseRTPDepayload *
     depayload, GstCaps * caps);
-static GstBuffer *gst_rtp_mpa_robust_depay_process (GstRTPBaseDepayload *
+static GstBuffer *gst_rtp_mpa_robust_depay_process (GstBaseRTPDepayload *
     depayload, GstBuffer * buf);
+
+static void
+gst_rtp_mpa_robust_depay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_mpa_robust_depay_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_mpa_robust_depay_sink_template);
+
+  gst_element_class_set_details_simple (element_class,
+      "RTP MPEG audio depayloader", "Codec/Depayloader/Network/RTP",
+      "Extracts MPEG audio from RTP packets (RFC 5219)",
+      "Mark Nauwelaerts <mark.nauwelaerts@collabora.co.uk>");
+}
 
 static void
 gst_rtp_mpa_robust_depay_finalize (GObject * object)
@@ -94,48 +109,40 @@ gst_rtp_mpa_robust_depay_finalize (GObject * object)
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
+
 static void
 gst_rtp_mpa_robust_depay_class_init (GstRtpMPARobustDepayClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
-  GstRTPBaseDepayloadClass *gstrtpbasedepayload_class;
-
-  GST_DEBUG_CATEGORY_INIT (rtpmparobustdepay_debug, "rtpmparobustdepay", 0,
-      "Robust MPEG Audio RTP Depayloader");
+  GstBaseRTPDepayloadClass *gstbasertpdepayload_class;
 
   gobject_class = (GObjectClass *) klass;
   gstelement_class = (GstElementClass *) klass;
-  gstrtpbasedepayload_class = (GstRTPBaseDepayloadClass *) klass;
+  gstbasertpdepayload_class = (GstBaseRTPDepayloadClass *) klass;
 
   gobject_class->finalize = gst_rtp_mpa_robust_depay_finalize;
 
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_rtp_mpa_robust_change_state);
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_mpa_robust_depay_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_mpa_robust_depay_sink_template));
+  gstbasertpdepayload_class->set_caps = gst_rtp_mpa_robust_depay_setcaps;
+  gstbasertpdepayload_class->process = gst_rtp_mpa_robust_depay_process;
 
-  gst_element_class_set_static_metadata (gstelement_class,
-      "RTP MPEG audio depayloader", "Codec/Depayloader/Network/RTP",
-      "Extracts MPEG audio from RTP packets (RFC 5219)",
-      "Mark Nauwelaerts <mark.nauwelaerts@collabora.co.uk>");
-
-  gstrtpbasedepayload_class->set_caps = gst_rtp_mpa_robust_depay_setcaps;
-  gstrtpbasedepayload_class->process = gst_rtp_mpa_robust_depay_process;
+  GST_DEBUG_CATEGORY_INIT (rtpmparobustdepay_debug, "rtpmparobustdepay", 0,
+      "Robust MPEG Audio RTP Depayloader");
 }
 
 static void
-gst_rtp_mpa_robust_depay_init (GstRtpMPARobustDepay * rtpmpadepay)
+gst_rtp_mpa_robust_depay_init (GstRtpMPARobustDepay * rtpmpadepay,
+    GstRtpMPARobustDepayClass * klass)
 {
   rtpmpadepay->adapter = gst_adapter_new ();
   rtpmpadepay->adu_frames = g_queue_new ();
 }
 
 static gboolean
-gst_rtp_mpa_robust_depay_setcaps (GstRTPBaseDepayload * depayload,
+gst_rtp_mpa_robust_depay_setcaps (GstBaseRTPDepayload * depayload,
     GstCaps * caps)
 {
   GstRtpMPARobustDepay *rtpmpadepay;
@@ -273,7 +280,6 @@ gst_rtp_mpa_robust_depay_generate_dummy_frame (GstRtpMPARobustDepay *
     rtpmpadepay, GstADUFrame * frame)
 {
   GstADUFrame *dummy;
-  GstMapInfo map;
 
   dummy = g_slice_dup (GstADUFrame, frame);
 
@@ -282,16 +288,12 @@ gst_rtp_mpa_robust_depay_generate_dummy_frame (GstRtpMPARobustDepay *
   dummy->size =
       mp3_type_frame_length_from_header (GST_ELEMENT_CAST (rtpmpadepay),
       dummy->header, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-  dummy->data_size = dummy->size - 4 - dummy->side_info;
+  dummy->data_size = dummy->size - dummy->side_info;
   dummy->backpointer = 0;
 
   dummy->buffer = gst_buffer_new_and_alloc (dummy->side_info + 4);
-
-  gst_buffer_map (dummy->buffer, &map, GST_MAP_WRITE);
-  memset (map.data, 0, map.size);
-  GST_WRITE_UINT32_BE (map.data, dummy->header);
-  gst_buffer_unmap (dummy->buffer, &map);
-
+  memset (GST_BUFFER_DATA (dummy->buffer), 0, dummy->side_info + 4);
+  GST_WRITE_UINT32_BE (GST_BUFFER_DATA (dummy->buffer), dummy->header);
   GST_BUFFER_TIMESTAMP (dummy->buffer) = GST_BUFFER_TIMESTAMP (frame->buffer);
 
   return dummy;
@@ -307,17 +309,15 @@ gst_rtp_mpa_robust_depay_queue_frame (GstRtpMPARobustDepay * rtpmpadepay,
   GstADUFrame *frame = NULL;
   guint version, layer, channels, size;
   guint crc;
-  GstMapInfo map;
 
   g_return_val_if_fail (buf != NULL, FALSE);
 
-  gst_buffer_map (buf, &map, GST_MAP_READ);
-
-  if (map.size < 6)
+  if (GST_BUFFER_SIZE (buf) < 6) {
     goto corrupt_frame;
+  }
 
   frame = g_slice_new0 (GstADUFrame);
-  frame->header = GST_READ_UINT32_BE (map.data);
+  frame->header = GST_READ_UINT32_BE (GST_BUFFER_DATA (buf));
 
   size = mp3_type_frame_length_from_header (GST_ELEMENT_CAST (rtpmpadepay),
       frame->header, &version, &layer, &channels, NULL, NULL, NULL, &crc);
@@ -339,7 +339,7 @@ gst_rtp_mpa_robust_depay_queue_frame (GstRtpMPARobustDepay * rtpmpadepay,
 
   /* backpointer */
   if (layer == 3) {
-    frame->backpointer = GST_READ_UINT16_BE (map.data + 4);
+    frame->backpointer = GST_READ_UINT16_BE (GST_BUFFER_DATA (buf) + 4);
     frame->backpointer >>= 7;
     GST_LOG_OBJECT (rtpmpadepay, "backpointer: %d", frame->backpointer);
   }
@@ -351,15 +351,13 @@ gst_rtp_mpa_robust_depay_queue_frame (GstRtpMPARobustDepay * rtpmpadepay,
   frame->data_size = frame->size - 4 - frame->side_info;
 
   /* some size validation checks */
-  if (4 + frame->side_info > map.size)
+  if (4 + frame->side_info > GST_BUFFER_SIZE (buf))
     goto corrupt_frame;
 
   /* ADU data would then extend past MP3 frame,
    * even using past byte reservoir */
-  if (-frame->backpointer + (gint) (map.size) > frame->size)
+  if (-frame->backpointer + (gint) (GST_BUFFER_SIZE (buf)) > frame->size)
     goto corrupt_frame;
-
-  gst_buffer_unmap (buf, &map);
 
   /* ok, take buffer and queue */
   frame->buffer = buf;
@@ -371,7 +369,6 @@ gst_rtp_mpa_robust_depay_queue_frame (GstRtpMPARobustDepay * rtpmpadepay,
 corrupt_frame:
   {
     GST_DEBUG_OBJECT (rtpmpadepay, "frame is corrupt");
-    gst_buffer_unmap (buf, &map);
     gst_buffer_unref (buf);
     if (frame)
       g_slice_free (GstADUFrame, frame);
@@ -411,13 +408,11 @@ gst_rtp_mpa_robust_depay_deinterleave (GstRtpMPARobustDepay * rtpmpadepay,
     GstBuffer * buf)
 {
   gboolean ret = FALSE;
-  GstMapInfo map;
+  guint8 *data;
   guint val, iindex, icc;
 
-  gst_buffer_map (buf, &map, GST_MAP_READ);
-  val = GST_READ_UINT16_BE (map.data) >> 5;
-  gst_buffer_unmap (buf, &map);
-
+  data = GST_BUFFER_DATA (buf);
+  val = GST_READ_UINT16_BE (data) >> 5;
   iindex = val >> 3;
   icc = val & 0x7;
 
@@ -444,11 +439,9 @@ gst_rtp_mpa_robust_depay_deinterleave (GstRtpMPARobustDepay * rtpmpadepay,
       }
     }
     /* rewrite buffer sync header */
-    gst_buffer_map (buf, &map, GST_MAP_READWRITE);
-    val = GST_READ_UINT16_BE (map.data);
+    val = GST_READ_UINT16_BE (buf);
     val = (0x7ff << 5) | val;
-    GST_WRITE_UINT16_BE (map.data, val);
-    gst_buffer_unmap (buf, &map);
+    GST_WRITE_UINT16_BE (buf, val);
     /* store and keep track of last indices */
     rtpmpadepay->last_icc = icc;
     rtpmpadepay->last_ii = iindex;
@@ -475,7 +468,6 @@ gst_rtp_mpa_robust_depay_push_mp3_frames (GstRtpMPARobustDepay * rtpmpadepay)
   GstFlowReturn ret = GST_FLOW_OK;
 
   while (1) {
-    GstMapInfo map;
 
     if (G_UNLIKELY (!rtpmpadepay->cur_adu_frame)) {
       rtpmpadepay->cur_adu_frame = rtpmpadepay->adu_frames->head;
@@ -493,7 +485,7 @@ gst_rtp_mpa_robust_depay_push_mp3_frames (GstRtpMPARobustDepay * rtpmpadepay)
     if (G_UNLIKELY (frame->layer != 3)) {
       GST_DEBUG_OBJECT (rtpmpadepay, "layer %d frame, sending as-is",
           frame->layer);
-      gst_rtp_base_depayload_push (GST_RTP_BASE_DEPAYLOAD (rtpmpadepay),
+      gst_base_rtp_depayload_push (GST_BASE_RTP_DEPAYLOAD (rtpmpadepay),
           frame->buffer);
       frame->buffer = NULL;
       /* and remove it from any further consideration */
@@ -503,15 +495,15 @@ gst_rtp_mpa_robust_depay_push_mp3_frames (GstRtpMPARobustDepay * rtpmpadepay)
       continue;
     }
 
-    if (rtpmpadepay->offset == gst_buffer_get_size (frame->buffer)) {
+    if (rtpmpadepay->offset == GST_BUFFER_SIZE (frame->buffer)) {
       if (g_list_next (rtpmpadepay->cur_adu_frame)) {
+        GST_LOG_OBJECT (rtpmpadepay,
+            "moving to next ADU frame, size %d, side_info %d",
+            frame->size, frame->side_info);
         rtpmpadepay->size += frame->data_size;
         rtpmpadepay->cur_adu_frame = g_list_next (rtpmpadepay->cur_adu_frame);
         frame = (GstADUFrame *) rtpmpadepay->cur_adu_frame->data;
         rtpmpadepay->offset = 0;
-        GST_LOG_OBJECT (rtpmpadepay,
-            "moving to next ADU frame, size %d, side_info %d, backpointer %d",
-            frame->size, frame->side_info, frame->backpointer);
         /* layer I and II packets have no bitreservoir and must be sent as-is;
          * so flush any pending frame */
         if (G_UNLIKELY (frame->layer != 3 && rtpmpadepay->mp3_frame))
@@ -527,15 +519,12 @@ gst_rtp_mpa_robust_depay_push_mp3_frames (GstRtpMPARobustDepay * rtpmpadepay)
           head->size, head->side_info);
       rtpmpadepay->mp3_frame = gst_byte_writer_new_with_size (head->size, TRUE);
       /* 0-fill possible gaps */
-      gst_byte_writer_fill_unchecked (rtpmpadepay->mp3_frame, 0, head->size);
+      gst_byte_writer_fill (rtpmpadepay->mp3_frame, 0, head->size);
       gst_byte_writer_set_pos (rtpmpadepay->mp3_frame, 0);
       /* bytewriter corresponds to head frame,
        * i.e. the header and the side info must match */
-      g_assert (4 + head->side_info <= head->size);
-      gst_buffer_map (head->buffer, &map, GST_MAP_READ);
-      gst_byte_writer_put_data_unchecked (rtpmpadepay->mp3_frame,
-          map.data, 4 + head->side_info);
-      gst_buffer_unmap (head->buffer, &map);
+      gst_byte_writer_put_data (rtpmpadepay->mp3_frame,
+          GST_BUFFER_DATA (head->buffer), 4 + head->side_info);
     }
 
     buf = frame->buffer;
@@ -545,17 +534,15 @@ gst_rtp_mpa_robust_depay_push_mp3_frames (GstRtpMPARobustDepay * rtpmpadepay)
         rtpmpadepay->size);
 
     if (rtpmpadepay->offset) {
-      gst_buffer_map (buf, &map, GST_MAP_READ);
       /* no need to position, simply append */
-      g_assert (map.size > rtpmpadepay->offset);
-      av = MIN (av, map.size - rtpmpadepay->offset);
+      g_assert (GST_BUFFER_SIZE (buf) > rtpmpadepay->offset);
+      av = MIN (av, GST_BUFFER_SIZE (buf) - rtpmpadepay->offset);
       GST_LOG_OBJECT (rtpmpadepay,
           "appending %d bytes from ADU frame at offset %d", av,
           rtpmpadepay->offset);
-      gst_byte_writer_put_data_unchecked (rtpmpadepay->mp3_frame,
-          map.data + rtpmpadepay->offset, av);
+      gst_byte_writer_put_data (rtpmpadepay->mp3_frame,
+          GST_BUFFER_DATA (buf) + rtpmpadepay->offset, av);
       rtpmpadepay->offset += av;
-      gst_buffer_unmap (buf, &map);
     } else {
       gint pos, tpos;
 
@@ -593,16 +580,12 @@ gst_rtp_mpa_robust_depay_push_mp3_frames (GstRtpMPARobustDepay * rtpmpadepay)
         gst_byte_writer_set_pos (rtpmpadepay->mp3_frame, pos + av);
       } else {
         /* position and append */
-        gst_buffer_map (buf, &map, GST_MAP_READ);
         GST_LOG_OBJECT (rtpmpadepay, "adding to current MP3 frame");
         gst_byte_writer_set_pos (rtpmpadepay->mp3_frame, tpos);
-        av -= (tpos - pos);
-        g_assert (map.size >= 4 + frame->side_info);
-        av = MIN (av, map.size - 4 - frame->side_info);
-        gst_byte_writer_put_data_unchecked (rtpmpadepay->mp3_frame,
-            map.data + 4 + frame->side_info, av);
+        av = MIN (av, GST_BUFFER_SIZE (buf) - 4 - frame->side_info);
+        gst_byte_writer_put_data (rtpmpadepay->mp3_frame,
+            GST_BUFFER_DATA (buf) + 4 + frame->side_info, av);
         rtpmpadepay->offset += av + 4 + frame->side_info;
-        gst_buffer_unmap (buf, &map);
       }
     }
 
@@ -618,7 +601,7 @@ gst_rtp_mpa_robust_depay_push_mp3_frames (GstRtpMPARobustDepay * rtpmpadepay)
       rtpmpadepay->size -= head->data_size;
       gst_rtp_mpa_robust_depay_dequeue_frame (rtpmpadepay);
       /* send */
-      ret = gst_rtp_base_depayload_push (GST_RTP_BASE_DEPAYLOAD (rtpmpadepay),
+      ret = gst_base_rtp_depayload_push (GST_BASE_RTP_DEPAYLOAD (rtpmpadepay),
           buf);
     }
   }
@@ -642,7 +625,7 @@ gst_rtp_mpa_robust_depay_submit_adu (GstRtpMPARobustDepay * rtpmpadepay,
 }
 
 static GstBuffer *
-gst_rtp_mpa_robust_depay_process (GstRTPBaseDepayload * depayload,
+gst_rtp_mpa_robust_depay_process (GstBaseRTPDepayload * depayload,
     GstBuffer * buf)
 {
   GstRtpMPARobustDepay *rtpmpadepay;
@@ -651,19 +634,16 @@ gst_rtp_mpa_robust_depay_process (GstRTPBaseDepayload * depayload,
   gboolean cont, dtype;
   guint av, size;
   GstClockTime timestamp;
-  GstRTPBuffer rtp = { NULL };
 
   rtpmpadepay = GST_RTP_MPA_ROBUST_DEPAY (depayload);
 
+  payload_len = gst_rtp_buffer_get_payload_len (buf);
   timestamp = GST_BUFFER_TIMESTAMP (buf);
 
-  gst_rtp_buffer_map (buf, GST_MAP_READ, &rtp);
-
-  payload_len = gst_rtp_buffer_get_payload_len (&rtp);
   if (payload_len <= 1)
     goto short_read;
 
-  payload = gst_rtp_buffer_get_payload (&rtp);
+  payload = gst_rtp_buffer_get_payload (buf);
   offset = 0;
   GST_LOG_OBJECT (rtpmpadepay, "payload_len: %d", payload_len);
 
@@ -681,8 +661,8 @@ gst_rtp_mpa_robust_depay_process (GstRTPBaseDepayload * depayload,
    */
   while (payload_len) {
     if (G_LIKELY (rtpmpadepay->has_descriptor)) {
-      cont = ! !(payload[offset] & 0x80);
-      dtype = ! !(payload[offset] & 0x40);
+      cont = !!(payload[offset] & 0x80);
+      dtype = !!(payload[offset] & 0x40);
       if (dtype) {
         size = (payload[offset] & 0x3f) << 8 | payload[offset + 1];
         payload_len--;
@@ -703,7 +683,7 @@ gst_rtp_mpa_robust_depay_process (GstRTPBaseDepayload * depayload,
     GST_LOG_OBJECT (rtpmpadepay, "offset %d has cont: %d, dtype: %d, size: %d",
         offset, cont, dtype, size);
 
-    buf = gst_rtp_buffer_get_payload_subbuffer (&rtp, offset,
+    buf = gst_rtp_buffer_get_payload_subbuffer (buf, offset,
         MIN (size, payload_len));
 
     if (cont) {
@@ -713,7 +693,7 @@ gst_rtp_mpa_robust_depay_process (GstRTPBaseDepayload * depayload,
             "discarding continuation fragment without prior fragment");
         gst_buffer_unref (buf);
       } else {
-        av += gst_buffer_get_size (buf);
+        av += GST_BUFFER_SIZE (buf);
         gst_adapter_push (rtpmpadepay->adapter, buf);
         if (av == size) {
           timestamp = gst_adapter_prev_timestamp (rtpmpadepay->adapter, NULL);
@@ -747,7 +727,6 @@ gst_rtp_mpa_robust_depay_process (GstRTPBaseDepayload * depayload,
     /* timestamp applies to first payload, no idea for subsequent ones */
     timestamp = GST_CLOCK_TIME_NONE;
   }
-  gst_rtp_buffer_unmap (&rtp);
 
   return NULL;
 
@@ -756,7 +735,6 @@ short_read:
   {
     GST_ELEMENT_WARNING (rtpmpadepay, STREAM, DECODE,
         (NULL), ("Packet contains invalid data"));
-    gst_rtp_buffer_unmap (&rtp);
     return NULL;
   }
 }
@@ -797,8 +775,6 @@ gst_rtp_mpa_robust_change_state (GstElement * element,
       g_queue_foreach (rtpmpadepay->adu_frames,
           (GFunc) gst_rtp_mpa_robust_depay_free_frame, NULL);
       g_queue_clear (rtpmpadepay->adu_frames);
-      if (rtpmpadepay->mp3_frame)
-        gst_byte_writer_free (rtpmpadepay->mp3_frame);
       break;
     }
     default:

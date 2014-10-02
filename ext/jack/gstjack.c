@@ -46,25 +46,6 @@ gst_jack_connect_get_type (void)
   return (GType) jack_connect_type;
 }
 
-GType
-gst_jack_transport_get_type (void)
-{
-  static volatile gsize type = 0;
-
-  if (g_once_init_enter (&type)) {
-    static const GFlagsValue flag_values[] = {
-      {GST_JACK_TRANSPORT_MASTER,
-          "Start and stop transport with state changes", "master"},
-      {GST_JACK_TRANSPORT_SLAVE,
-          "Follow transport state changes", "slave"},
-      {0, NULL, NULL},
-    };
-    GType tmp = g_flags_register_static ("GstJackTransport", flag_values);
-    g_once_init_leave (&type, tmp);
-  }
-  return (GType) type;
-}
-
 
 static gpointer
 gst_jack_client_copy (gpointer jclient)
@@ -111,6 +92,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    jack,
+    "jack",
     "JACK audio elements",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

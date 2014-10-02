@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gst-plugins-good 0.10.25.3\n"
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/\n"
-"POT-Creation-Date: 2012-09-17 16:41+0100\n"
+"POT-Creation-Date: 2012-02-21 00:10+0000\n"
 "PO-Revision-Date: 2010-11-17 23:03+0200\n"
 "Last-Translator: Tommi Vainikainen <Tommi.Vainikainen@iki.fi>\n"
 "Language-Team: Finnish <translation-team-fi@lists.sourceforge.net>\n"
@@ -21,10 +21,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Could not establish connection to sound server"
+msgstr "Yhteyttä äänipalvelimeen ei voitu avata"
+
+msgid "Failed to query sound server capabilities"
+msgstr "Äänipalvelimen ominaisuuksia ei voitu selvittää"
+
 #. TRANSLATORS: 'song title' by 'artist name'
 #, c-format
 msgid "'%s' by '%s'"
 msgstr "”%s” artistilta ”%s”"
+
+msgid "Internal data stream error."
+msgstr "Sisäisen tietovirran virhe."
 
 msgid "Failed to decode JPEG image"
 msgstr "JPEG-kuvan purku epäonnistui"
@@ -53,9 +62,6 @@ msgstr "Palvelin lähetti virheellistä dataa."
 
 msgid "No URL set."
 msgstr "Ei URL:ää asetettuna."
-
-msgid "Internal data stream error."
-msgstr "Sisäisen tietovirran virhe."
 
 msgid "No or invalid input audio, AVI stream will be corrupt."
 msgstr ""
@@ -103,6 +109,81 @@ msgstr ""
 msgid "Internal data flow error."
 msgstr "Sisäisen tietovirran virhe."
 
+msgid "Volume"
+msgstr "Äänenvoimakkuus"
+
+msgid "Bass"
+msgstr "Basso"
+
+msgid "Treble"
+msgstr "Ylä-äänet"
+
+msgid "Synth"
+msgstr "Synth"
+
+msgid "PCM"
+msgstr "PCM"
+
+msgid "Speaker"
+msgstr "Kaiutin"
+
+msgid "Line-in"
+msgstr "Linjatulo"
+
+msgid "Microphone"
+msgstr "Mikrofoni"
+
+msgid "CD"
+msgstr "CD"
+
+msgid "Mixer"
+msgstr "Mikseri"
+
+msgid "PCM-2"
+msgstr "PCM-2"
+
+msgid "Record"
+msgstr "Nauhoitus"
+
+msgid "In-gain"
+msgstr "Gain-sisään"
+
+msgid "Out-gain"
+msgstr "Gain-ulos"
+
+msgid "Line-1"
+msgstr "Linja-1"
+
+msgid "Line-2"
+msgstr "Linja-2"
+
+msgid "Line-3"
+msgstr "Linja-3"
+
+msgid "Digital-1"
+msgstr "Digitaalinen-1"
+
+msgid "Digital-2"
+msgstr "Digitaalinen-2"
+
+msgid "Digital-3"
+msgstr "Digitaalinen-3"
+
+msgid "Phone-in"
+msgstr "Levysoitintulo"
+
+msgid "Phone-out"
+msgstr "Levysoitinlähtö"
+
+msgid "Video"
+msgstr "Video"
+
+msgid "Radio"
+msgstr "Radio"
+
+msgid "Monitor"
+msgstr "Tarkkailu"
+
 msgid ""
 "Could not open audio device for playback. Device is being used by another "
 "application."
@@ -130,6 +211,311 @@ msgstr ""
 msgid "Could not open audio device for recording."
 msgstr "Äänilaitetta ei voitu avata nauhoitusta varten."
 
+msgid "Could not open audio device for mixer control handling."
+msgstr "Äänilaitetta ei voitu avata mikserinhallintaa varten."
+
+msgid ""
+"Could not open audio device for mixer control handling. This version of the "
+"Open Sound System is not supported by this element."
+msgstr ""
+"Äänilaitetta ei voitu avata mikserinhallintaa varten. Tämä elementti ei tue "
+"tätä versiota Open Sound Systemistä."
+
+msgid "Master"
+msgstr "Pää"
+
+msgid "Front"
+msgstr "Etu"
+
+msgid "Rear"
+msgstr "Taka"
+
+msgid "Headphones"
+msgstr "Kuulokkeet"
+
+msgid "Center"
+msgstr "Keski"
+
+msgid "LFE"
+msgstr "LFE"
+
+msgid "Surround"
+msgstr "Surround"
+
+msgid "Side"
+msgstr "Sivu"
+
+msgid "Built-in Speaker"
+msgstr "Sisäänrakennettu kaiutin"
+
+msgid "AUX 1 Out"
+msgstr "AUX 1 ulos"
+
+msgid "AUX 2 Out"
+msgstr "AUX 2 ulos"
+
+msgid "AUX Out"
+msgstr "AUX ulos"
+
+msgid "3D Depth"
+msgstr "3D-syvyys"
+
+msgid "3D Center"
+msgstr "3D-keski"
+
+msgid "3D Enhance"
+msgstr "3D-tehostus"
+
+msgid "Telephone"
+msgstr "Puhelin"
+
+msgid "Line Out"
+msgstr "Linja ulos"
+
+msgid "Line In"
+msgstr "Linjatulo"
+
+msgid "Internal CD"
+msgstr "Sisäinen CD"
+
+msgid "Video In"
+msgstr "Videotulo"
+
+msgid "AUX 1 In"
+msgstr "AUX 1 sisään"
+
+msgid "AUX 2 In"
+msgstr "AUX 2 sisään"
+
+msgid "AUX In"
+msgstr "AUX sisään"
+
+msgid "Record Gain"
+msgstr "Nauhoitusgain"
+
+msgid "Output Gain"
+msgstr "Gain-ulos"
+
+msgid "Microphone Boost"
+msgstr "Mikrofonitehostin"
+
+msgid "Loopback"
+msgstr "Takaisinkytkentä"
+
+msgid "Diagnostic"
+msgstr "Diagnosointi"
+
+msgid "Bass Boost"
+msgstr "Bassotehostin"
+
+msgid "Playback Ports"
+msgstr "Toistoportit"
+
+msgid "Input"
+msgstr "Sisään"
+
+msgid "Record Source"
+msgstr "Nauhoituslähde"
+
+msgid "Monitor Source"
+msgstr "Tarkkailulähde"
+
+msgid "Keyboard Beep"
+msgstr "Näppäimistöpiippaus"
+
+msgid "Simulate Stereo"
+msgstr "Simuloitu stereo"
+
+msgid "Stereo"
+msgstr "Stereo"
+
+msgid "Surround Sound"
+msgstr "Surround-ääni"
+
+msgid "Microphone Gain"
+msgstr "Mikrofoni-gain"
+
+msgid "Speaker Source"
+msgstr "Kaiutinlähde"
+
+msgid "Microphone Source"
+msgstr "Mikrofonilähde"
+
+msgid "Jack"
+msgstr "Pistoke"
+
+msgid "Center / LFE"
+msgstr "Keski / LFE"
+
+msgid "Stereo Mix"
+msgstr "Stereo Mix"
+
+msgid "Mono Mix"
+msgstr "Mono Mix"
+
+msgid "Input Mix"
+msgstr "Sisään Mix"
+
+msgid "SPDIF In"
+msgstr "SPDIF sisään"
+
+msgid "SPDIF Out"
+msgstr "SPDIF ulos"
+
+msgid "Microphone 1"
+msgstr "Mikrofoni 1"
+
+msgid "Microphone 2"
+msgstr "Mikrofoni 2"
+
+msgid "Digital Out"
+msgstr "Digitaalinen ulos"
+
+msgid "Digital In"
+msgstr "Digitaalinen sisään"
+
+msgid "HDMI"
+msgstr "HDMI"
+
+msgid "Modem"
+msgstr "Modeemi"
+
+msgid "Handset"
+msgstr "Kuulokkeet"
+
+msgid "Other"
+msgstr "Muu"
+
+msgid "None"
+msgstr "Ei mikään"
+
+msgid "On"
+msgstr "Päällä"
+
+msgid "Off"
+msgstr "Poissa"
+
+msgid "Mute"
+msgstr "Vaimennettu"
+
+msgid "Fast"
+msgstr "Nopea"
+
+#. TRANSLATORS: "Very Low" is a quality setting here
+msgid "Very Low"
+msgstr "Erittäin matala"
+
+#. TRANSLATORS: "Low" is a quality setting here
+msgid "Low"
+msgstr "Matala"
+
+#. TRANSLATORS: "Medium" is a quality setting here
+msgid "Medium"
+msgstr "Medium"
+
+#. TRANSLATORS: "High" is a quality setting here
+msgid "High"
+msgstr "Korkea"
+
+#. TRANSLATORS: "Very High" is a quality setting here
+msgid "Very High"
+msgstr "Erittäin korkea"
+
+#. TRANSLATORS: "Production" is a quality setting here
+msgid "Production"
+msgstr "Tuotanto"
+
+msgid "Front Panel Microphone"
+msgstr "Etupaneelin mikrofoni"
+
+msgid "Front Panel Line In"
+msgstr "Etupaneelin linjatulo"
+
+msgid "Front Panel Headphones"
+msgstr "Etupaneelin kuulokkeet"
+
+msgid "Front Panel Line Out"
+msgstr "Etupaneelin linja ulos"
+
+msgid "Green Connector"
+msgstr "Vihreä liitin"
+
+msgid "Pink Connector"
+msgstr "Vaaleanpunainen liitin"
+
+msgid "Blue Connector"
+msgstr "Sininen liitin"
+
+msgid "White Connector"
+msgstr "Valkoinen liitin"
+
+msgid "Black Connector"
+msgstr "Musta liitin"
+
+msgid "Gray Connector"
+msgstr "Harmaa liitin"
+
+msgid "Orange Connector"
+msgstr "Oranssi liitin"
+
+msgid "Red Connector"
+msgstr "Punainen liitin"
+
+msgid "Yellow Connector"
+msgstr "Keltainen liitin"
+
+msgid "Green Front Panel Connector"
+msgstr "Vihreä etupaneeliliitin"
+
+msgid "Pink Front Panel Connector"
+msgstr "Vaaleanpunainen etupaneeliliitin"
+
+msgid "Blue Front Panel Connector"
+msgstr "Sininen etupaneeliliitin"
+
+msgid "White Front Panel Connector"
+msgstr "Valkoinen etupaneeliliitin"
+
+msgid "Black Front Panel Connector"
+msgstr "Musta etupaneeliliitin"
+
+msgid "Gray Front Panel Connector"
+msgstr "Harmaa etupaneeliliitin"
+
+msgid "Orange Front Panel Connector"
+msgstr "Oranssi etupaneeliliitin"
+
+msgid "Red Front Panel Connector"
+msgstr "Punainen etupaneeliliitin"
+
+msgid "Yellow Front Panel Connector"
+msgstr "Keltainen etupaneeliliitin"
+
+msgid "Spread Output"
+msgstr "Levitetty ulos"
+
+msgid "Downmix"
+msgstr "Alasmiksaus"
+
+msgid "Virtual Mixer Input"
+msgstr "Virtuaalinen mikseritulo"
+
+msgid "Virtual Mixer Output"
+msgstr "Virtuaalinen mikseri ulos"
+
+msgid "Virtual Mixer Channels"
+msgstr "Virtuaaliset mikserikanavat"
+
+#. TRANSLATORS: name + number of a volume mixer control
+#, c-format
+msgid "%s %d Function"
+msgstr "%s %d -toiminto"
+
+#. TRANSLATORS: name of a volume mixer control
+#, c-format
+msgid "%s Function"
+msgstr "%s -toiminto"
+
 msgid ""
 "Could not open audio device for playback. This version of the Open Sound "
 "System is not supported by this element."
@@ -149,103 +535,23 @@ msgstr "Tämä äänilaite ei tue nauhoitusta."
 msgid "Error recording from audio device."
 msgstr "Virhe luettaessa äänilaitteelta."
 
-msgid "Volume"
-msgstr "Äänenvoimakkuus"
-
 msgid "Gain"
 msgstr "Herkkyys"
 
-msgid "Monitor"
-msgstr "Tarkkailu"
-
-msgid "Built-in Speaker"
-msgstr "Sisäänrakennettu kaiutin"
-
 msgid "Headphone"
 msgstr "Kuulokkeet"
-
-msgid "Line Out"
-msgstr "Linja ulos"
-
-msgid "SPDIF Out"
-msgstr "SPDIF ulos"
-
-msgid "AUX 1 Out"
-msgstr "AUX 1 ulos"
-
-msgid "AUX 2 Out"
-msgstr "AUX 2 ulos"
 
 #, c-format
 msgid "Error reading %d bytes from device '%s'."
 msgstr "Virhe luettaessa %d tavua laitteelta ”%s”."
 
 #, c-format
-msgid "Failed to enumerate possible video formats device '%s' can work with"
-msgstr ""
+msgid "Got unexpected frame size of %u instead of %u."
+msgstr "Saatiin odottamaton kehys kooltaan %u odotetun %u sijaan."
 
 #, c-format
-msgid "Could not map buffers from device '%s'"
-msgstr "Puskereita laitteelta ”%s” ei voitu kartoittaa"
-
-#, fuzzy, c-format
-msgid "The driver of device '%s' does not support the IO method %d"
-msgstr "Laitteen ”%s” ajuri ei tue mitään tunnettua kaappaustapaa."
-
-#, fuzzy, c-format
-msgid "The driver of device '%s' does not support any known IO method."
-msgstr "Laitteen ”%s” ajuri ei tue mitään tunnettua kaappaustapaa."
-
-#, fuzzy, c-format
-msgid "Device '%s' does not support video capture"
-msgstr "Laite ”%s” ei ole ulostulolaite."
-
-#, fuzzy, c-format
-msgid "Device '%s' is busy"
-msgstr "Laite ”%s” ei ole ulostulolaite."
-
-#, fuzzy, c-format
-msgid "Device '%s' cannot capture at %dx%d"
-msgstr "Laitteelta ”%s” ei voi kaapata."
-
-#, fuzzy, c-format
-msgid "Device '%s' cannot capture in the specified format"
-msgstr "Laitteelta ”%s” ei voi kaapata."
-
-#, c-format
-msgid "Could not get parameters on device '%s'"
-msgstr "Laitteelta ”%s” ei voitu saada parametreja"
-
-#, fuzzy
-msgid "Video device did not accept new frame rate setting."
-msgstr "Videosyötelaite ei hyväksy uutta kehysnopeusasetusta."
-
-msgid "Video device could not create buffer pool."
-msgstr ""
-
-#, fuzzy, c-format
-msgid "Failed to get settings of tuner %d on device '%s'."
-msgstr "Virittimen %d asetuksia ei voitu lukea laitteelta ”%s”."
-
-#, fuzzy, c-format
-msgid "Error getting capabilities for device '%s'."
+msgid "Error reading %d bytes on device '%s'."
 msgstr "Virhe luettaessa %d tavua laitteelta ”%s”."
-
-#, fuzzy, c-format
-msgid "Device '%s' is not a tuner."
-msgstr "Laite ”%s” ei ole ulostulolaite."
-
-#, fuzzy, c-format
-msgid "Failed to get radio input on device '%s'. "
-msgstr "Sisääntuloa %d ei voitu asettaa laitteelle %s."
-
-#, c-format
-msgid "Failed to set input %d on device %s."
-msgstr "Sisääntuloa %d ei voitu asettaa laitteelle %s."
-
-#, fuzzy, c-format
-msgid "Failed to change mute state for device '%s'."
-msgstr "Laitteelta ”%s” ei saatu signaalinvoimakkuutta."
 
 #, c-format
 msgid ""
@@ -321,6 +627,10 @@ msgstr ""
 "Laitteen ”%s” tämänhetkistä sisääntuloa ei voitu lukea, se ei ehkä ole "
 "radiolaite"
 
+#, c-format
+msgid "Failed to set input %d on device %s."
+msgstr "Sisääntuloa %d ei voitu asettaa laitteelle %s."
+
 #, fuzzy, c-format
 msgid ""
 "Failed to get current output on device '%s'. May be it is a radio device"
@@ -332,381 +642,38 @@ msgstr ""
 msgid "Failed to set output %d on device %s."
 msgstr "Sisääntuloa %d ei voitu asettaa laitteelle %s."
 
+#, c-format
+msgid "Could not enqueue buffers in device '%s'."
+msgstr "Puskureita ei voitu laittaa jonoon laitteella ”%s”."
+
+#, c-format
+msgid "Failed trying to get video frames from device '%s'."
+msgstr "Videoruutujen noutaminen laitteelta ”%s” epäonnistui."
+
+#, c-format
+msgid "Failed after %d tries. device %s. system error: %s"
+msgstr "Epäonnistui %d yrityksen jälkeen: laite %s, järjestelmävirhe: %s"
+
+#, c-format
+msgid "Could not get parameters on device '%s'"
+msgstr "Laitteelta ”%s” ei voitu saada parametreja"
+
+msgid "Video input device did not accept new frame rate setting."
+msgstr "Videosyötelaite ei hyväksy uutta kehysnopeusasetusta."
+
+#, c-format
+msgid "Could not map buffers from device '%s'"
+msgstr "Puskereita laitteelta ”%s” ei voitu kartoittaa"
+
+#, c-format
+msgid "The driver of device '%s' does not support any known capture method."
+msgstr "Laitteen ”%s” ajuri ei tue mitään tunnettua kaappaustapaa."
+
 msgid "Changing resolution at runtime is not yet supported."
 msgstr "Resoluution vaihto käytön aikana ei ole vielä mahdollista."
 
 msgid "Cannot operate without a clock"
 msgstr "Ei voitu toimia ilman kelloa"
-
-#~ msgid "Got unexpected frame size of %u instead of %u."
-#~ msgstr "Saatiin odottamaton kehys kooltaan %u odotetun %u sijaan."
-
-#~ msgid "Failed trying to get video frames from device '%s'."
-#~ msgstr "Videoruutujen noutaminen laitteelta ”%s” epäonnistui."
-
-#~ msgid "Failed after %d tries. device %s. system error: %s"
-#~ msgstr "Epäonnistui %d yrityksen jälkeen: laite %s, järjestelmävirhe: %s"
-
-#~ msgid "Bass"
-#~ msgstr "Basso"
-
-#~ msgid "Treble"
-#~ msgstr "Ylä-äänet"
-
-#~ msgid "Synth"
-#~ msgstr "Synth"
-
-#~ msgid "PCM"
-#~ msgstr "PCM"
-
-#~ msgid "Speaker"
-#~ msgstr "Kaiutin"
-
-#~ msgid "Line-in"
-#~ msgstr "Linjatulo"
-
-#~ msgid "Microphone"
-#~ msgstr "Mikrofoni"
-
-#~ msgid "CD"
-#~ msgstr "CD"
-
-#~ msgid "Mixer"
-#~ msgstr "Mikseri"
-
-#~ msgid "PCM-2"
-#~ msgstr "PCM-2"
-
-#~ msgid "Record"
-#~ msgstr "Nauhoitus"
-
-#~ msgid "In-gain"
-#~ msgstr "Gain-sisään"
-
-#~ msgid "Out-gain"
-#~ msgstr "Gain-ulos"
-
-#~ msgid "Line-1"
-#~ msgstr "Linja-1"
-
-#~ msgid "Line-2"
-#~ msgstr "Linja-2"
-
-#~ msgid "Line-3"
-#~ msgstr "Linja-3"
-
-#~ msgid "Digital-1"
-#~ msgstr "Digitaalinen-1"
-
-#~ msgid "Digital-2"
-#~ msgstr "Digitaalinen-2"
-
-#~ msgid "Digital-3"
-#~ msgstr "Digitaalinen-3"
-
-#~ msgid "Phone-in"
-#~ msgstr "Levysoitintulo"
-
-#~ msgid "Phone-out"
-#~ msgstr "Levysoitinlähtö"
-
-#~ msgid "Video"
-#~ msgstr "Video"
-
-#~ msgid "Radio"
-#~ msgstr "Radio"
-
-#~ msgid "Could not open audio device for mixer control handling."
-#~ msgstr "Äänilaitetta ei voitu avata mikserinhallintaa varten."
-
-#~ msgid ""
-#~ "Could not open audio device for mixer control handling. This version of "
-#~ "the Open Sound System is not supported by this element."
-#~ msgstr ""
-#~ "Äänilaitetta ei voitu avata mikserinhallintaa varten. Tämä elementti ei "
-#~ "tue tätä versiota Open Sound Systemistä."
-
-#~ msgid "Master"
-#~ msgstr "Pää"
-
-#~ msgid "Front"
-#~ msgstr "Etu"
-
-#~ msgid "Rear"
-#~ msgstr "Taka"
-
-#~ msgid "Headphones"
-#~ msgstr "Kuulokkeet"
-
-#~ msgid "Center"
-#~ msgstr "Keski"
-
-#~ msgid "LFE"
-#~ msgstr "LFE"
-
-#~ msgid "Surround"
-#~ msgstr "Surround"
-
-#~ msgid "Side"
-#~ msgstr "Sivu"
-
-#~ msgid "AUX Out"
-#~ msgstr "AUX ulos"
-
-#~ msgid "3D Depth"
-#~ msgstr "3D-syvyys"
-
-#~ msgid "3D Center"
-#~ msgstr "3D-keski"
-
-#~ msgid "3D Enhance"
-#~ msgstr "3D-tehostus"
-
-#~ msgid "Telephone"
-#~ msgstr "Puhelin"
-
-#~ msgid "Line In"
-#~ msgstr "Linjatulo"
-
-#~ msgid "Internal CD"
-#~ msgstr "Sisäinen CD"
-
-#~ msgid "Video In"
-#~ msgstr "Videotulo"
-
-#~ msgid "AUX 1 In"
-#~ msgstr "AUX 1 sisään"
-
-#~ msgid "AUX 2 In"
-#~ msgstr "AUX 2 sisään"
-
-#~ msgid "AUX In"
-#~ msgstr "AUX sisään"
-
-#~ msgid "Record Gain"
-#~ msgstr "Nauhoitusgain"
-
-#~ msgid "Output Gain"
-#~ msgstr "Gain-ulos"
-
-#~ msgid "Microphone Boost"
-#~ msgstr "Mikrofonitehostin"
-
-#~ msgid "Loopback"
-#~ msgstr "Takaisinkytkentä"
-
-#~ msgid "Diagnostic"
-#~ msgstr "Diagnosointi"
-
-#~ msgid "Bass Boost"
-#~ msgstr "Bassotehostin"
-
-#~ msgid "Playback Ports"
-#~ msgstr "Toistoportit"
-
-#~ msgid "Input"
-#~ msgstr "Sisään"
-
-#~ msgid "Record Source"
-#~ msgstr "Nauhoituslähde"
-
-#~ msgid "Monitor Source"
-#~ msgstr "Tarkkailulähde"
-
-#~ msgid "Keyboard Beep"
-#~ msgstr "Näppäimistöpiippaus"
-
-#~ msgid "Simulate Stereo"
-#~ msgstr "Simuloitu stereo"
-
-#~ msgid "Stereo"
-#~ msgstr "Stereo"
-
-#~ msgid "Surround Sound"
-#~ msgstr "Surround-ääni"
-
-#~ msgid "Microphone Gain"
-#~ msgstr "Mikrofoni-gain"
-
-#~ msgid "Speaker Source"
-#~ msgstr "Kaiutinlähde"
-
-#~ msgid "Microphone Source"
-#~ msgstr "Mikrofonilähde"
-
-#~ msgid "Jack"
-#~ msgstr "Pistoke"
-
-#~ msgid "Center / LFE"
-#~ msgstr "Keski / LFE"
-
-#~ msgid "Stereo Mix"
-#~ msgstr "Stereo Mix"
-
-#~ msgid "Mono Mix"
-#~ msgstr "Mono Mix"
-
-#~ msgid "Input Mix"
-#~ msgstr "Sisään Mix"
-
-#~ msgid "SPDIF In"
-#~ msgstr "SPDIF sisään"
-
-#~ msgid "Microphone 1"
-#~ msgstr "Mikrofoni 1"
-
-#~ msgid "Microphone 2"
-#~ msgstr "Mikrofoni 2"
-
-#~ msgid "Digital Out"
-#~ msgstr "Digitaalinen ulos"
-
-#~ msgid "Digital In"
-#~ msgstr "Digitaalinen sisään"
-
-#~ msgid "HDMI"
-#~ msgstr "HDMI"
-
-#~ msgid "Modem"
-#~ msgstr "Modeemi"
-
-#~ msgid "Handset"
-#~ msgstr "Kuulokkeet"
-
-#~ msgid "Other"
-#~ msgstr "Muu"
-
-#~ msgid "None"
-#~ msgstr "Ei mikään"
-
-#~ msgid "On"
-#~ msgstr "Päällä"
-
-#~ msgid "Off"
-#~ msgstr "Poissa"
-
-#~ msgid "Mute"
-#~ msgstr "Vaimennettu"
-
-#~ msgid "Fast"
-#~ msgstr "Nopea"
-
-#~ msgid "Very Low"
-#~ msgstr "Erittäin matala"
-
-#~ msgid "Low"
-#~ msgstr "Matala"
-
-#~ msgid "Medium"
-#~ msgstr "Medium"
-
-#~ msgid "High"
-#~ msgstr "Korkea"
-
-#~ msgid "Very High"
-#~ msgstr "Erittäin korkea"
-
-#~ msgid "Production"
-#~ msgstr "Tuotanto"
-
-#~ msgid "Front Panel Microphone"
-#~ msgstr "Etupaneelin mikrofoni"
-
-#~ msgid "Front Panel Line In"
-#~ msgstr "Etupaneelin linjatulo"
-
-#~ msgid "Front Panel Headphones"
-#~ msgstr "Etupaneelin kuulokkeet"
-
-#~ msgid "Front Panel Line Out"
-#~ msgstr "Etupaneelin linja ulos"
-
-#~ msgid "Green Connector"
-#~ msgstr "Vihreä liitin"
-
-#~ msgid "Pink Connector"
-#~ msgstr "Vaaleanpunainen liitin"
-
-#~ msgid "Blue Connector"
-#~ msgstr "Sininen liitin"
-
-#~ msgid "White Connector"
-#~ msgstr "Valkoinen liitin"
-
-#~ msgid "Black Connector"
-#~ msgstr "Musta liitin"
-
-#~ msgid "Gray Connector"
-#~ msgstr "Harmaa liitin"
-
-#~ msgid "Orange Connector"
-#~ msgstr "Oranssi liitin"
-
-#~ msgid "Red Connector"
-#~ msgstr "Punainen liitin"
-
-#~ msgid "Yellow Connector"
-#~ msgstr "Keltainen liitin"
-
-#~ msgid "Green Front Panel Connector"
-#~ msgstr "Vihreä etupaneeliliitin"
-
-#~ msgid "Pink Front Panel Connector"
-#~ msgstr "Vaaleanpunainen etupaneeliliitin"
-
-#~ msgid "Blue Front Panel Connector"
-#~ msgstr "Sininen etupaneeliliitin"
-
-#~ msgid "White Front Panel Connector"
-#~ msgstr "Valkoinen etupaneeliliitin"
-
-#~ msgid "Black Front Panel Connector"
-#~ msgstr "Musta etupaneeliliitin"
-
-#~ msgid "Gray Front Panel Connector"
-#~ msgstr "Harmaa etupaneeliliitin"
-
-#~ msgid "Orange Front Panel Connector"
-#~ msgstr "Oranssi etupaneeliliitin"
-
-#~ msgid "Red Front Panel Connector"
-#~ msgstr "Punainen etupaneeliliitin"
-
-#~ msgid "Yellow Front Panel Connector"
-#~ msgstr "Keltainen etupaneeliliitin"
-
-#~ msgid "Spread Output"
-#~ msgstr "Levitetty ulos"
-
-#~ msgid "Downmix"
-#~ msgstr "Alasmiksaus"
-
-#~ msgid "Virtual Mixer Input"
-#~ msgstr "Virtuaalinen mikseritulo"
-
-#~ msgid "Virtual Mixer Output"
-#~ msgstr "Virtuaalinen mikseri ulos"
-
-#~ msgid "Virtual Mixer Channels"
-#~ msgstr "Virtuaaliset mikserikanavat"
-
-#~ msgid "%s %d Function"
-#~ msgstr "%s %d -toiminto"
-
-#~ msgid "%s Function"
-#~ msgstr "%s -toiminto"
-
-#~ msgid "Error reading %d bytes on device '%s'."
-#~ msgstr "Virhe luettaessa %d tavua laitteelta ”%s”."
-
-#~ msgid "Could not enqueue buffers in device '%s'."
-#~ msgstr "Puskureita ei voitu laittaa jonoon laitteella ”%s”."
-
-#~ msgid "Could not establish connection to sound server"
-#~ msgstr "Yhteyttä äänipalvelimeen ei voitu avata"
-
-#~ msgid "Failed to query sound server capabilities"
-#~ msgstr "Äänipalvelimen ominaisuuksia ei voitu selvittää"
 
 #~ msgid ""
 #~ "The buffer type is not supported, or the index is out of bounds, or no "

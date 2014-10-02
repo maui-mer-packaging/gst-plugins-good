@@ -46,7 +46,10 @@
 #include "gstv4l2colorbalance.h"
 
 #include "gstv4l2src.h"
+
+#ifdef HAVE_EXPERIMENTAL
 #include "gstv4l2sink.h"
+#endif
 
 #include "gst/gst-i18n-plugin.h"
 
@@ -129,7 +132,7 @@ gst_v4l2_fill_lists (GstV4l2Object * v4l2object)
 
     input.index = n;
     if (v4l2_ioctl (v4l2object->video_fd, VIDIOC_ENUMINPUT, &input) < 0) {
-      if (errno == EINVAL || errno == ENOTTY)
+      if (errno == EINVAL)
         break;                  /* end of enumeration */
       else {
         GST_ELEMENT_ERROR (e, RESOURCE, SETTINGS,
@@ -145,7 +148,7 @@ gst_v4l2_fill_lists (GstV4l2Object * v4l2object)
     GST_LOG_OBJECT (e, "   name:      '%s'", input.name);
     GST_LOG_OBJECT (e, "   type:      %08x", input.type);
     GST_LOG_OBJECT (e, "   audioset:  %08x", input.audioset);
-    GST_LOG_OBJECT (e, "   std:       %016" G_GINT64_MODIFIER "x", input.std);
+    GST_LOG_OBJECT (e, "   std:       %016x", (guint) input.std);
     GST_LOG_OBJECT (e, "   status:    %08x", input.status);
 
     v4l2channel = g_object_new (GST_TYPE_V4L2_TUNER_CHANNEL, NULL);
@@ -462,9 +465,11 @@ gst_v4l2_open (GstV4l2Object * v4l2object)
       !(v4l2object->vcap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
     goto not_capture;
 
+#ifdef HAVE_EXPERIMENTAL
   if (GST_IS_V4L2SINK (v4l2object->element) &&
       !(v4l2object->vcap.capabilities & V4L2_CAP_VIDEO_OUTPUT))
     goto not_output;
+#endif
 
   /* create enumerations, posts errors. */
   if (!gst_v4l2_fill_lists (v4l2object))
@@ -510,6 +515,7 @@ not_capture:
         ("Capabilities: 0x%x", v4l2object->vcap.capabilities));
     goto error;
   }
+#ifdef HAVE_EXPERIMENTAL
 not_output:
   {
     GST_ELEMENT_ERROR (v4l2object->element, RESOURCE, NOT_FOUND,
@@ -518,6 +524,7 @@ not_output:
         ("Capabilities: 0x%x", v4l2object->vcap.capabilities));
     goto error;
   }
+#endif
 error:
   {
     if (GST_V4L2_IS_OPEN (v4l2object)) {

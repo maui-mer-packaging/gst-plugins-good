@@ -47,6 +47,8 @@ struct _GstOss4Sink {
   gint          mute_volume;
 
   GstCaps     * probed_caps;
+
+  GList       * property_probe_list;
 };
 
 struct _GstOss4SinkClass {

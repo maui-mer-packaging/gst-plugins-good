@@ -53,64 +53,67 @@ static GstStaticPadTemplate gst_rtp_bv_pay_src_template =
     );
 
 
-static GstCaps *gst_rtp_bv_pay_sink_getcaps (GstRTPBasePayload * payload,
-    GstPad * pad, GstCaps * filter);
-static gboolean gst_rtp_bv_pay_sink_setcaps (GstRTPBasePayload * payload,
+static GstCaps *gst_rtp_bv_pay_sink_getcaps (GstBaseRTPPayload * payload,
+    GstPad * pad);
+static gboolean gst_rtp_bv_pay_sink_setcaps (GstBaseRTPPayload * payload,
     GstCaps * caps);
 
-#define gst_rtp_bv_pay_parent_class parent_class
-G_DEFINE_TYPE (GstRTPBVPay, gst_rtp_bv_pay, GST_TYPE_RTP_BASE_AUDIO_PAYLOAD);
+GST_BOILERPLATE (GstRTPBVPay, gst_rtp_bv_pay, GstBaseRTPAudioPayload,
+    GST_TYPE_BASE_RTP_AUDIO_PAYLOAD);
+
+static void
+gst_rtp_bv_pay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_bv_pay_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_bv_pay_src_template);
+  gst_element_class_set_details_simple (element_class, "RTP BV Payloader",
+      "Codec/Payloader/Network/RTP",
+      "Packetize BroadcomVoice audio streams into RTP packets (RFC 4298)",
+      "Wim Taymans <wim.taymans@collabora.co.uk>");
+}
 
 static void
 gst_rtp_bv_pay_class_init (GstRTPBVPayClass * klass)
 {
-  GstElementClass *gstelement_class;
-  GstRTPBasePayloadClass *gstrtpbasepayload_class;
+  GstBaseRTPPayloadClass *gstbasertppayload_class;
+
+  gstbasertppayload_class = (GstBaseRTPPayloadClass *) klass;
+
+  gstbasertppayload_class->set_caps = gst_rtp_bv_pay_sink_setcaps;
+  gstbasertppayload_class->get_caps = gst_rtp_bv_pay_sink_getcaps;
 
   GST_DEBUG_CATEGORY_INIT (rtpbvpay_debug, "rtpbvpay", 0,
       "BroadcomVoice audio RTP payloader");
-
-  gstelement_class = (GstElementClass *) klass;
-  gstrtpbasepayload_class = (GstRTPBasePayloadClass *) klass;
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_bv_pay_sink_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_bv_pay_src_template));
-
-  gst_element_class_set_static_metadata (gstelement_class, "RTP BV Payloader",
-      "Codec/Payloader/Network/RTP",
-      "Packetize BroadcomVoice audio streams into RTP packets (RFC 4298)",
-      "Wim Taymans <wim.taymans@collabora.co.uk>");
-
-  gstrtpbasepayload_class->set_caps = gst_rtp_bv_pay_sink_setcaps;
-  gstrtpbasepayload_class->get_caps = gst_rtp_bv_pay_sink_getcaps;
 }
 
 static void
-gst_rtp_bv_pay_init (GstRTPBVPay * rtpbvpay)
+gst_rtp_bv_pay_init (GstRTPBVPay * rtpbvpay, GstRTPBVPayClass * klass)
 {
-  GstRTPBaseAudioPayload *rtpbaseaudiopayload;
+  GstBaseRTPAudioPayload *basertpaudiopayload;
 
-  rtpbaseaudiopayload = GST_RTP_BASE_AUDIO_PAYLOAD (rtpbvpay);
+  basertpaudiopayload = GST_BASE_RTP_AUDIO_PAYLOAD (rtpbvpay);
 
   rtpbvpay->mode = -1;
 
-  /* tell rtpbaseaudiopayload that this is a frame based codec */
-  gst_rtp_base_audio_payload_set_frame_based (rtpbaseaudiopayload);
+  /* tell basertpaudiopayload that this is a frame based codec */
+  gst_base_rtp_audio_payload_set_frame_based (basertpaudiopayload);
 }
 
 static gboolean
-gst_rtp_bv_pay_sink_setcaps (GstRTPBasePayload * rtpbasepayload, GstCaps * caps)
+gst_rtp_bv_pay_sink_setcaps (GstBaseRTPPayload * basertppayload, GstCaps * caps)
 {
   GstRTPBVPay *rtpbvpay;
-  GstRTPBaseAudioPayload *rtpbaseaudiopayload;
+  GstBaseRTPAudioPayload *basertpaudiopayload;
   gint mode;
   GstStructure *structure;
   const char *payload_name;
 
-  rtpbvpay = GST_RTP_BV_PAY (rtpbasepayload);
-  rtpbaseaudiopayload = GST_RTP_BASE_AUDIO_PAYLOAD (rtpbasepayload);
+  rtpbvpay = GST_RTP_BV_PAY (basertppayload);
+  basertpaudiopayload = GST_BASE_RTP_AUDIO_PAYLOAD (basertppayload);
 
   structure = gst_caps_get_structure (caps, 0);
 
@@ -125,17 +128,17 @@ gst_rtp_bv_pay_sink_setcaps (GstRTPBasePayload * rtpbasepayload, GstCaps * caps)
     goto wrong_mode;
 
   if (mode == 16) {
-    gst_rtp_base_payload_set_options (rtpbasepayload, "audio", TRUE, "BV16",
+    gst_basertppayload_set_options (basertppayload, "audio", TRUE, "BV16",
         8000);
-    rtpbasepayload->clock_rate = 8000;
+    basertppayload->clock_rate = 8000;
   } else {
-    gst_rtp_base_payload_set_options (rtpbasepayload, "audio", TRUE, "BV32",
+    gst_basertppayload_set_options (basertppayload, "audio", TRUE, "BV32",
         16000);
-    rtpbasepayload->clock_rate = 16000;
+    basertppayload->clock_rate = 16000;
   }
 
   /* set options for this frame based audio codec */
-  gst_rtp_base_audio_payload_set_frame_options (rtpbaseaudiopayload,
+  gst_base_rtp_audio_payload_set_frame_options (basertpaudiopayload,
       mode, mode == 16 ? 10 : 20);
 
   if (mode != rtpbvpay->mode && rtpbvpay->mode != -1)
@@ -173,15 +176,14 @@ mode_changed:
 /* we return the padtemplate caps with the mode field fixated to a value if we
  * can */
 static GstCaps *
-gst_rtp_bv_pay_sink_getcaps (GstRTPBasePayload * rtppayload, GstPad * pad,
-    GstCaps * filter)
+gst_rtp_bv_pay_sink_getcaps (GstBaseRTPPayload * rtppayload, GstPad * pad)
 {
   GstCaps *otherpadcaps;
   GstCaps *caps;
 
-  caps = gst_pad_get_pad_template_caps (pad);
-
   otherpadcaps = gst_pad_get_allowed_caps (rtppayload->srcpad);
+  caps = gst_caps_copy (gst_pad_get_pad_template_caps (pad));
+
   if (otherpadcaps) {
     if (!gst_caps_is_empty (otherpadcaps)) {
       GstStructure *structure;
@@ -201,7 +203,6 @@ gst_rtp_bv_pay_sink_getcaps (GstRTPBasePayload * rtppayload, GstPad * pad,
           mode = -1;
 
         if (mode == 16 || mode == 32) {
-          caps = gst_caps_make_writable (caps);
           structure = gst_caps_get_structure (caps, 0);
           gst_structure_set (structure, "mode", G_TYPE_INT, mode, NULL);
         }

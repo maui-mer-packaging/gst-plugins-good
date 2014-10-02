@@ -1,5 +1,11 @@
 DISTCHECK_CONFIGURE_FLAGS=--enable-gtk-doc
 
+if USE_GCONFTOOL
+GCONF_DIR = gconf
+else
+GCONF_DIR =
+endif
+
 ALWAYS_SUBDIRS =		\
 	gst sys ext 		\
 	tests			\
@@ -9,9 +15,14 @@ ALWAYS_SUBDIRS =		\
 	m4			\
 	pkgconfig
 
-SUBDIRS = $(ALWAYS_SUBDIRS)
+SUBDIRS = 			\
+	$(ALWAYS_SUBDIRS)	\
+	$(GCONF_DIR)
 
-DIST_SUBDIRS = $(ALWAYS_SUBDIRS)
+DIST_SUBDIRS = 			\
+	$(ALWAYS_SUBDIRS)	\
+	gconf
+
 
 # include before EXTRA_DIST for win32 assignment
 include $(top_srcdir)/common/win32.mak
@@ -51,22 +62,14 @@ win32-update:
 		 gst/udp/gstudp-enumtypes.c \
 		 gst/udp/gstudp-enumtypes.h \
 		 gst/rtpmanager/gstrtpbin-marshal.c \
-		 gst/rtpmanager/gstrtpbin-marshal.h \
-		 sys/v4l2/tuner-enumtypes.c \
-		 sys/v4l2/tuner-enumtypes.h \
-		 sys/v4l2/tuner-marshal.c \
-		 sys/v4l2/tuner-marshal.h; do \
+		 gst/rtpmanager/gstrtpbin-marshal.h ; do \
 		cp $(top_builddir)/$$f win32/common; done
 	$(top_srcdir)/common/gst-indent win32/common/gstudp-marshal.c
 	$(top_srcdir)/common/gst-indent win32/common/gstudp-marshal.c
 	$(top_srcdir)/common/gst-indent win32/common/gstudp-enumtypes.c
 	$(top_srcdir)/common/gst-indent win32/common/gstudp-enumtypes.c
-	$(top_srcdir)/common/gst-indent win32/common/gstrtpbin-marshal.c
-	$(top_srcdir)/common/gst-indent win32/common/gstrtpbin-marshal.c
-	$(top_srcdir)/common/gst-indent win32/common/tuner-enumtypes.c
-	$(top_srcdir)/common/gst-indent win32/common/tuner-enumtypes.c
-	$(top_srcdir)/common/gst-indent win32/common/tuner-marshal.c
-	$(top_srcdir)/common/gst-indent win32/common/tuner-marshal.c
+	$(top_srcdir)/common/gst-indent gst/rtpmanager/gstrtpbin-marshal.c
+	$(top_srcdir)/common/gst-indent gst/rtpmanager/gstrtpbin-marshal.c
 	cp $(top_builddir)/win32/common/config.h-new \
 	    $(top_srcdir)/win32/common/config.h
 
@@ -85,8 +88,7 @@ CRUFT_FILES = \
 
 CRUFT_DIRS = \
 	$(top_srcdir)/gst/qtdemux \
-	$(top_srcdir)/gst/quicktime \
-	$(top_srcdir)/ext/annodex
+	$(top_srcdir)/gst/quicktime
 
 include $(top_srcdir)/common/cruft.mak
 

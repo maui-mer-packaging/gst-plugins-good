@@ -28,10 +28,13 @@
 #include "gst/gst-i18n-plugin.h"
 
 #include <gst/gst.h>
+#include <gst/controller/gstcontroller.h>
 
 #include "gstv4l2object.h"
 #include "gstv4l2src.h"
+#ifdef HAVE_EXPERIMENTAL
 #include "gstv4l2sink.h"
+#endif
 #include "gstv4l2radio.h"
 /* #include "gstv4l2jpegsrc.h" */
 /* #include "gstv4l2mjpegsrc.h" */
@@ -47,10 +50,15 @@ plugin_init (GstPlugin * plugin)
   GST_DEBUG_CATEGORY_INIT (v4l2_debug, "v4l2", 0, "V4L2 API calls");
   GST_DEBUG_CATEGORY_GET (GST_CAT_PERFORMANCE, "GST_PERFORMANCE");
 
+  /* initialize gst controller library */
+  gst_controller_init (NULL, NULL);
+
   if (!gst_element_register (plugin, "v4l2src", GST_RANK_PRIMARY,
           GST_TYPE_V4L2SRC) ||
+#ifdef HAVE_EXPERIMENTAL
       !gst_element_register (plugin, "v4l2sink", GST_RANK_NONE,
           GST_TYPE_V4L2SINK) ||
+#endif
       !gst_element_register (plugin, "v4l2radio", GST_RANK_NONE,
           GST_TYPE_V4L2RADIO) ||
       /*       !gst_element_register (plugin, "v4l2jpegsrc", */
@@ -73,6 +81,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    video4linux2,
+    "video4linux2",
     "elements for Video 4 Linux",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

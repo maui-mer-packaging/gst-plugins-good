@@ -41,6 +41,20 @@ run_pipeline (GstElement * pipeline)
   gst_element_set_state (pipeline, GST_STATE_NULL);
 }
 
+#if !GLIB_CHECK_VERSION(2,30,0)
+static gchar *
+g_mkdtemp (gchar * template)
+{
+  gchar *tmpdir;
+
+  tmpdir = mkdtemp (template);
+  if (tmpdir == NULL) {
+    g_free (template);
+  }
+  return tmpdir;
+}
+#endif
+
 GST_START_TEST (test_multifilesink_key_frame)
 {
   GstElement *pipeline;
@@ -58,7 +72,7 @@ GST_START_TEST (test_multifilesink_key_frame)
 
   pipeline =
       gst_parse_launch
-      ("videotestsrc num-buffers=10 ! video/x-raw,format=(string)I420,width=320,height=240 ! multifilesink name=mfs",
+      ("videotestsrc num-buffers=10 ! video/x-raw-yuv,format=(fourcc)I420,width=320,height=240 ! multifilesink name=mfs",
       NULL);
   fail_if (pipeline == NULL);
   mfs = gst_bin_get_by_name (GST_BIN (pipeline), "mfs");
@@ -101,7 +115,7 @@ GST_START_TEST (test_multifilesink_max_files)
 
   pipeline =
       gst_parse_launch
-      ("videotestsrc num-buffers=10 ! video/x-raw,format=(string)I420,width=320,height=240 ! multifilesink name=mfs",
+      ("videotestsrc num-buffers=10 ! video/x-raw-yuv,format=(fourcc)I420,width=320,height=240 ! multifilesink name=mfs",
       NULL);
   fail_if (pipeline == NULL);
   mfs = gst_bin_get_by_name (GST_BIN (pipeline), "mfs");
@@ -160,17 +174,17 @@ GST_START_TEST (test_multifilesink_key_unit)
   sink = gst_element_get_static_pad (mfs, "sink");
   buf = gst_buffer_new_and_alloc (4);
 
-  gst_buffer_fill (buf, 0, "foo", 4);
-  fail_if (gst_pad_chain (sink, gst_buffer_copy (buf)) != GST_FLOW_OK);
+  memcpy (GST_BUFFER_DATA (buf), "foo", 4);
+  fail_if (gst_pad_chain (sink, gst_buffer_ref (buf)) != GST_FLOW_OK);
 
-  gst_buffer_fill (buf, 0, "bar", 4);
-  fail_if (gst_pad_chain (sink, gst_buffer_copy (buf)) != GST_FLOW_OK);
+  memcpy (GST_BUFFER_DATA (buf), "bar", 4);
+  fail_if (gst_pad_chain (sink, gst_buffer_ref (buf)) != GST_FLOW_OK);
 
   fail_unless (gst_pad_send_event (sink,
           gst_video_event_new_downstream_force_key_unit (GST_CLOCK_TIME_NONE,
               GST_CLOCK_TIME_NONE, GST_CLOCK_TIME_NONE, TRUE, 1)));
 
-  gst_buffer_fill (buf, 0, "baz", 4);
+  memcpy (GST_BUFFER_DATA (buf), "baz", 4);
   fail_if (gst_pad_chain (sink, buf) != GST_FLOW_OK);
 
   fail_if (gst_element_set_state (mfs,
@@ -210,7 +224,7 @@ GST_START_TEST (test_multifilesrc)
 
   pipeline =
       gst_parse_launch
-      ("videotestsrc num-buffers=10 ! video/x-raw,format=(string)I420,width=320,height=240 ! multifilesink name=mfs",
+      ("videotestsrc num-buffers=10 ! video/x-raw-yuv,format=(fourcc)I420,width=320,height=240 ! multifilesink name=mfs",
       NULL);
   fail_if (pipeline == NULL);
   mfs = gst_bin_get_by_name (GST_BIN (pipeline), "mfs");
@@ -224,7 +238,7 @@ GST_START_TEST (test_multifilesrc)
 
   pipeline =
       gst_parse_launch
-      ("multifilesrc ! video/x-raw,format=(string)I420,width=320,height=240,framerate=10/1 ! fakesink",
+      ("multifilesrc ! video/x-raw-yuv,format=(fourcc)I420,width=320,height=240,framerate=10/1 ! fakesink",
       NULL);
   fail_if (pipeline == NULL);
   mfs = gst_bin_get_by_name (GST_BIN (pipeline), "multifilesrc0");

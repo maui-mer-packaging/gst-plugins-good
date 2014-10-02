@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>spectrum</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-souphttpsrc.html" title="souphttpsrc">
 <link rel="next" href="gst-plugins-good-plugins-speexenc.html" title="speexenc">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-souphttpsrc.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-speexenc.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,12 +48,11 @@
 <a name="gst-plugins-good-plugins-spectrum.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
-                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudiofilter.html#GstAudioFilter">GstAudioFilter</a>
-                                 +----GstSpectrum
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudiofilter.html#GstAudioFilter">GstAudioFilter</a>
+                           +----GstSpectrum
 </pre>
 </div>
 <div class="refsect1">
@@ -132,7 +131,7 @@ channels and the second dimension are the values.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp20984144"></a><h3>Example application</h3>
+<a name="idp22181664"></a><h3>Example application</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
@@ -358,7 +357,7 @@ channels and the second dimension are the values.
 
   <span class="function"><a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBin.html#gst-bin-add-many">gst_bin_add_many</a></span> <span class="gtkdoc opt">(</span><span class="function">GST_BIN</span> <span class="gtkdoc opt">(</span>bin<span class="gtkdoc opt">),</span> src<span class="gtkdoc opt">,</span> audioconvert<span class="gtkdoc opt">,</span> spectrum<span class="gtkdoc opt">,</span> sink<span class="gtkdoc opt">,</span> NULL<span class="gtkdoc opt">);</span>
 
-  caps <span class="gtkdoc opt">=</span> <span class="function"><a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/gstreamer-GstCaps.html#gst-caps-new-simple">gst_caps_new_simple</a></span> <span class="gtkdoc opt">(</span><span class="string">&quot;audio/x-raw&quot;</span><span class="gtkdoc opt">,</span>
+  caps <span class="gtkdoc opt">=</span> <span class="function"><a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/gstreamer-GstCaps.html#gst-caps-new-simple">gst_caps_new_simple</a></span> <span class="gtkdoc opt">(</span><span class="string">&quot;audio/x-raw-int&quot;</span><span class="gtkdoc opt">,</span>
       <span class="string">&quot;rate&quot;</span><span class="gtkdoc opt">,</span> G_TYPE_INT<span class="gtkdoc opt">,</span> AUDIOFREQ<span class="gtkdoc opt">,</span> NULL<span class="gtkdoc opt">);</span>
 
   <span class="keyword">if</span> <span class="gtkdoc opt">(!</span><span class="function"><a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html#gst-element-link">gst_element_link</a></span> <span class="gtkdoc opt">(</span>src<span class="gtkdoc opt">,</span> audioconvert<span class="gtkdoc opt">) ||</span>
@@ -399,7 +398,7 @@ Last reviewed on 2011-03-10 (0.10.29)
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp21725232"></a><h3>Element Information</h3>
+<a name="idp22154752"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -422,7 +421,7 @@ Last reviewed on 2011-03-10 (0.10.29)
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp22019616"></a><h3>Element Pads</h3>
+<a name="idp22804672"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -440,7 +439,19 @@ Last reviewed on 2011-03-10 (0.10.29)
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string){ S16LE, S24LE, S32LE, F32LE, F64LE }, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ], layout=(string)interleaved</td>
+<td>audio/x-raw-int, width=(int)16, depth=(int)[ 1, 16 ], signed=(boolean)true, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, width=(int)24, depth=(int)[ 1, 24 ], signed=(boolean)true, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, width=(int)32, depth=(int)[ 1, 32 ], signed=(boolean)true, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-float, width=(int){ 32, 64 }, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
 </tr>
 </tbody>
 </table></div>
@@ -461,7 +472,19 @@ Last reviewed on 2011-03-10 (0.10.29)
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string){ S16LE, S24LE, S32LE, F32LE, F64LE }, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ], layout=(string)interleaved</td>
+<td>audio/x-raw-int, width=(int)16, depth=(int)[ 1, 16 ], signed=(boolean)true, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, width=(int)24, depth=(int)[ 1, 24 ], signed=(boolean)true, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, width=(int)32, depth=(int)[ 1, 32 ], signed=(boolean)true, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-float, width=(int){ 32, 64 }, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
 </tr>
 </tbody>
 </table></div>

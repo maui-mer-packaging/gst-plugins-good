@@ -22,7 +22,6 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
-#include "gstindex.h"
 
 G_BEGIN_DECLS
 #define GST_TYPE_FLV_DEMUX \
@@ -72,6 +71,7 @@ struct _GstFlvDemux
 
   GstSegment segment;
 
+  GstEvent *close_seg_event;
   GstEvent *new_seg_event;
 
   GstTagList *taglist;

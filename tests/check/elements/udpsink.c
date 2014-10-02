@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#if 0
 static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
@@ -183,7 +182,6 @@ GST_START_TEST (test_udpsink_bufferlist)
 }
 
 GST_END_TEST;
-#endif
 
 /*
  * Creates the test suite.
@@ -201,10 +199,8 @@ udpsink_suite (void)
   tcase_set_timeout (tc_chain, 60);
 
   suite_add_tcase (s, tc_chain);
-#if 0
   tcase_add_test (tc_chain, test_udpsink);
   tcase_add_test (tc_chain, test_udpsink_bufferlist);
-#endif
   return s;
 }
 

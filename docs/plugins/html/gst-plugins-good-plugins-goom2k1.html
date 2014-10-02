@@ -4,10 +4,10 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>goom2k1</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-goom.html" title="goom">
-<link rel="next" href="gst-plugins-good-plugins-hdv1394src.html" title="hdv1394src">
+<link rel="next" href="gst-plugins-good-plugins-gstrtpbin.html" title="gstrtpbin">
 <meta name="generator" content="GTK-Doc V1.18 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
@@ -17,8 +17,8 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-goom.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
-<td><a accesskey="n" href="gst-plugins-good-plugins-hdv1394src.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
+<td><a accesskey="n" href="gst-plugins-good-plugins-gstrtpbin.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
 <a href="#gst-plugins-good-plugins-goom2k1.synopsis" class="shortcut">Top</a>
@@ -46,10 +46,9 @@
 <a name="gst-plugins-good-plugins-goom2k1.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----GstGoom
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstGoom
 </pre>
 </div>
 <div class="refsect1">
@@ -62,13 +61,13 @@ visualisation. Also available is goom2k4, with a different look.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp6437712"></a><h3>Example launch line</h3>
+<a name="idp8750816"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> <span class="gtkdoc opt">-</span>v audiotestsrc <span class="gtkdoc opt">!</span> goom2k1 <span class="gtkdoc opt">!</span> videoconvert <span class="gtkdoc opt">!</span> xvimagesink</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch <span class="gtkdoc opt">-</span>v audiotestsrc <span class="gtkdoc opt">!</span> goom2k1 <span class="gtkdoc opt">!</span> ffmpegcolorspace <span class="gtkdoc opt">!</span> xvimagesink</pre></td>
       </tr>
     </tbody>
   </table>
@@ -80,7 +79,7 @@ visualisation. Also available is goom2k4, with a different look.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp12541280"></a><h3>Element Information</h3>
+<a name="idp7198976"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -103,7 +102,7 @@ visualisation. Also available is goom2k4, with a different look.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp7379792"></a><h3>Element Pads</h3>
+<a name="idp8268864"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -121,11 +120,7 @@ visualisation. Also available is goom2k4, with a different look.
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string)S16LE, rate=(int)[ 8000, 96000 ], channels=(int)1, layout=(string)interleaved</td>
-</tr>
-<tr>
-<td><p><span class="term"></span></p></td>
-<td> audio/x-raw, format=(string)S16LE, rate=(int)[ 8000, 96000 ], channels=(int)2, channel-mask=(bitmask)0x0000000000000003, layout=(string)interleaved</td>
+<td>audio/x-raw-int, endianness=(int)1234, signed=(boolean)true, width=(int)16, depth=(int)16, rate=(int)[ 8000, 96000 ], channels=(int){ 1, 2 }</td>
 </tr>
 </tbody>
 </table></div>
@@ -146,7 +141,7 @@ visualisation. Also available is goom2k4, with a different look.
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw, format=(string)BGRx, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
+<td>video/x-raw-rgb, bpp=(int)32, depth=(int)24, endianness=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216, width=(int)[ 1, 2147483647 ], height=(int)[ 1, 2147483647 ], framerate=(fraction)[ 0/1, 2147483647/1 ]</td>
 </tr>
 </tbody>
 </table></div>

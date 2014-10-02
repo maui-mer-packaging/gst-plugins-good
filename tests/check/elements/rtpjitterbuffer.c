@@ -51,10 +51,13 @@ static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
     );
 
 static void
-buffer_dropped (gpointer data, GstMiniObject * obj)
+buffer_dropped (gpointer mem)
 {
-  GST_DEBUG ("dropping buffer %p", obj);
-  num_dropped++;
+  if (mem) {
+    GST_DEBUG ("dropping buffer: data=%p", mem);
+    g_free (mem);
+    num_dropped++;
+  }
 }
 
 static GstElement *
@@ -65,8 +68,8 @@ setup_jitterbuffer (gint num_buffers)
   GstBuffer *buffer;
   GstCaps *caps;
   /* a 20 sample audio block (2,5 ms) generated with
-   * gst-launch audiotestsrc wave=silence blocksize=40 num-buffers=3 !
-   *    "audio/x-raw,channels=1,rate=8000" ! mulawenc ! rtppcmupay !
+   * gst-launch audiotestsrc wave=silence blocksize=40 num-buffers=3 ! 
+   *    "audio/x-raw-int,channels=1,rate=8000" ! mulawenc ! rtppcmupay !
    *     fakesink dump=1
    */
   guint8 in[] = {               /* first 4 bytes are rtp-header, next 4 bytes are timestamp */
@@ -80,7 +83,7 @@ setup_jitterbuffer (gint num_buffers)
   gint i;
 
   GST_DEBUG ("setup_jitterbuffer");
-  jitterbuffer = gst_check_setup_element ("rtpjitterbuffer");
+  jitterbuffer = gst_check_setup_element ("gstrtpjitterbuffer");
   /* we need a clock here */
   clock = gst_system_clock_obtain ();
   gst_element_set_clock (jitterbuffer, clock);
@@ -91,23 +94,21 @@ setup_jitterbuffer (gint num_buffers)
      GST_INFO_OBJECT (jitterbuffer, "set latency to %u ms", latency);
    */
 
-  mysrcpad = gst_check_setup_src_pad (jitterbuffer, &srctemplate);
-  mysinkpad = gst_check_setup_sink_pad (jitterbuffer, &sinktemplate);
+  mysrcpad = gst_check_setup_src_pad (jitterbuffer, &srctemplate, NULL);
+  mysinkpad = gst_check_setup_sink_pad (jitterbuffer, &sinktemplate, NULL);
   gst_pad_set_active (mysrcpad, TRUE);
   gst_pad_set_active (mysinkpad, TRUE);
 
   /* create n buffers */
   caps = gst_caps_from_string (RTP_CAPS_STRING);
-  gst_pad_set_caps (mysrcpad, caps);
-  gst_caps_unref (caps);
-
   for (i = 0; i < num_buffers; i++) {
     buffer = gst_buffer_new_and_alloc (sizeof (in));
-    gst_buffer_fill (buffer, 0, in, sizeof (in));
+    memcpy (GST_BUFFER_DATA (buffer), in, sizeof (in));
+    gst_buffer_set_caps (buffer, caps);
     GST_BUFFER_TIMESTAMP (buffer) = ts;
     GST_BUFFER_DURATION (buffer) = tso;
-    gst_mini_object_weak_ref (GST_MINI_OBJECT (buffer), buffer_dropped, NULL);
-    GST_DEBUG ("created buffer: %p", buffer);
+    GST_BUFFER_FREE_FUNC (buffer) = buffer_dropped;
+    GST_DEBUG ("created buffer: %p, data=%p", buffer, GST_BUFFER_DATA (buffer));
 
     if (!i)
       GST_BUFFER_FLAG_SET (buffer, GST_BUFFER_FLAG_DISCONT);
@@ -120,6 +121,7 @@ setup_jitterbuffer (gint num_buffers)
     in[7] += RTP_FRAME_SIZE;    /* inc. timestamp with framesize */
     ts += tso;
   }
+  gst_caps_unref (caps);
   num_dropped = 0;
 
   return jitterbuffer;
@@ -168,7 +170,7 @@ check_jitterbuffer_results (GstElement * jitterbuffer, gint num_buffers)
   GList *node;
   GstClockTime ts = G_GUINT64_CONSTANT (0);
   GstClockTime tso = gst_util_uint64_scale (RTP_FRAME_SIZE, GST_SECOND, 8000);
-  GstMapInfo map;
+  guint8 *data;
   guint16 prev_sn = 0, cur_sn;
   guint32 prev_ts = 0, cur_ts;
 
@@ -185,11 +187,10 @@ check_jitterbuffer_results (GstElement * jitterbuffer, gint num_buffers)
   for (node = buffers; node; node = g_list_next (node)) {
     fail_if ((buffer = (GstBuffer *) node->data) == NULL);
     fail_if (GST_BUFFER_TIMESTAMP (buffer) != ts);
-    gst_buffer_map (buffer, &map, GST_MAP_READ);
-    cur_sn = ((guint16) map.data[2] << 8) | map.data[3];
-    cur_ts = ((guint32) map.data[4] << 24) | ((guint32) map.data[5] << 16) |
-        ((guint32) map.data[6] << 8) | map.data[7];
-    gst_buffer_unmap (buffer, &map);
+    data = GST_BUFFER_DATA (buffer);
+    cur_sn = ((guint16) data[2] << 8) | data[3];
+    cur_ts = ((guint32) data[4] << 24) | ((guint32) data[5] << 16) |
+        ((guint32) data[6] << 8) | data[7];
 
     if (node != buffers) {
       fail_unless (cur_sn > prev_sn);

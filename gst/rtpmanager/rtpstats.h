@@ -21,8 +21,7 @@
 #define __RTP_STATS_H__
 
 #include <gst/gst.h>
-#include <gst/net/gstnetaddressmeta.h>
-#include <gio/gio.h>
+#include <gst/netbuffer/gstnetbuffer.h>
 
 /**
  * RTPSenderReport:
@@ -57,20 +56,22 @@ typedef struct {
 
 /**
  * RTPArrivalStats:
- * @address: address of the sender of the packet
  * @current_time: current time according to the system clock
  * @running_time: arrival time of a packet as buffer running_time
  * @ntpnstime: arrival time of a packet NTP time in nanoseconds
+ * @have_address: if the @address field contains a valid address
+ * @address: address of the sender of the packet
  * @bytes: bytes of the packet including lowlevel overhead
  * @payload_len: bytes of the RTP payload
  *
  * Structure holding information about the arrival stats of a packet.
  */
 typedef struct {
-  GSocketAddress *address;
   GstClockTime  current_time;
   GstClockTime  running_time;
   guint64       ntpnstime;
+  gboolean      have_address;
+  GstNetAddress address;
   guint         bytes;
   guint         payload_len;
 } RTPArrivalStats;
@@ -199,9 +200,4 @@ gint64         rtp_stats_get_packets_lost           (const RTPSourceStats *stats
 
 void           rtp_stats_set_min_interval           (RTPSessionStats *stats,
                                                      gdouble min_interval);
-
-
-gboolean __g_socket_address_equal (GSocketAddress *a, GSocketAddress *b);
-gchar * __g_socket_address_to_string (GSocketAddress * addr);
-
 #endif /* __RTP_STATS_H__ */

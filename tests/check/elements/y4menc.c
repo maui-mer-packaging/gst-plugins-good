@@ -29,8 +29,8 @@
  * get_peer, and then remove references in every test function */
 static GstPad *mysrcpad, *mysinkpad;
 
-#define VIDEO_CAPS_STRING "video/x-raw, " \
-                           "format = (string) I420, "\
+#define VIDEO_CAPS_STRING "video/x-raw-yuv, " \
+                           "format = (fourcc) I420, "\
                            "width = (int) 384, " \
                            "height = (int) 288, " \
                            "framerate = (fraction) 25/1, " \
@@ -57,8 +57,8 @@ setup_y4menc (void)
 
   GST_DEBUG ("setup_y4menc");
   y4menc = gst_check_setup_element ("y4menc");
-  mysrcpad = gst_check_setup_src_pad (y4menc, &srctemplate);
-  mysinkpad = gst_check_setup_sink_pad (y4menc, &sinktemplate);
+  mysrcpad = gst_check_setup_src_pad (y4menc, &srctemplate, NULL);
+  mysinkpad = gst_check_setup_sink_pad (y4menc, &sinktemplate, NULL);
   gst_pad_set_active (mysrcpad, TRUE);
   gst_pad_set_active (mysinkpad, TRUE);
 
@@ -97,9 +97,9 @@ GST_START_TEST (test_y4m)
   size = 384 * 288 * 3 / 2;
   inbuffer = gst_buffer_new_and_alloc (size);
   /* makes valgrind's memcheck happier */
-  gst_buffer_memset (inbuffer, 0, 0, size);
+  memset (GST_BUFFER_DATA (inbuffer), 0, GST_BUFFER_SIZE (inbuffer));
   caps = gst_caps_from_string (VIDEO_CAPS_STRING);
-  fail_unless (gst_pad_set_caps (mysrcpad, caps));
+  gst_buffer_set_caps (inbuffer, caps);
   gst_caps_unref (caps);
   GST_BUFFER_TIMESTAMP (inbuffer) = 0;
   ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
@@ -110,31 +110,27 @@ GST_START_TEST (test_y4m)
 
   /* clean up buffers */
   for (i = 0; i < num_buffers; ++i) {
-    GstMapInfo map;
     gchar *data;
-    gsize outsize;
 
     outbuffer = GST_BUFFER (buffers->data);
     fail_if (outbuffer == NULL);
 
     switch (i) {
       case 0:
-        gst_buffer_map (outbuffer, &map, GST_MAP_READ);
-        outsize = map.size;
-        data = (gchar *) map.data;
-
-        fail_unless (outsize > size);
-        fail_unless (memcmp (data, data0, strlen (data0)) == 0 ||
-            memcmp (data, data1, strlen (data1)) == 0);
+        fail_unless (GST_BUFFER_SIZE (outbuffer) > size);
+        fail_unless (memcmp (data0, GST_BUFFER_DATA (outbuffer),
+                strlen (data0)) == 0 ||
+            memcmp (data1, GST_BUFFER_DATA (outbuffer), strlen (data1)) == 0);
         /* so we know there is a newline */
+        data = (gchar *) GST_BUFFER_DATA (outbuffer);
         data = strchr (data, '\n');
         fail_unless (data != NULL);
         data++;
         fail_unless (memcmp (data2, data, strlen (data2)) == 0);
         data += strlen (data2);
         /* remainder must be frame data */
-        fail_unless (data - (gchar *) map.data + size == outsize);
-        gst_buffer_unmap (outbuffer, &map);
+        fail_unless ((data - (gchar *) GST_BUFFER_DATA (outbuffer)) + size ==
+            GST_BUFFER_SIZE (outbuffer));
         break;
       default:
         break;

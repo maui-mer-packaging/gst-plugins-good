@@ -174,18 +174,17 @@ typedef struct _GstAviDemux {
 
   /* segment in TIME */
   GstSegment     segment;
+  gboolean       segment_running;
 
   /* pending tags/events */
   GstEvent      *seg_event;
+  GstEvent      *close_seg_event;
   GstTagList	*globaltags;
   gboolean	 got_tags;
 
-#if 0
   /* gst index support */
   GstIndex      *element_index;
   gint           index_id;
-#endif
-
   gboolean       seekable;
 
   guint64        first_movi_offset;

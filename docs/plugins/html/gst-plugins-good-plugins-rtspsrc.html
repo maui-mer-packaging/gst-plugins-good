@@ -4,10 +4,10 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>rtspsrc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-rtpjpegpay.html" title="rtpjpegpay">
-<link rel="next" href="gst-plugins-good-plugins-rtpbin.html" title="rtpbin">
+<link rel="next" href="gst-plugins-good-plugins-shagadelictv.html" title="shagadelictv">
 <meta name="generator" content="GTK-Doc V1.18 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
@@ -17,8 +17,8 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-rtpjpegpay.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
-<td><a accesskey="n" href="gst-plugins-good-plugins-rtpbin.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
+<td><a accesskey="n" href="gst-plugins-good-plugins-shagadelictv.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
 <a href="#gst-plugins-good-plugins-rtspsrc.synopsis" class="shortcut">Top</a>
@@ -50,11 +50,10 @@
 <a name="gst-plugins-good-plugins-rtspsrc.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBin.html">GstBin</a>
-                           +----GstRTSPSrc
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBin.html">GstBin</a>
+                     +----GstRTSPSrc
 </pre>
 </div>
 <div class="refsect1">
@@ -73,7 +72,7 @@ GstRTSPSrc implements
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--timeout" title='The "timeout" property'>timeout</a>"                  <span class="type">guint64</span>               : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--latency" title='The "latency" property'>latency</a>"                  <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--tcp-timeout" title='The "tcp-timeout" property'>tcp-timeout</a>"              <span class="type">guint64</span>               : Read / Write
-  "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--connection-speed" title='The "connection-speed" property'>connection-speed</a>"         <span class="type">guint64</span>               : Read / Write
+  "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--connection-speed" title='The "connection-speed" property'>connection-speed</a>"         <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--nat-method" title='The "nat-method" property'>nat-method</a>"               <span class="type">GstRTSPNatMethod</span>      : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--do-rtcp" title='The "do-rtcp" property'>do-rtcp</a>"                  <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--proxy" title='The "proxy" property'>proxy</a>"                    <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write
@@ -84,9 +83,6 @@ GstRTSPSrc implements
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--port-range" title='The "port-range" property'>port-range</a>"               <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gchar"><span class="type">gchar</span></a>*                : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--udp-buffer-size" title='The "udp-buffer-size" property'>udp-buffer-size</a>"          <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>                  : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--short-header" title='The "short-header" property'>short-header</a>"             <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write
-  "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--do-rtsp-keep-alive" title='The "do-rtsp-keep-alive" property'>do-rtsp-keep-alive</a>"       <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write
-  "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--drop-on-latency" title='The "drop-on-latency" property'>drop-on-latency</a>"          <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write
-  "<a class="link" href="gst-plugins-good-plugins-rtspsrc.html#GstRTSPSrc--probation" title='The "probation" property'>probation</a>"                <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read / Write
 </pre>
 </div>
 <div class="refsect1">
@@ -122,13 +118,13 @@ PLAYING state.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp18375456"></a><h3>Example launch line</h3>
+<a name="idp20671664"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> rtspsrc location<span class="gtkdoc opt">=</span>rtsp<span class="gtkdoc opt">:</span><span class="gtkdoc slc">//some.server/url ! fakesink</span></pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch rtspsrc location<span class="gtkdoc opt">=</span>rtsp<span class="gtkdoc opt">:</span><span class="gtkdoc slc">//some.server/url ! fakesink</span></pre></td>
       </tr>
     </tbody>
   </table>
@@ -144,7 +140,7 @@ Last reviewed on 2006-08-18 (0.10.5)
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp20462480"></a><h3>Element Information</h3>
+<a name="idp18090384"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -167,13 +163,13 @@ Last reviewed on 2006-08-18 (0.10.5)
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp19164208"></a><h3>Element Pads</h3>
+<a name="idp22212016"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
 <tr>
 <td><p><span class="term">name</span></p></td>
-<td>stream_%u</td>
+<td>stream%d</td>
 </tr>
 <tr>
 <td><p><span class="term">direction</span></p></td>
@@ -261,9 +257,9 @@ Last reviewed on 2006-08-18 (0.10.5)
 <hr>
 <div class="refsect2">
 <a name="GstRTSPSrc--connection-speed"></a><h3>The <code class="literal">"connection-speed"</code> property</h3>
-<pre class="programlisting">  "connection-speed"         <span class="type">guint64</span>               : Read / Write</pre>
+<pre class="programlisting">  "connection-speed"         <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read / Write</pre>
 <p>Network connection speed in kbps (0 = unknown).</p>
-<p>Allowed values: &lt;= 18446744073709551</p>
+<p>Allowed values: &lt;= 2147483</p>
 <p>Default value: 0</p>
 </div>
 <hr>
@@ -337,27 +333,6 @@ Last reviewed on 2006-08-18 (0.10.5)
 <pre class="programlisting">  "short-header"             <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write</pre>
 <p>Only send the basic RTSP headers for broken encoders.</p>
 <p>Default value: FALSE</p>
-</div>
-<hr>
-<div class="refsect2">
-<a name="GstRTSPSrc--do-rtsp-keep-alive"></a><h3>The <code class="literal">"do-rtsp-keep-alive"</code> property</h3>
-<pre class="programlisting">  "do-rtsp-keep-alive"       <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write</pre>
-<p>Send RTSP keep alive packets, disable for old incompatible server.</p>
-<p>Default value: TRUE</p>
-</div>
-<hr>
-<div class="refsect2">
-<a name="GstRTSPSrc--drop-on-latency"></a><h3>The <code class="literal">"drop-on-latency"</code> property</h3>
-<pre class="programlisting">  "drop-on-latency"          <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a>              : Read / Write</pre>
-<p>Tells the jitterbuffer to never exceed the given latency in size.</p>
-<p>Default value: FALSE</p>
-</div>
-<hr>
-<div class="refsect2">
-<a name="GstRTSPSrc--probation"></a><h3>The <code class="literal">"probation"</code> property</h3>
-<pre class="programlisting">  "probation"                <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>                 : Read / Write</pre>
-<p>Consecutive packet sequence numbers to accept the source.</p>
-<p>Default value: 2</p>
 </div>
 </div>
 </div>

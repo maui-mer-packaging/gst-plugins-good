@@ -21,7 +21,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -41,7 +41,7 @@ typedef struct _GstRtpMP4ADepayClass GstRtpMP4ADepayClass;
 
 struct _GstRtpMP4ADepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
   GstAdapter *adapter;
   guint8 numSubFrames;
   guint frame_len;
@@ -49,7 +49,7 @@ struct _GstRtpMP4ADepay
 
 struct _GstRtpMP4ADepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_mp4a_depay_get_type (void);

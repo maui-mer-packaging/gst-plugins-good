@@ -32,8 +32,7 @@ static GstPad *mysrcpad, *mysinkpad;
 #define AUDIO_CAPS_STRING "audio/x-ac3, " \
                         "channels = (int) 1, " \
                         "rate = (int) 8000"
-#define VIDEO_CAPS_STRING "video/mpeg, mpegversion = (int) 4, " \
-                           "systemstream = (bool) false, " \
+#define VIDEO_CAPS_STRING "video/x-xvid, " \
                            "width = (int) 384, " \
                            "height = (int) 288, " \
                            "framerate = (fraction) 25/1"
@@ -91,8 +90,9 @@ teardown_src_pad (GstElement * element, const gchar * sinkname)
   gchar *padname;
 
   /* clean up floating src pad */
+  /* hm, avimux uses _00 as suffixes for padnames */
   padname = g_strdup (sinkname);
-  memcpy (strchr (padname, '%'), "0", 2);
+  memcpy (strchr (padname, '%'), "00", 2);
   if (!(sinkpad = gst_element_get_static_pad (element, padname)))
     sinkpad = gst_element_get_request_pad (element, padname);
   g_free (padname);
@@ -123,7 +123,7 @@ setup_avimux (GstStaticPadTemplate * srctemplate, const gchar * sinkname)
   GST_DEBUG ("setup_avimux");
   avimux = gst_check_setup_element ("avimux");
   mysrcpad = setup_src_pad (avimux, srctemplate, NULL, sinkname);
-  mysinkpad = gst_check_setup_sink_pad (avimux, &sinktemplate);
+  mysinkpad = gst_check_setup_sink_pad (avimux, &sinktemplate, NULL);
   gst_pad_set_active (mysrcpad, TRUE);
   gst_pad_set_active (mysinkpad, TRUE);
 
@@ -161,20 +161,15 @@ check_avimux_pad (GstStaticPadTemplate * srctemplate,
   guint8 data5[4] = "strf";
   guint8 data6[4] = "LIST";
   guint8 data7[4] = "movi";
-  GstSegment segment;
 
   avimux = setup_avimux (srctemplate, sinkname);
   fail_unless (gst_element_set_state (avimux,
           GST_STATE_PLAYING) == GST_STATE_CHANGE_SUCCESS,
       "could not set to playing");
 
-  /* ensure segment (format) properly setup */
-  gst_segment_init (&segment, GST_FORMAT_TIME);
-  fail_unless (gst_pad_push_event (mysrcpad, gst_event_new_segment (&segment)));
-
   inbuffer = gst_buffer_new_and_alloc (1);
   caps = gst_caps_from_string (src_caps_string);
-  gst_pad_set_caps (mysrcpad, caps);
+  gst_buffer_set_caps (inbuffer, caps);
   gst_caps_unref (caps);
   GST_BUFFER_TIMESTAMP (inbuffer) = 0;
   ASSERT_BUFFER_REFCOUNT (inbuffer, "inbuffer", 1);
@@ -191,13 +186,7 @@ check_avimux_pad (GstStaticPadTemplate * srctemplate,
     switch (i) {
       case 0:{                 /* check riff header */
         /* avi header */
-        GstMapInfo map;
-        gsize size;
-        guint8 *data;
-
-        gst_buffer_map (outbuffer, &map, GST_MAP_READ);
-        data = map.data;
-        size = map.size;
+        guint8 *data = GST_BUFFER_DATA (outbuffer);
 
         fail_unless (memcmp (data, data0, sizeof (data0)) == 0);
         fail_unless (memcmp (data + 8, data1, sizeof (data1)) == 0);
@@ -208,23 +197,22 @@ check_avimux_pad (GstStaticPadTemplate * srctemplate,
         fail_unless (memcmp (data + 8, data4, sizeof (data4)) == 0);
         fail_unless (memcmp (data + 76, data5, sizeof (data5)) == 0);
         /* avi data header */
-        data = map.data;
-        data += size - 12;
+        data = GST_BUFFER_DATA (outbuffer);
+        data += GST_BUFFER_SIZE (outbuffer) - 12;
         fail_unless (memcmp (data, data6, sizeof (data6)) == 0);
         data += 8;
         fail_unless (memcmp (data, data7, sizeof (data7)) == 0);
-        gst_buffer_unmap (outbuffer, &map);
         break;
       }
       case 1:                  /* chunk header */
-        fail_unless (gst_buffer_get_size (outbuffer) == 8);
-        fail_unless (gst_buffer_memcmp (outbuffer, 0, chunk_id, 4) == 0);
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == 8);
+        fail_unless (memcmp (GST_BUFFER_DATA (outbuffer), chunk_id, 4) == 0);
         break;
       case 2:
-        fail_unless (gst_buffer_get_size (outbuffer) == 1);
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == 1);
         break;
       case 3:                  /* buffer we put in, must be padded to even size */
-        fail_unless (gst_buffer_get_size (outbuffer) == 1);
+        fail_unless (GST_BUFFER_SIZE (outbuffer) == 1);
         break;
       default:
         break;
@@ -243,7 +231,7 @@ check_avimux_pad (GstStaticPadTemplate * srctemplate,
 
 GST_START_TEST (test_video_pad)
 {
-  check_avimux_pad (&srcvideotemplate, VIDEO_CAPS_STRING, "00db", "video_%u");
+  check_avimux_pad (&srcvideotemplate, VIDEO_CAPS_STRING, "00db", "video_%d");
 }
 
 GST_END_TEST;
@@ -251,7 +239,7 @@ GST_END_TEST;
 
 GST_START_TEST (test_audio_pad)
 {
-  check_avimux_pad (&srcaudiotemplate, AUDIO_CAPS_STRING, "00wb", "audio_%u");
+  check_avimux_pad (&srcaudiotemplate, AUDIO_CAPS_STRING, "00wb", "audio_%d");
 }
 
 GST_END_TEST;

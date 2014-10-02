@@ -129,7 +129,6 @@ struct _GstQTPad
 
   /* if nothing is set, it won't be called */
   GstQTPadPrepareBufferFunc prepare_buf_func;
-  gboolean (*set_caps) (GstPad * pad, GstCaps * caps);
 };
 
 typedef enum _GstQTMuxState
@@ -191,6 +190,9 @@ struct _GstQTMux
   gchar *moov_recov_file_path;
   guint32 fragment_duration;
   gboolean streamable;
+
+  /* for collect pads event handling function */
+  GstPadEventFunction collect_event;
 
   /* for request pad naming */
   guint video_pads, audio_pads;

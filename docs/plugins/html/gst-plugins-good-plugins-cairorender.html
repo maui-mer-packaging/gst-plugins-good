@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>cairorender</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-cairotimeoverlay.html" title="cairotimeoverlay">
 <link rel="next" href="gst-plugins-good-plugins-cairooverlay.html" title="cairooverlay">
@@ -17,13 +17,15 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-cairotimeoverlay.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-cairooverlay.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
 <a href="#gst-plugins-good-plugins-cairorender.synopsis" class="shortcut">Top</a>
                    | 
                   <a href="#gst-plugins-good-plugins-cairorender.description" class="shortcut">Description</a>
+                   | 
+                  <a href="#gst-plugins-good-plugins-cairorender.object-hierarchy" class="shortcut">Object Hierarchy</a>
 </td></tr>
 </table>
 <div class="refentry">
@@ -37,7 +39,16 @@
 </tr></table></div>
 <div class="refsynopsisdiv">
 <a name="gst-plugins-good-plugins-cairorender.synopsis"></a><h2>Synopsis</h2>
-<pre class="synopsis">struct              <a class="link" href="gst-plugins-good-plugins-cairorender.html#GstCairoRender" title="struct GstCairoRender">GstCairoRender</a>;
+<a name="GstCairoRender"></a><pre class="synopsis">struct              <a class="link" href="gst-plugins-good-plugins-cairorender.html#GstCairoRender-struct" title="struct GstCairoRender">GstCairoRender</a>;
+</pre>
+</div>
+<div class="refsect1">
+<a name="gst-plugins-good-plugins-cairorender.object-hierarchy"></a><h2>Object Hierarchy</h2>
+<pre class="synopsis">
+  <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstCairoRender
 </pre>
 </div>
 <div class="refsect1">
@@ -45,7 +56,7 @@
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp10207088"></a><h3>Element Information</h3>
+<a name="idp12726672"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -68,7 +79,7 @@
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp10053616"></a><h3>Element Pads</h3>
+<a name="idp5439824"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -147,13 +158,8 @@
 <div class="refsect1">
 <a name="gst-plugins-good-plugins-cairorender.details"></a><h2>Details</h2>
 <div class="refsect2">
-<a name="GstCairoRender"></a><h3>struct GstCairoRender</h3>
-<pre class="programlisting">struct GstCairoRender {
-  GstElement parent;
-
-  GstPad *snk, *src;
-};
-</pre>
+<a name="GstCairoRender-struct"></a><h3>struct GstCairoRender</h3>
+<pre class="programlisting">struct GstCairoRender;</pre>
 <p>
 </p>
 </div>

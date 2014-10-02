@@ -80,21 +80,33 @@ static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
 
-GType gst_test_get_type (void);
-#define gst_test_parent_class parent_class
-G_DEFINE_TYPE (GstTest, gst_test, GST_TYPE_BASE_SINK);
+#define DEBUG_INIT(bla) \
+  GST_DEBUG_CATEGORY_INIT (gst_test_debug, "testsink", 0, \
+      "debugging category for testsink element");
 
+GType gst_test_get_type (void);
+GST_BOILERPLATE_FULL (GstTest, gst_test, GstBaseSink, GST_TYPE_BASE_SINK,
+    DEBUG_INIT);
+
+
+static void
+gst_test_base_init (gpointer g_class)
+{
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &sinktemplate);
+
+  gst_element_class_set_details_simple (gstelement_class, "Test plugin",
+      "Testing", "perform a number of tests", "Benjamin Otte <otte@gnome>");
+}
 
 static void
 gst_test_class_init (GstTestClass * klass)
 {
   GstBaseSinkClass *basesink_class = GST_BASE_SINK_CLASS (klass);
-  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   guint i;
-
-  GST_DEBUG_CATEGORY_INIT (gst_test_debug, "testsink", 0,
-      "debugging category for testsink element");
 
   object_class->set_property = gst_test_set_property;
   object_class->get_property = gst_test_get_property;
@@ -112,12 +124,6 @@ gst_test_class_init (GstTestClass * klass)
     g_object_class_install_property (object_class, 2 * i + 2, spec);
   }
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sinktemplate));
-
-  gst_element_class_set_static_metadata (gstelement_class, "Test plugin",
-      "Testing", "perform a number of tests", "Benjamin Otte <otte@gnome>");
-
   basesink_class->render = GST_DEBUG_FUNCPTR (gst_test_render_buffer);
   basesink_class->event = GST_DEBUG_FUNCPTR (gst_test_sink_event);
   basesink_class->start = GST_DEBUG_FUNCPTR (gst_test_start);
@@ -125,7 +131,7 @@ gst_test_class_init (GstTestClass * klass)
 }
 
 static void
-gst_test_init (GstTest * test)
+gst_test_init (GstTest * test, GstTestClass * g_class)
 {
   GstTestClass *klass;
   guint i;
@@ -180,6 +186,7 @@ gst_test_sink_event (GstBaseSink * basesink, GstEvent * event)
 {
   GstTestClass *klass = GST_TEST_GET_CLASS (basesink);
   GstTest *test = GST_TEST (basesink);
+  gboolean ret = FALSE;
 
   switch (GST_EVENT_TYPE (event)) {
 /*
@@ -216,13 +223,14 @@ gst_test_sink_event (GstBaseSink * basesink, GstEvent * event)
         }
       }
       g_object_thaw_notify (G_OBJECT (test));
+      ret = TRUE;
       break;
     }
     default:
       break;
   }
 
-  return GST_BASE_SINK_CLASS (parent_class)->event (basesink, event);
+  return ret;
 }
 
 static GstFlowReturn

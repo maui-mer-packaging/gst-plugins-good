@@ -3,7 +3,7 @@
   <description>Parsers for various audio formats</description>
   <filename>../../gst/audioparsers/.libs/libgstaudioparsers.so</filename>
   <basename>libgstaudioparsers.so</basename>
-  <version>0.11.99</version>
+  <version>0.10.31</version>
   <license>LGPL</license>
   <source>gst-plugins-good</source>
   <package>GStreamer Good Plug-ins source release</package>
@@ -26,7 +26,7 @@
           <name>src</name>
           <direction>source</direction>
           <presence>always</presence>
-          <details>audio/mpeg, framed=(boolean)true, mpegversion=(int){ 2, 4 }, stream-format=(string){ raw, adts, adif, loas }</details>
+          <details>audio/mpeg, framed=(boolean)true, mpegversion=(int){ 2, 4 }, stream-format=(string){ raw, adts, adif }</details>
         </caps>
       </pads>
     </element>
@@ -132,27 +132,6 @@
           <direction>source</direction>
           <presence>always</presence>
           <details>audio/mpeg, mpegversion=(int)1, layer=(int)[ 1, 3 ], mpegaudioversion=(int)[ 1, 3 ], rate=(int)[ 8000, 48000 ], channels=(int)[ 1, 2 ], parsed=(boolean)true</details>
-        </caps>
-      </pads>
-    </element>
-    <element>
-      <name>wavpackparse</name>
-      <longname>Wavpack audio stream parser</longname>
-      <class>Codec/Parser/Audio</class>
-      <description>Wavpack parser</description>
-      <author>Mark Nauwelaerts &lt;mark.nauwelaerts@collabora.co.uk&gt;</author>
-      <pads>
-        <caps>
-          <name>sink</name>
-          <direction>sink</direction>
-          <presence>always</presence>
-          <details>audio/x-wavpack</details>
-        </caps>
-        <caps>
-          <name>src</name>
-          <direction>source</direction>
-          <presence>always</presence>
-          <details>audio/x-wavpack, depth=(int)[ 1, 32 ], channels=(int)[ 1, 8 ], rate=(int)[ 6000, 192000 ], framed=(boolean)true; audio/x-wavpack-correction, framed=(boolean)true</details>
         </caps>
       </pads>
     </element>

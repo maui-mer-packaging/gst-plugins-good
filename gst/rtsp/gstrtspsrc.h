@@ -71,13 +71,13 @@ G_BEGIN_DECLS
 typedef struct _GstRTSPSrc GstRTSPSrc;
 typedef struct _GstRTSPSrcClass GstRTSPSrcClass;
 
-#define GST_RTSP_STATE_GET_LOCK(rtsp)    (&GST_RTSPSRC_CAST(rtsp)->state_rec_lock)
-#define GST_RTSP_STATE_LOCK(rtsp)        (g_rec_mutex_lock (GST_RTSP_STATE_GET_LOCK(rtsp)))
-#define GST_RTSP_STATE_UNLOCK(rtsp)      (g_rec_mutex_unlock (GST_RTSP_STATE_GET_LOCK(rtsp)))
+#define GST_RTSP_STATE_GET_LOCK(rtsp)    (GST_RTSPSRC_CAST(rtsp)->state_rec_lock)
+#define GST_RTSP_STATE_LOCK(rtsp)        (g_static_rec_mutex_lock (GST_RTSP_STATE_GET_LOCK(rtsp)))
+#define GST_RTSP_STATE_UNLOCK(rtsp)      (g_static_rec_mutex_unlock (GST_RTSP_STATE_GET_LOCK(rtsp)))
 
-#define GST_RTSP_STREAM_GET_LOCK(rtsp)   (&GST_RTSPSRC_CAST(rtsp)->stream_rec_lock)
-#define GST_RTSP_STREAM_LOCK(rtsp)       (g_rec_mutex_lock (GST_RTSP_STREAM_GET_LOCK(rtsp)))
-#define GST_RTSP_STREAM_UNLOCK(rtsp)     (g_rec_mutex_unlock (GST_RTSP_STREAM_GET_LOCK(rtsp)))
+#define GST_RTSP_STREAM_GET_LOCK(rtsp)   (GST_RTSPSRC_CAST(rtsp)->stream_rec_lock)
+#define GST_RTSP_STREAM_LOCK(rtsp)       (g_static_rec_mutex_lock (GST_RTSP_STREAM_GET_LOCK(rtsp)))
+#define GST_RTSP_STREAM_UNLOCK(rtsp)     (g_static_rec_mutex_unlock (GST_RTSP_STREAM_GET_LOCK(rtsp)))
 
 typedef struct _GstRTSPConnInfo GstRTSPConnInfo;
 
@@ -112,7 +112,6 @@ struct _GstRTSPStream {
   /* our udp sources */
   GstElement   *udpsrc[2];
   GstPad       *blockedpad;
-  gulong        blockid;
   gboolean      is_ipv6;
 
   /* our udp sinks back to the server */
@@ -168,23 +167,24 @@ struct _GstRTSPSrc {
   /* task and mutex for interleaved mode */
   gboolean         interleaved;
   GstTask         *task;
-  GRecMutex        stream_rec_lock;
+  GStaticRecMutex *stream_rec_lock;
   GstSegment       segment;
   gboolean         running;
   gboolean         need_range;
   gboolean         skip;
   gint             free_channel;
+  GstEvent        *close_segment;
   GstEvent        *start_segment;
   GstClockTime     base_time;
 
   /* UDP mode loop */
-  gint             pending_cmd;
-  gint             busy_cmd;
+  gint             loop_cmd;
   gboolean         ignore_timeout;
+  gboolean         waiting;
   gboolean         open_error;
 
   /* mutex for protecting state changes */
-  GRecMutex        state_rec_lock;
+  GStaticRecMutex *state_rec_lock;
 
   GstSDPMessage   *sdp;
   gboolean         from_sdp;
@@ -201,11 +201,9 @@ struct _GstRTSPSrc {
   GTimeVal          tcp_timeout;
   GTimeVal         *ptcp_timeout;
   guint             latency;
-  gboolean          drop_on_latency;
-  guint64           connection_speed;
+  guint             connection_speed;
   GstRTSPNatMethod  nat_method;
   gboolean          do_rtcp;
-  gboolean          do_rtsp_keep_alive;
   gchar            *proxy_host;
   guint             proxy_port;
   gchar            *proxy_user;
@@ -217,7 +215,6 @@ struct _GstRTSPSrc {
   GstRTSPRange      client_port_range;
   gint              udp_buffer_size;
   gboolean          short_header;
-  guint             probation;
 
   /* state */
   GstRTSPState       state;

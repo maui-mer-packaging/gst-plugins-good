@@ -21,6 +21,7 @@
 #include "config.h"
 #endif
 
+#include "gstrtpdepay.h"
 #include "gstrtpac3depay.h"
 #include "gstrtpac3pay.h"
 #include "gstrtpbvdepay.h"
@@ -93,6 +94,9 @@
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
+  if (!gst_rtp_depay_plugin_init (plugin))
+    return FALSE;
+
   if (!gst_rtp_ac3_depay_plugin_init (plugin))
     return FALSE;
 
@@ -302,6 +306,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    rtp,
+    "rtp",
     "Real-time protocol plugins",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN);

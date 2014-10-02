@@ -30,7 +30,7 @@
  * <refsect2>
  * <title>Example pipelines</title>
  * |[
- * gst-launch-1.0 ximagesrc ! video/x-raw,framerate=5/1 ! videoconvert ! theoraenc ! oggmux ! filesink location=desktop.ogg
+ * gst-launch ximagesrc ! video/x-raw-rgb,framerate=5/1 ! ffmpegcolorspace ! theoraenc ! oggmux ! filesink location=desktop.ogg
  * ]| Encodes your X display to an Ogg theora video at 5 frames per second.
  * </refsect2>
  */
@@ -48,7 +48,6 @@
 
 #include <gst/gst.h>
 #include <gst/gst-i18n-plugin.h>
-#include <gst/video/video.h>
 
 #include "gst/glib-compat-private.h"
 
@@ -57,7 +56,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_debug_ximage_src);
 
 static GstStaticPadTemplate t =
 GST_STATIC_PAD_TEMPLATE ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("video/x-raw, "
+    GST_STATIC_CAPS ("video/x-raw-rgb, "
         "framerate = (fraction) [ 0, MAX ], "
         "width = (int) [ 1, MAX ], " "height = (int) [ 1, MAX ], "
         "pixel-aspect-ratio = (fraction) [ 0, MAX ]"));
@@ -78,35 +77,35 @@ enum
   PROP_XNAME,
 };
 
-#define gst_ximage_src_parent_class parent_class
-G_DEFINE_TYPE (GstXImageSrc, gst_ximage_src, GST_TYPE_PUSH_SRC);
+GST_BOILERPLATE (GstXImageSrc, gst_ximage_src, GstPushSrc, GST_TYPE_PUSH_SRC);
 
-static GstCaps *gst_ximage_src_fixate (GstBaseSrc * bsrc, GstCaps * caps);
+static void gst_ximage_src_fixate (GstPad * pad, GstCaps * caps);
 static void gst_ximage_src_clear_bufpool (GstXImageSrc * ximagesrc);
 
 /* Called when a buffer is returned from the pipeline */
 static void
-gst_ximage_src_return_buf (GstXImageSrc * ximagesrc, GstBuffer * ximage)
+gst_ximage_src_return_buf (GstXImageSrc * ximagesrc,
+    GstXImageSrcBuffer * ximage)
 {
-  GstMetaXImage *meta = GST_META_XIMAGE_GET (ximage);
-
   /* If our geometry changed we can't reuse that image. */
-  if ((meta->width != ximagesrc->width) || (meta->height != ximagesrc->height)) {
+  if ((ximage->width != ximagesrc->width) ||
+      (ximage->height != ximagesrc->height)) {
     GST_DEBUG_OBJECT (ximagesrc,
         "destroy image %p as its size changed %dx%d vs current %dx%d",
-        ximage, meta->width, meta->height, ximagesrc->width, ximagesrc->height);
-    g_mutex_lock (&ximagesrc->x_lock);
+        ximage, ximage->width, ximage->height,
+        ximagesrc->width, ximagesrc->height);
+    g_mutex_lock (ximagesrc->x_lock);
     gst_ximageutil_ximage_destroy (ximagesrc->xcontext, ximage);
-    g_mutex_unlock (&ximagesrc->x_lock);
+    g_mutex_unlock (ximagesrc->x_lock);
   } else {
     /* In that case we can reuse the image and add it to our image pool. */
     GST_LOG_OBJECT (ximagesrc, "recycling image %p in pool", ximage);
     /* need to increment the refcount again to recycle */
-    gst_buffer_ref (ximage);
-    g_mutex_lock (&ximagesrc->pool_lock);
+    gst_buffer_ref (GST_BUFFER (ximage));
+    g_mutex_lock (ximagesrc->pool_lock);
     GST_BUFFER_FLAGS (GST_BUFFER (ximage)) = 0; /* clear out any flags from the previous use */
     ximagesrc->buffer_pool = g_slist_prepend (ximagesrc->buffer_pool, ximage);
-    g_mutex_unlock (&ximagesrc->pool_lock);
+    g_mutex_unlock (ximagesrc->pool_lock);
   }
 }
 
@@ -147,10 +146,10 @@ gst_ximage_src_open_display (GstXImageSrc * s, const gchar * name)
   if (s->xcontext != NULL)
     return TRUE;
 
-  g_mutex_lock (&s->x_lock);
+  g_mutex_lock (s->x_lock);
   s->xcontext = ximageutil_xcontext_get (GST_ELEMENT (s), name);
   if (s->xcontext == NULL) {
-    g_mutex_unlock (&s->x_lock);
+    g_mutex_unlock (s->x_lock);
     GST_ELEMENT_ERROR (s, RESOURCE, OPEN_READ,
         ("Could not open X display for reading"),
         ("NULL returned from getting xcontext"));
@@ -260,7 +259,7 @@ use_root_window:
 #endif
 #endif
 
-  g_mutex_unlock (&s->x_lock);
+  g_mutex_unlock (s->x_lock);
 
   if (s->xcontext == NULL)
     return FALSE;
@@ -302,7 +301,7 @@ gst_ximage_src_stop (GstBaseSrc * basesrc)
 #endif
 
   if (src->xcontext) {
-    g_mutex_lock (&src->x_lock);
+    g_mutex_lock (src->x_lock);
 
 #ifdef HAVE_XDAMAGE
     if (src->damage_copy_gc != None) {
@@ -321,7 +320,7 @@ gst_ximage_src_stop (GstBaseSrc * basesrc)
 
     ximageutil_xcontext_clear (src->xcontext);
     src->xcontext = NULL;
-    g_mutex_unlock (&src->x_lock);
+    g_mutex_unlock (src->x_lock);
   }
 
   return TRUE;
@@ -434,47 +433,35 @@ composite_pixel (GstXContext * xcontext, guchar * dest, guchar * src)
 }
 #endif
 
-#ifdef HAVE_XDAMAGE
-static void
-copy_buffer (GstBuffer * dest, GstBuffer * src)
-{
-  GstMapInfo map;
-
-  gst_buffer_map (src, &map, GST_MAP_READ);
-  gst_buffer_fill (dest, 0, map.data, map.size);
-  gst_buffer_unmap (src, &map);
-}
-#endif
-
 /* Retrieve an XImageSrcBuffer, preferably from our
  * pool of existing images and populate it from the window */
-static GstBuffer *
+static GstXImageSrcBuffer *
 gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
 {
-  GstBuffer *ximage = NULL;
-  GstMetaXImage *meta;
+  GstXImageSrcBuffer *ximage = NULL;
 
-  g_mutex_lock (&ximagesrc->pool_lock);
+  g_mutex_lock (ximagesrc->pool_lock);
   while (ximagesrc->buffer_pool != NULL) {
     ximage = ximagesrc->buffer_pool->data;
 
-    meta = GST_META_XIMAGE_GET (ximage);
-
-    if ((meta->width != ximagesrc->width) ||
-        (meta->height != ximagesrc->height)) {
+    if ((ximage->width != ximagesrc->width) ||
+        (ximage->height != ximagesrc->height)) {
       gst_ximage_buffer_free (ximage);
     }
 
     ximagesrc->buffer_pool = g_slist_delete_link (ximagesrc->buffer_pool,
         ximagesrc->buffer_pool);
   }
-  g_mutex_unlock (&ximagesrc->pool_lock);
+  g_mutex_unlock (ximagesrc->pool_lock);
 
   if (ximage == NULL) {
+    GstXContext *xcontext;
+    GstCaps *caps = NULL;
+
     GST_DEBUG_OBJECT (ximagesrc, "creating image (%dx%d)",
         ximagesrc->width, ximagesrc->height);
 
-    g_mutex_lock (&ximagesrc->x_lock);
+    g_mutex_lock (ximagesrc->x_lock);
     ximage = gst_ximageutil_ximage_new (ximagesrc->xcontext,
         GST_ELEMENT (ximagesrc), ximagesrc->width, ximagesrc->height,
         (BufferReturnFunc) (gst_ximage_src_return_buf));
@@ -482,17 +469,34 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
       GST_ELEMENT_ERROR (ximagesrc, RESOURCE, WRITE, (NULL),
           ("could not create a %dx%d ximage", ximagesrc->width,
               ximagesrc->height));
-      g_mutex_unlock (&ximagesrc->x_lock);
+      g_mutex_unlock (ximagesrc->x_lock);
       return NULL;
     }
 
-    g_mutex_unlock (&ximagesrc->x_lock);
+    xcontext = ximagesrc->xcontext;
+
+
+    caps = gst_caps_new_simple ("video/x-raw-rgb",
+        "bpp", G_TYPE_INT, xcontext->bpp,
+        "depth", G_TYPE_INT, xcontext->depth,
+        "endianness", G_TYPE_INT, xcontext->endianness,
+        "red_mask", G_TYPE_INT, xcontext->r_mask_output,
+        "green_mask", G_TYPE_INT, xcontext->g_mask_output,
+        "blue_mask", G_TYPE_INT, xcontext->b_mask_output,
+        "width", G_TYPE_INT, ximagesrc->width,
+        "height", G_TYPE_INT, ximagesrc->height,
+        "framerate", GST_TYPE_FRACTION, ximagesrc->fps_n, ximagesrc->fps_d,
+        "pixel-aspect-ratio", GST_TYPE_FRACTION,
+        gst_value_get_fraction_numerator (xcontext->par),
+        gst_value_get_fraction_denominator (xcontext->par), NULL);
+
+    gst_buffer_set_caps (GST_BUFFER (ximage), caps);
+    g_mutex_unlock (ximagesrc->x_lock);
+
+    gst_caps_unref (caps);
   }
 
   g_return_val_if_fail (GST_IS_XIMAGE_SRC (ximagesrc), NULL);
-
-  meta = GST_META_XIMAGE_GET (ximage);
-
 #ifdef HAVE_XDAMAGE
   if (ximagesrc->have_xdamage && ximagesrc->use_damage &&
       ximagesrc->last_ximage != NULL) {
@@ -522,9 +526,11 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
 
           if (!have_frame) {
             GST_LOG_OBJECT (ximagesrc,
-                "Copying from last frame ximage->size: %" G_GSIZE_FORMAT,
-                gst_buffer_get_size (ximage));
-            copy_buffer (ximage, ximagesrc->last_ximage);
+                "Copying from last frame ximage->size: %d",
+                GST_BUFFER_SIZE (GST_BUFFER (ximage)));
+            memcpy (GST_BUFFER_DATA (GST_BUFFER (ximage)),
+                GST_BUFFER_DATA (GST_BUFFER (ximagesrc->last_ximage)),
+                GST_BUFFER_SIZE (GST_BUFFER (ximage)));
             have_frame = TRUE;
           }
           for (i = 0; i < nrects; i++) {
@@ -563,7 +569,7 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
                     startx, starty, width, height);
                 XGetSubImage (ximagesrc->xcontext->disp, ximagesrc->xwindow,
                     startx, starty, width, height, AllPlanes, ZPixmap,
-                    meta->ximage, startx - ximagesrc->startx,
+                    ximage->ximage, startx - ximagesrc->startx,
                     starty - ximagesrc->starty);
               }
             } else {
@@ -575,7 +581,7 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
               XGetSubImage (ximagesrc->xcontext->disp, ximagesrc->xwindow,
                   rects[i].x, rects[i].y,
                   rects[i].width, rects[i].height,
-                  AllPlanes, ZPixmap, meta->ximage, rects[i].x, rects[i].y);
+                  AllPlanes, ZPixmap, ximage->ximage, rects[i].x, rects[i].y);
             }
           }
           free (rects);
@@ -584,9 +590,11 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
     } while (XPending (ximagesrc->xcontext->disp));
     if (!have_frame) {
       GST_LOG_OBJECT (ximagesrc,
-          "Copying from last frame ximage->size: %" G_GSIZE_FORMAT,
-          gst_buffer_get_size (ximage));
-      copy_buffer (ximage, ximagesrc->last_ximage);
+          "Copying from last frame ximage->size: %d",
+          GST_BUFFER_SIZE (GST_BUFFER (ximage)));
+      memcpy (GST_BUFFER_DATA (GST_BUFFER (ximage)),
+          GST_BUFFER_DATA (GST_BUFFER (ximagesrc->last_ximage)),
+          GST_BUFFER_SIZE (GST_BUFFER (ximage)));
     }
 #ifdef HAVE_XFIXES
     /* re-get area where last mouse pointer was  but only if in our clipping
@@ -635,14 +643,14 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
           GST_DEBUG_OBJECT (ximagesrc, "Removing cursor from %d,%d", x, y);
           XGetSubImage (ximagesrc->xcontext->disp, ximagesrc->xwindow,
               startx, starty, iwidth, iheight, AllPlanes, ZPixmap,
-              meta->ximage, startx - ximagesrc->startx,
+              ximage->ximage, startx - ximagesrc->startx,
               starty - ximagesrc->starty);
         }
       } else {
 
         GST_DEBUG_OBJECT (ximagesrc, "Removing cursor from %d,%d", x, y);
         XGetSubImage (ximagesrc->xcontext->disp, ximagesrc->xwindow,
-            x, y, width, height, AllPlanes, ZPixmap, meta->ximage, x, y);
+            x, y, width, height, AllPlanes, ZPixmap, ximage->ximage, x, y);
       }
     }
 #endif
@@ -655,7 +663,7 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
     if (ximagesrc->xcontext->use_xshm) {
       GST_DEBUG_OBJECT (ximagesrc, "Retrieving screen using XShm");
       XShmGetImage (ximagesrc->xcontext->disp, ximagesrc->xwindow,
-          meta->ximage, ximagesrc->startx, ximagesrc->starty, AllPlanes);
+          ximage->ximage, ximagesrc->startx, ximagesrc->starty, AllPlanes);
 
     } else
 #endif /* HAVE_XSHM */
@@ -664,9 +672,9 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
       if (ximagesrc->remote) {
         XGetSubImage (ximagesrc->xcontext->disp, ximagesrc->xwindow,
             ximagesrc->startx, ximagesrc->starty, ximagesrc->width,
-            ximagesrc->height, AllPlanes, ZPixmap, meta->ximage, 0, 0);
+            ximagesrc->height, AllPlanes, ZPixmap, ximage->ximage, 0, 0);
       } else {
-        meta->ximage =
+        ximage->ximage =
             XGetImage (ximagesrc->xcontext->disp, ximagesrc->xwindow,
             ximagesrc->startx, ximagesrc->starty, ximagesrc->width,
             ximagesrc->height, AllPlanes, ZPixmap);
@@ -746,7 +754,7 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
                 (guint8 *) & (ximagesrc->cursor_image->pixels[((j -
                             cy) * ximagesrc->cursor_image->width + (i - cx))]);
             dest =
-                (guint8 *) & (meta->ximage->data[((j -
+                (guint8 *) & (ximage->ximage->data[((j -
                             ximagesrc->starty) * ximagesrc->width + (i -
                             ximagesrc->startx)) * (ximagesrc->xcontext->bpp /
                         8)]);
@@ -762,9 +770,9 @@ gst_ximage_src_ximage_get (GstXImageSrc * ximagesrc)
 #ifdef HAVE_XDAMAGE
   if (ximagesrc->have_xdamage && ximagesrc->use_damage) {
     /* need to ref ximage to put in last_ximage */
-    gst_buffer_ref (ximage);
+    gst_buffer_ref (GST_BUFFER (ximage));
     if (ximagesrc->last_ximage) {
-      gst_buffer_unref (ximagesrc->last_ximage);
+      gst_buffer_unref (GST_BUFFER (ximagesrc->last_ximage));
     }
     ximagesrc->last_ximage = ximage;
     GST_LOG_OBJECT (ximagesrc, "reffing current buffer for last_ximage");
@@ -777,7 +785,7 @@ static GstFlowReturn
 gst_ximage_src_create (GstPushSrc * bs, GstBuffer ** buf)
 {
   GstXImageSrc *s = GST_XIMAGE_SRC (bs);
-  GstBuffer *image;
+  GstXImageSrcBuffer *image;
   GstClockTime base_time;
   GstClockTime next_capture_ts;
   GstClockTime dur;
@@ -839,7 +847,7 @@ gst_ximage_src_create (GstPushSrc * bs, GstBuffer ** buf)
     if (ret == GST_CLOCK_UNSCHEDULED) {
       /* Got woken up by the unlock function */
       GST_OBJECT_UNLOCK (s);
-      return GST_FLOW_FLUSHING;
+      return GST_FLOW_WRONG_STATE;
     }
     /* Duration is a complete 1/fps frame duration */
     dur = gst_util_uint64_scale_int (GST_SECOND, s->fps_d, s->fps_n);
@@ -861,7 +869,7 @@ gst_ximage_src_create (GstPushSrc * bs, GstBuffer ** buf)
   if (!image)
     return GST_FLOW_ERROR;
 
-  *buf = image;
+  *buf = GST_BUFFER (image);
   GST_BUFFER_TIMESTAMP (*buf) = next_capture_ts;
   GST_BUFFER_DURATION (*buf) = dur;
 
@@ -977,16 +985,30 @@ gst_ximage_src_get_property (GObject * object, guint prop_id, GValue * value,
 static void
 gst_ximage_src_clear_bufpool (GstXImageSrc * ximagesrc)
 {
-  g_mutex_lock (&ximagesrc->pool_lock);
+  g_mutex_lock (ximagesrc->pool_lock);
   while (ximagesrc->buffer_pool != NULL) {
-    GstBuffer *ximage = ximagesrc->buffer_pool->data;
+    GstXImageSrcBuffer *ximage = ximagesrc->buffer_pool->data;
 
     gst_ximage_buffer_free (ximage);
 
     ximagesrc->buffer_pool = g_slist_delete_link (ximagesrc->buffer_pool,
         ximagesrc->buffer_pool);
   }
-  g_mutex_unlock (&ximagesrc->pool_lock);
+  g_mutex_unlock (ximagesrc->pool_lock);
+}
+
+static void
+gst_ximage_src_base_init (gpointer g_class)
+{
+  GstElementClass *ec = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_set_details_simple (ec, "Ximage video source",
+      "Source/Video",
+      "Creates a screenshot video stream",
+      "Lutz Mueller <lutz@users.sourceforge.net>, "
+      "Jan Schmidt <thaytan@mad.scientist.com>, "
+      "Zaheer Merali <zaheerabbas at merali dot org>");
+  gst_element_class_add_static_pad_template (ec, &t);
 }
 
 static void
@@ -1007,25 +1029,28 @@ gst_ximage_src_finalize (GObject * object)
     ximageutil_xcontext_clear (src->xcontext);
 
   g_free (src->xname);
-  g_mutex_clear (&src->pool_lock);
-  g_mutex_clear (&src->x_lock);
+  g_mutex_free (src->pool_lock);
+  g_mutex_free (src->x_lock);
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
 
 static GstCaps *
-gst_ximage_src_get_caps (GstBaseSrc * bs, GstCaps * filter)
+gst_ximage_src_get_caps (GstBaseSrc * bs)
 {
   GstXImageSrc *s = GST_XIMAGE_SRC (bs);
   GstXContext *xcontext;
   gint width, height;
-  GstVideoFormat format;
 
   if ((!s->xcontext) && (!gst_ximage_src_open_display (s, s->display_name)))
-    return gst_pad_get_pad_template_caps (GST_BASE_SRC (s)->srcpad);
+    return
+        gst_caps_copy (gst_pad_get_pad_template_caps (GST_BASE_SRC
+            (s)->srcpad));
 
   if (!gst_ximage_src_recalc (s))
-    return gst_pad_get_pad_template_caps (GST_BASE_SRC (s)->srcpad);
+    return
+        gst_caps_copy (gst_pad_get_pad_template_caps (GST_BASE_SRC
+            (s)->srcpad));
 
   xcontext = s->xcontext;
   width = s->xcontext->width;
@@ -1049,7 +1074,8 @@ gst_ximage_src_get_caps (GstBaseSrc * bs, GstCaps * filter)
   if (s->endx >= s->startx && s->endy >= s->starty) {
     /* this means user has put in values */
     if (s->startx < xcontext->width && s->endx < xcontext->width &&
-        s->starty < xcontext->height && s->endy < xcontext->height) {
+        s->starty < xcontext->height && s->endy < xcontext->height &&
+        s->startx >= 0 && s->starty >= 0) {
       /* values are fine */
       s->width = width = s->endx - s->startx + 1;
       s->height = height = s->endy - s->starty + 1;
@@ -1069,14 +1095,13 @@ gst_ximage_src_get_caps (GstBaseSrc * bs, GstCaps * filter)
     s->endy = height - 1;
   }
   GST_DEBUG ("width = %d, height=%d", width, height);
-
-  format =
-      gst_video_format_from_masks (xcontext->depth, xcontext->bpp,
-      xcontext->endianness, xcontext->r_mask_output, xcontext->g_mask_output,
-      xcontext->b_mask_output, 0);
-
-  return gst_caps_new_simple ("video/x-raw",
-      "format", G_TYPE_STRING, gst_video_format_to_string (format),
+  return gst_caps_new_simple ("video/x-raw-rgb",
+      "bpp", G_TYPE_INT, xcontext->bpp,
+      "depth", G_TYPE_INT, xcontext->depth,
+      "endianness", G_TYPE_INT, xcontext->endianness,
+      "red_mask", G_TYPE_INT, xcontext->r_mask_output,
+      "green_mask", G_TYPE_INT, xcontext->g_mask_output,
+      "blue_mask", G_TYPE_INT, xcontext->b_mask_output,
       "width", G_TYPE_INT, width,
       "height", G_TYPE_INT, height,
       "framerate", GST_TYPE_FRACTION_RANGE, 1, G_MAXINT, G_MAXINT, 1,
@@ -1110,29 +1135,23 @@ gst_ximage_src_set_caps (GstBaseSrc * bs, GstCaps * caps)
   return TRUE;
 }
 
-static GstCaps *
-gst_ximage_src_fixate (GstBaseSrc * bsrc, GstCaps * caps)
+static void
+gst_ximage_src_fixate (GstPad * pad, GstCaps * caps)
 {
   gint i;
   GstStructure *structure;
-
-  caps = gst_caps_make_writable (caps);
 
   for (i = 0; i < gst_caps_get_size (caps); ++i) {
     structure = gst_caps_get_structure (caps, i);
 
     gst_structure_fixate_field_nearest_fraction (structure, "framerate", 25, 1);
   }
-  caps = GST_BASE_SRC_CLASS (parent_class)->fixate (bsrc, caps);
-
-  return caps;
 }
 
 static void
 gst_ximage_src_class_init (GstXImageSrcClass * klass)
 {
   GObjectClass *gc = G_OBJECT_CLASS (klass);
-  GstElementClass *ec = GST_ELEMENT_CLASS (klass);
   GstBaseSrcClass *bc = GST_BASE_SRC_CLASS (klass);
   GstPushSrcClass *push_class = GST_PUSH_SRC_CLASS (klass);
 
@@ -1223,6 +1242,7 @@ gst_ximage_src_class_init (GstXImageSrcClass * klass)
       g_param_spec_boolean ("remote", "Remote dispay",
           "Whether the display is remote", FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   /**
    * GstXImageSrc:xid
    *
@@ -1234,6 +1254,7 @@ gst_ximage_src_class_init (GstXImageSrcClass * klass)
       g_param_spec_uint64 ("xid", "Window XID",
           "Window XID to capture from", 0, G_MAXUINT64, 0,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   /**
    * GstXImageSrc:xname
    *
@@ -1246,31 +1267,26 @@ gst_ximage_src_class_init (GstXImageSrcClass * klass)
           "Window name to capture from", NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_set_static_metadata (ec, "Ximage video source",
-      "Source/Video",
-      "Creates a screenshot video stream",
-      "Lutz Mueller <lutz@users.sourceforge.net>, "
-      "Jan Schmidt <thaytan@mad.scientist.com>, "
-      "Zaheer Merali <zaheerabbas at merali dot org>");
-  gst_element_class_add_pad_template (ec, gst_static_pad_template_get (&t));
+  parent_class = g_type_class_peek_parent (klass);
 
-  bc->fixate = gst_ximage_src_fixate;
+  push_class->create = gst_ximage_src_create;
   bc->get_caps = gst_ximage_src_get_caps;
   bc->set_caps = gst_ximage_src_set_caps;
   bc->start = gst_ximage_src_start;
   bc->stop = gst_ximage_src_stop;
   bc->unlock = gst_ximage_src_unlock;
-  push_class->create = gst_ximage_src_create;
 }
 
 static void
-gst_ximage_src_init (GstXImageSrc * ximagesrc)
+gst_ximage_src_init (GstXImageSrc * ximagesrc, GstXImageSrcClass * klass)
 {
   gst_base_src_set_format (GST_BASE_SRC (ximagesrc), GST_FORMAT_TIME);
   gst_base_src_set_live (GST_BASE_SRC (ximagesrc), TRUE);
+  gst_pad_set_fixatecaps_function (GST_BASE_SRC_PAD (ximagesrc),
+      gst_ximage_src_fixate);
 
-  g_mutex_init (&ximagesrc->pool_lock);
-  g_mutex_init (&ximagesrc->x_lock);
+  ximagesrc->pool_lock = g_mutex_new ();
+  ximagesrc->x_lock = g_mutex_new ();
   ximagesrc->show_pointer = TRUE;
   ximagesrc->use_damage = TRUE;
   ximagesrc->startx = 0;
@@ -1296,6 +1312,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    ximagesrc,
+    "ximagesrc",
     "X11 video input plugin using standard Xlib calls",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN);

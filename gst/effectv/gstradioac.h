@@ -53,6 +53,9 @@ struct _GstRadioacTV
   GstVideoFilter element;
 
   /* < private > */
+  gint width, height;
+  GstVideoFormat format;
+
   gint mode;
   gint color;
   guint interval;

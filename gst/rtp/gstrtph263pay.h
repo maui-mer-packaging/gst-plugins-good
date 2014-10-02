@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) <2005> Wim Taymans <wim.taymans@gmail.com>
+ * Copyright (C) <2005> Wim Taymans <wim@fluendo.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,7 +23,7 @@
 #define __GST_RTP_H263_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasepayload.h>
+#include <gst/rtp/gstbasertppayload.h>
 #include <gst/base/gstadapter.h>
 
 G_BEGIN_DECLS
@@ -61,7 +61,7 @@ typedef struct _GstRtpH263PayPackage GstRtpH263PayPackage;
 
 struct _GstRtpH263Pay
 {
-  GstRTPBasePayload payload;
+  GstBaseRTPPayload payload;
 
   GstAdapter *adapter;
   GstClockTime first_ts;
@@ -87,7 +87,7 @@ struct _GstRtpH263PayContext
 
 struct _GstRtpH263PayClass
 {
-  GstRTPBasePayloadClass parent_class;
+  GstBaseRTPPayloadClass parent_class;
 };
 
 typedef struct _GstRtpH263PayAHeader

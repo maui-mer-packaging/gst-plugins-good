@@ -4,6 +4,7 @@ libgstrtp_la_SOURCES = \
 	fnv1hash.c \
 	gstrtp.c \
 	gstrtpchannels.c \
+	gstrtpdepay.c \
 	gstrtpac3depay.c \
 	gstrtpac3pay.c \
 	gstrtpbvdepay.c \
@@ -73,15 +74,21 @@ libgstrtp_la_SOURCES = \
 	gstrtpvrawdepay.c  \
 	gstrtpvrawpay.c 
 
+
+if HAVE_WINSOCK2_H
+WINSOCK2_LIBS = -lws2_32
+else
+WINSOCK2_LIBS =
+endif
+
 libgstrtp_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_BASE_CFLAGS) $(GST_CFLAGS)
 libgstrtp_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) \
-		-lgstaudio-@GST_API_VERSION@ \
-		-lgstvideo-@GST_API_VERSION@ \
-                -lgsttag-@GST_API_VERSION@ \
-                -lgstrtp-@GST_API_VERSION@ \
-                -lgstpbutils-@GST_API_VERSION@ \
+		-lgstaudio-@GST_MAJORMINOR@ \
+                -lgsttag-@GST_MAJORMINOR@ \
+                -lgstrtp-@GST_MAJORMINOR@ \
+                -lgstpbutils-@GST_MAJORMINOR@ \
 		$(GST_BASE_LIBS) $(GST_LIBS) \
-		$(LIBM)
+		$(WINSOCK2_LIBS) $(LIBM)
 libgstrtp_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) 
 libgstrtp_la_LIBTOOLFLAGS = --tag=disable-static
 
@@ -142,6 +149,7 @@ noinst_HEADERS =			\
 		 gstrtpmp4gpay.h	\
 		 gstrtpmp4adepay.h      \
 		 gstrtpmp4apay.h        \
+		 gstrtpdepay.h		\
 		 gstasteriskh263.h	\
 		 gstrtpqcelpdepay.h	\
 		 gstrtpqdmdepay.h	\

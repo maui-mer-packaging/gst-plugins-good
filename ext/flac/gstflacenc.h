@@ -47,6 +47,10 @@ struct _GstFlacEnc {
                              * fails for some reason */
 
   guint64        offset;
+  gint           channels;
+  gint           width;
+  gint           depth;
+  gint           sample_rate;
   gint           quality;
   gboolean       stopped;
   guint           padding;
@@ -57,14 +61,11 @@ struct _GstFlacEnc {
   FLAC__StreamMetadata **meta;
 
   GstTagList *     tags;
-  GstToc *         toc;
 
   gboolean         eos;
   /* queue headers until we have them all so we can add streamheaders to caps */
   gboolean         got_headers;
   GList           *headers;
-
-  gint             channel_reorder_map[8];
 };
 
 struct _GstFlacEncClass {

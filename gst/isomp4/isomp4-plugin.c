@@ -44,7 +44,7 @@ plugin_init (GstPlugin * plugin)
 
   /* ensure private tag is registered */
   gst_tag_register (GST_QT_DEMUX_PRIVATE_TAG, GST_TAG_FLAG_META,
-      GST_TYPE_SAMPLE, "QT atom", "unparsed QT tag atom",
+      GST_TYPE_BUFFER, "QT atom", "unparsed QT tag atom",
       gst_tag_merge_use_first);
 
   gst_tag_register (GST_QT_DEMUX_CLASSIFICATION_TAG, GST_TAG_FLAG_META,
@@ -69,6 +69,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    isomp4,
+    "isomp4",
     "ISO base media file format support (mp4, 3gpp, qt, mj2)",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN);

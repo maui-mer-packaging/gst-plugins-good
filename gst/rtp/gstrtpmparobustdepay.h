@@ -22,7 +22,7 @@
 #define __GST_RTP_MPA_ROBUST_DEPAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 #include <gst/base/gstadapter.h>
 #include <gst/base/gstbytewriter.h>
 
@@ -44,7 +44,7 @@ typedef struct _GstRtpMPARobustDepayClass GstRtpMPARobustDepayClass;
 
 struct _GstRtpMPARobustDepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   GstAdapter *adapter;
   gboolean    has_descriptor;
@@ -66,7 +66,7 @@ struct _GstRtpMPARobustDepay
 
 struct _GstRtpMPARobustDepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_mpa_robust_depay_get_type (void);

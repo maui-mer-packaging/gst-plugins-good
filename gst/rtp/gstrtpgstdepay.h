@@ -22,7 +22,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,7 +42,7 @@ typedef struct _GstRtpGSTDepayClass GstRtpGSTDepayClass;
 
 struct _GstRtpGSTDepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   GstAdapter *adapter;
   guint current_CV;
@@ -51,7 +51,7 @@ struct _GstRtpGSTDepay
 
 struct _GstRtpGSTDepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_gst_depay_get_type (void);

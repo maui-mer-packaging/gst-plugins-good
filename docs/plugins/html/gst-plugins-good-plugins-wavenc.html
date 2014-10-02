@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>wavenc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-warptv.html" title="warptv">
 <link rel="next" href="gst-plugins-good-plugins-waveformsink.html" title="waveformsink">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-warptv.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-waveformsink.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -46,10 +46,9 @@
 <a name="gst-plugins-good-plugins-wavenc.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----GstWavEnc
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstWavEnc
 </pre>
 </div>
 <div class="refsect1">
@@ -60,7 +59,7 @@ Format a audio stream into the wav format.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp21439024"></a><h3>Element Information</h3>
+<a name="idp22335456"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -83,7 +82,7 @@ Format a audio stream into the wav format.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp24089744"></a><h3>Element Pads</h3>
+<a name="idp23249968"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -101,11 +100,23 @@ Format a audio stream into the wav format.
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, rate=(int)[ 1, 2147483647 ], channels=(int)1, format=(string){ S32LE, S24LE, S16LE, U8, F32LE, F64LE }, layout=(string)interleaved</td>
+<td>audio/x-raw-int, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2 ], endianness=(int)1234, width=(int)32, depth=(int)32, signed=(boolean)true</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> audio/x-raw, rate=(int)[ 1, 2147483647 ], channels=(int)2, channel-mask=(bitmask)0x0000000000000003, format=(string){ S32LE, S24LE, S16LE, U8, F32LE, F64LE }, layout=(string)interleaved</td>
+<td> audio/x-raw-int, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2 ], endianness=(int)1234, width=(int)24, depth=(int)24, signed=(boolean)true</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2 ], endianness=(int)1234, width=(int)16, depth=(int)16, signed=(boolean)true</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-int, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2 ], width=(int)8, depth=(int)8, signed=(boolean)false</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-float, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2 ], endianness=(int)1234, width=(int){ 32, 64 }</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>

@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>wavpackenc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-wavpackdec.html" title="wavpackdec">
 <link rel="next" href="gst-plugins-good-plugins-wavpackparse.html" title="wavpackparse">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-wavpackdec.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-wavpackparse.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -50,11 +50,9 @@
 <a name="gst-plugins-good-plugins-wavpackenc.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudioencoder.html#GstAudioEncoder">GstAudioEncoder</a>
-                           +----GstWavpackEnc
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstWavpackEnc
 </pre>
 </div>
 <div class="refsect1">
@@ -80,7 +78,7 @@ GstWavpackEnc implements
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp23211664"></a><h3>Element Information</h3>
+<a name="idp23247120"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -103,7 +101,7 @@ GstWavpackEnc implements
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp25328736"></a><h3>Element Pads</h3>
+<a name="idp23493184"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -121,7 +119,7 @@ GstWavpackEnc implements
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string)S32LE, layout=(string)interleaved, channels=(int)[ 1, 8 ], rate=(int)[ 6000, 192000 ]</td>
+<td>audio/x-raw-int, width=(int)32, depth=(int)[ 1, 32 ], endianness=(int)1234, channels=(int)[ 1, 8 ], rate=(int)[ 6000, 192000 ], signed=(boolean)true</td>
 </tr>
 </tbody>
 </table></div>
@@ -142,7 +140,7 @@ GstWavpackEnc implements
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-wavpack, depth=(int)[ 1, 32 ], channels=(int)[ 1, 8 ], rate=(int)[ 6000, 192000 ], framed=(boolean)true</td>
+<td>audio/x-wavpack, width=(int)[ 1, 32 ], channels=(int)[ 1, 2 ], rate=(int)[ 6000, 192000 ], framed=(boolean)true</td>
 </tr>
 </tbody>
 </table></div>

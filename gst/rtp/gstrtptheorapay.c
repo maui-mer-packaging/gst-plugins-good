@@ -75,16 +75,16 @@ enum
   PROP_CONFIG_INTERVAL
 };
 
-#define gst_rtp_theora_pay_parent_class parent_class
-G_DEFINE_TYPE (GstRtpTheoraPay, gst_rtp_theora_pay, GST_TYPE_RTP_BASE_PAYLOAD);
+GST_BOILERPLATE (GstRtpTheoraPay, gst_rtp_theora_pay, GstBaseRTPPayload,
+    GST_TYPE_BASE_RTP_PAYLOAD);
 
-static gboolean gst_rtp_theora_pay_setcaps (GstRTPBasePayload * basepayload,
+static gboolean gst_rtp_theora_pay_setcaps (GstBaseRTPPayload * basepayload,
     GstCaps * caps);
 static GstStateChangeReturn gst_rtp_theora_pay_change_state (GstElement *
     element, GstStateChange transition);
-static GstFlowReturn gst_rtp_theora_pay_handle_buffer (GstRTPBasePayload * pad,
+static GstFlowReturn gst_rtp_theora_pay_handle_buffer (GstBaseRTPPayload * pad,
     GstBuffer * buffer);
-static gboolean gst_rtp_theora_pay_sink_event (GstRTPBasePayload * payload,
+static gboolean gst_rtp_theora_pay_handle_event (GstPad * pad,
     GstEvent * event);
 
 
@@ -94,34 +94,40 @@ static void gst_rtp_theora_pay_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static void
+gst_rtp_theora_pay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_theora_pay_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_theora_pay_sink_template);
+
+  gst_element_class_set_details_simple (element_class, "RTP Theora payloader",
+      "Codec/Payloader/Network/RTP",
+      "Payload-encode Theora video into RTP packets (draft-01 RFC XXXX)",
+      "Wim Taymans <wim.taymans@gmail.com>");
+}
+
+static void
 gst_rtp_theora_pay_class_init (GstRtpTheoraPayClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
-  GstRTPBasePayloadClass *gstrtpbasepayload_class;
+  GstBaseRTPPayloadClass *gstbasertppayload_class;
 
   gobject_class = (GObjectClass *) klass;
   gstelement_class = (GstElementClass *) klass;
-  gstrtpbasepayload_class = (GstRTPBasePayloadClass *) klass;
+  gstbasertppayload_class = (GstBaseRTPPayloadClass *) klass;
 
   gstelement_class->change_state = gst_rtp_theora_pay_change_state;
 
-  gstrtpbasepayload_class->set_caps = gst_rtp_theora_pay_setcaps;
-  gstrtpbasepayload_class->handle_buffer = gst_rtp_theora_pay_handle_buffer;
-  gstrtpbasepayload_class->sink_event = gst_rtp_theora_pay_sink_event;
+  gstbasertppayload_class->set_caps = gst_rtp_theora_pay_setcaps;
+  gstbasertppayload_class->handle_buffer = gst_rtp_theora_pay_handle_buffer;
+  gstbasertppayload_class->handle_event = gst_rtp_theora_pay_handle_event;
 
   gobject_class->set_property = gst_rtp_theora_pay_set_property;
   gobject_class->get_property = gst_rtp_theora_pay_get_property;
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_theora_pay_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_theora_pay_sink_template));
-
-  gst_element_class_set_static_metadata (gstelement_class,
-      "RTP Theora payloader", "Codec/Payloader/Network/RTP",
-      "Payload-encode Theora video into RTP packets (draft-01 RFC XXXX)",
-      "Wim Taymans <wim.taymans@gmail.com>");
 
   GST_DEBUG_CATEGORY_INIT (rtptheorapay_debug, "rtptheorapay", 0,
       "Theora RTP Payloader");
@@ -136,7 +142,8 @@ gst_rtp_theora_pay_class_init (GstRtpTheoraPayClass * klass)
 }
 
 static void
-gst_rtp_theora_pay_init (GstRtpTheoraPay * rtptheorapay)
+gst_rtp_theora_pay_init (GstRtpTheoraPay * rtptheorapay,
+    GstRtpTheoraPayClass * klass)
 {
   rtptheorapay->last_config = GST_CLOCK_TIME_NONE;
 }
@@ -165,7 +172,7 @@ gst_rtp_theora_pay_cleanup (GstRtpTheoraPay * rtptheorapay)
 }
 
 static gboolean
-gst_rtp_theora_pay_setcaps (GstRTPBasePayload * basepayload, GstCaps * caps)
+gst_rtp_theora_pay_setcaps (GstBaseRTPPayload * basepayload, GstCaps * caps)
 {
   GstRtpTheoraPay *rtptheorapay;
 
@@ -180,14 +187,11 @@ static void
 gst_rtp_theora_pay_reset_packet (GstRtpTheoraPay * rtptheorapay, guint8 TDT)
 {
   guint payload_len;
-  GstRTPBuffer rtp = { NULL };
 
   GST_DEBUG_OBJECT (rtptheorapay, "reset packet");
 
   rtptheorapay->payload_pos = 4;
-  gst_rtp_buffer_map (rtptheorapay->packet, GST_MAP_READ, &rtp);
-  payload_len = gst_rtp_buffer_get_payload_len (&rtp);
-  gst_rtp_buffer_unmap (&rtp);
+  payload_len = gst_rtp_buffer_get_payload_len (rtptheorapay->packet);
   rtptheorapay->payload_left = payload_len - 4;
   rtptheorapay->payload_duration = 0;
   rtptheorapay->payload_F = 0;
@@ -206,7 +210,7 @@ gst_rtp_theora_pay_init_packet (GstRtpTheoraPay * rtptheorapay, guint8 TDT,
 
   /* new packet allocate max packet size */
   rtptheorapay->packet =
-      gst_rtp_buffer_new_allocate_len (GST_RTP_BASE_PAYLOAD_MTU
+      gst_rtp_buffer_new_allocate_len (GST_BASE_RTP_PAYLOAD_MTU
       (rtptheorapay), 0, 0);
   gst_rtp_theora_pay_reset_packet (rtptheorapay, TDT);
 
@@ -219,7 +223,6 @@ gst_rtp_theora_pay_flush_packet (GstRtpTheoraPay * rtptheorapay)
   GstFlowReturn ret;
   guint8 *payload;
   guint hlen;
-  GstRTPBuffer rtp = { NULL };
 
   /* check for empty packet */
   if (!rtptheorapay->packet || rtptheorapay->payload_pos <= 4)
@@ -227,10 +230,8 @@ gst_rtp_theora_pay_flush_packet (GstRtpTheoraPay * rtptheorapay)
 
   GST_DEBUG_OBJECT (rtptheorapay, "flushing packet");
 
-  gst_rtp_buffer_map (rtptheorapay->packet, GST_MAP_WRITE, &rtp);
-
   /* fix header */
-  payload = gst_rtp_buffer_get_payload (&rtp);
+  payload = gst_rtp_buffer_get_payload (rtptheorapay->packet);
   /*
    *  0                   1                   2                   3
    *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -249,17 +250,15 @@ gst_rtp_theora_pay_flush_packet (GstRtpTheoraPay * rtptheorapay)
       (rtptheorapay->payload_TDT & 0x3) << 4 |
       (rtptheorapay->payload_pkts & 0xf);
 
-  gst_rtp_buffer_unmap (&rtp);
-
   /* shrink the buffer size to the last written byte */
   hlen = gst_rtp_buffer_calc_header_len (0);
-  gst_buffer_resize (rtptheorapay->packet, 0, hlen + rtptheorapay->payload_pos);
+  GST_BUFFER_SIZE (rtptheorapay->packet) = hlen + rtptheorapay->payload_pos;
 
   GST_BUFFER_DURATION (rtptheorapay->packet) = rtptheorapay->payload_duration;
 
   /* push, this gives away our ref to the packet, so clear it. */
   ret =
-      gst_rtp_base_payload_push (GST_RTP_BASE_PAYLOAD (rtptheorapay),
+      gst_basertppayload_push (GST_BASE_RTP_PAYLOAD (rtptheorapay),
       rtptheorapay->packet);
   rtptheorapay->packet = NULL;
 
@@ -267,7 +266,7 @@ gst_rtp_theora_pay_flush_packet (GstRtpTheoraPay * rtptheorapay)
 }
 
 static gboolean
-gst_rtp_theora_pay_finish_headers (GstRTPBasePayload * basepayload)
+gst_rtp_theora_pay_finish_headers (GstBaseRTPPayload * basepayload)
 {
   GstRtpTheoraPay *rtptheorapay = GST_RTP_THEORA_PAY (basepayload);
   GList *walk;
@@ -335,10 +334,10 @@ gst_rtp_theora_pay_finish_headers (GstRTPBasePayload * basepayload)
   extralen = 1;
   for (walk = rtptheorapay->headers; walk; walk = g_list_next (walk)) {
     GstBuffer *buf = GST_BUFFER_CAST (walk->data);
-    GstMapInfo map;
+
     guint bsize;
 
-    bsize = gst_buffer_get_size (buf);
+    bsize = GST_BUFFER_SIZE (buf);
     length += bsize;
     n_headers++;
 
@@ -352,9 +351,8 @@ gst_rtp_theora_pay_finish_headers (GstRTPBasePayload * basepayload)
       } while (bsize);
     }
     /* update hash */
-    gst_buffer_map (buf, &map, GST_MAP_READ);
-    ident = fnv1_hash_32_update (ident, map.data, map.size);
-    gst_buffer_unmap (buf, &map);
+    ident = fnv1_hash_32_update (ident, GST_BUFFER_DATA (buf),
+        GST_BUFFER_SIZE (buf));
   }
 
   /* packet length is header size + packet length */
@@ -395,7 +393,7 @@ gst_rtp_theora_pay_finish_headers (GstRTPBasePayload * basepayload)
     if (!g_list_next (walk))
       break;
 
-    bsize = gst_buffer_get_size (buf);
+    bsize = GST_BUFFER_SIZE (buf);
 
     /* calc size */
     size = 0;
@@ -405,7 +403,7 @@ gst_rtp_theora_pay_finish_headers (GstRTPBasePayload * basepayload)
     } while (bsize);
     temp = size;
 
-    bsize = gst_buffer_get_size (buf);
+    bsize = GST_BUFFER_SIZE (buf);
     /* write the size backwards */
     flag = 0;
     while (size) {
@@ -420,12 +418,9 @@ gst_rtp_theora_pay_finish_headers (GstRTPBasePayload * basepayload)
   /* copy header data */
   for (walk = rtptheorapay->headers; walk; walk = g_list_next (walk)) {
     GstBuffer *buf = GST_BUFFER_CAST (walk->data);
-    GstMapInfo map;
 
-    gst_buffer_map (buf, &map, GST_MAP_READ);
-    memcpy (data, map.data, map.size);
-    gst_buffer_unmap (buf, &map);
-    data += map.size;
+    memcpy (data, GST_BUFFER_DATA (buf), GST_BUFFER_SIZE (buf));
+    data += GST_BUFFER_SIZE (buf);
   }
 
   /* serialize to base64 */
@@ -443,13 +438,13 @@ gst_rtp_theora_pay_finish_headers (GstRTPBasePayload * basepayload)
   /* configure payloader settings */
   wstr = g_strdup_printf ("%d", rtptheorapay->width);
   hstr = g_strdup_printf ("%d", rtptheorapay->height);
-  gst_rtp_base_payload_set_options (basepayload, "video", TRUE, "THEORA",
-      90000);
-  res =
-      gst_rtp_base_payload_set_outcaps (basepayload, "sampling", G_TYPE_STRING,
-      "YCbCr-4:2:0", "width", G_TYPE_STRING, wstr, "height", G_TYPE_STRING,
-      hstr, "configuration", G_TYPE_STRING, configuration, "delivery-method",
-      G_TYPE_STRING, "inline",
+  gst_basertppayload_set_options (basepayload, "video", TRUE, "THEORA", 90000);
+  res = gst_basertppayload_set_outcaps (basepayload,
+      "sampling", G_TYPE_STRING, "YCbCr-4:2:0",
+      "width", G_TYPE_STRING, wstr,
+      "height", G_TYPE_STRING, hstr,
+      "configuration", G_TYPE_STRING, configuration,
+      "delivery-method", G_TYPE_STRING, "inline",
       /* don't set the other defaults 
        */
       NULL);
@@ -468,7 +463,7 @@ no_headers:
 }
 
 static gboolean
-gst_rtp_theora_pay_parse_id (GstRTPBasePayload * basepayload, guint8 * data,
+gst_rtp_theora_pay_parse_id (GstBaseRTPPayload * basepayload, guint8 * data,
     guint size)
 {
   GstRtpTheoraPay *rtptheorapay;
@@ -537,7 +532,6 @@ gst_rtp_theora_pay_payload_buffer (GstRtpTheoraPay * rtptheorapay, guint8 TDT,
   guint plen;
   guint8 *ppos, *payload;
   gboolean fragmented;
-  GstRTPBuffer rtp = { NULL };
 
   /* size increases with packet length and 2 bytes size eader. */
   newduration = rtptheorapay->payload_duration;
@@ -548,7 +542,7 @@ gst_rtp_theora_pay_payload_buffer (GstRtpTheoraPay * rtptheorapay, guint8 TDT,
   packet_len = gst_rtp_buffer_calc_packet_len (newsize, 0, 0);
 
   /* check buffer filled against length and max latency */
-  flush = gst_rtp_base_payload_is_filled (GST_RTP_BASE_PAYLOAD (rtptheorapay),
+  flush = gst_basertppayload_is_filled (GST_BASE_RTP_PAYLOAD (rtptheorapay),
       packet_len, newduration);
   /* we can store up to 15 theora packets in one RTP packet. */
   flush |= (rtptheorapay->payload_pkts == 15);
@@ -563,8 +557,7 @@ gst_rtp_theora_pay_payload_buffer (GstRtpTheoraPay * rtptheorapay, guint8 TDT,
     gst_rtp_theora_pay_init_packet (rtptheorapay, TDT, timestamp);
   }
 
-  gst_rtp_buffer_map (rtptheorapay->packet, GST_MAP_WRITE, &rtp);
-  payload = gst_rtp_buffer_get_payload (&rtp);
+  payload = gst_rtp_buffer_get_payload (rtptheorapay->packet);
   ppos = payload + rtptheorapay->payload_pos;
   fragmented = FALSE;
 
@@ -609,15 +602,13 @@ gst_rtp_theora_pay_payload_buffer (GstRtpTheoraPay * rtptheorapay, guint8 TDT,
     if (fragmented) {
       /* fragmented packets are always flushed and have ptks of 0 */
       rtptheorapay->payload_pkts = 0;
-      gst_rtp_buffer_unmap (&rtp);
       ret = gst_rtp_theora_pay_flush_packet (rtptheorapay);
 
       if (size > 0) {
         /* start new packet and get pointers. TDT stays the same. */
         gst_rtp_theora_pay_init_packet (rtptheorapay,
             rtptheorapay->payload_TDT, timestamp);
-        gst_rtp_buffer_map (rtptheorapay->packet, GST_MAP_WRITE, &rtp);
-        payload = gst_rtp_buffer_get_payload (&rtp);
+        payload = gst_rtp_buffer_get_payload (rtptheorapay->packet);
         ppos = payload + rtptheorapay->payload_pos;
       }
     } else {
@@ -629,20 +620,16 @@ gst_rtp_theora_pay_payload_buffer (GstRtpTheoraPay * rtptheorapay, guint8 TDT,
     }
   } while (size);
 
-  if (rtp.buffer)
-    gst_rtp_buffer_unmap (&rtp);
-
   return ret;
 }
 
 static GstFlowReturn
-gst_rtp_theora_pay_handle_buffer (GstRTPBasePayload * basepayload,
+gst_rtp_theora_pay_handle_buffer (GstBaseRTPPayload * basepayload,
     GstBuffer * buffer)
 {
   GstRtpTheoraPay *rtptheorapay;
   GstFlowReturn ret;
-  GstMapInfo map;
-  gsize size;
+  guint size;
   guint8 *data;
   GstClockTime duration, timestamp;
   guint8 TDT;
@@ -650,14 +637,13 @@ gst_rtp_theora_pay_handle_buffer (GstRTPBasePayload * basepayload,
 
   rtptheorapay = GST_RTP_THEORA_PAY (basepayload);
 
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
-  data = map.data;
-  size = map.size;
+  size = GST_BUFFER_SIZE (buffer);
+  data = GST_BUFFER_DATA (buffer);
   duration = GST_BUFFER_DURATION (buffer);
   timestamp = GST_BUFFER_TIMESTAMP (buffer);
 
-  GST_DEBUG_OBJECT (rtptheorapay, "size %" G_GSIZE_FORMAT
-      ", duration %" GST_TIME_FORMAT, size, GST_TIME_ARGS (duration));
+  GST_DEBUG_OBJECT (rtptheorapay, "size %u, duration %" GST_TIME_FORMAT,
+      size, GST_TIME_ARGS (duration));
 
   if (G_UNLIKELY (size > 0xffff))
     goto wrong_size;
@@ -693,7 +679,6 @@ gst_rtp_theora_pay_handle_buffer (GstRTPBasePayload * basepayload,
     if (TDT != 0) {
       GST_DEBUG_OBJECT (rtptheorapay, "collecting header, buffer %p", buffer);
       /* append header to the list of headers */
-      gst_buffer_unmap (buffer, &map);
       rtptheorapay->headers = g_list_append (rtptheorapay->headers, buffer);
       ret = GST_FLOW_OK;
       goto done;
@@ -753,8 +738,6 @@ gst_rtp_theora_pay_handle_buffer (GstRTPBasePayload * basepayload,
 
   ret = gst_rtp_theora_pay_payload_buffer (rtptheorapay, TDT, data, size,
       timestamp, duration, 0);
-
-  gst_buffer_unmap (buffer, &map);
   gst_buffer_unref (buffer);
 
 done:
@@ -764,14 +747,12 @@ done:
 wrong_size:
   {
     GST_ELEMENT_WARNING (rtptheorapay, STREAM, DECODE,
-        ("Invalid packet size (%" G_GSIZE_FORMAT " <= 0xffff)", size), (NULL));
-    gst_buffer_unmap (buffer, &map);
+        ("Invalid packet size (%d <= 0xffff)", size), (NULL));
     gst_buffer_unref (buffer);
     return GST_FLOW_OK;
   }
 parse_id_failed:
   {
-    gst_buffer_unmap (buffer, &map);
     gst_buffer_unref (buffer);
     return GST_FLOW_ERROR;
   }
@@ -779,7 +760,6 @@ unknown_header:
   {
     GST_ELEMENT_WARNING (rtptheorapay, STREAM, DECODE,
         (NULL), ("Ignoring unknown header received"));
-    gst_buffer_unmap (buffer, &map);
     gst_buffer_unref (buffer);
     return GST_FLOW_OK;
   }
@@ -787,16 +767,15 @@ header_error:
   {
     GST_ELEMENT_WARNING (rtptheorapay, STREAM, DECODE,
         (NULL), ("Error initializing header config"));
-    gst_buffer_unmap (buffer, &map);
     gst_buffer_unref (buffer);
     return GST_FLOW_OK;
   }
 }
 
 static gboolean
-gst_rtp_theora_pay_sink_event (GstRTPBasePayload * payload, GstEvent * event)
+gst_rtp_theora_pay_handle_event (GstPad * pad, GstEvent * event)
 {
-  GstRtpTheoraPay *rtptheorapay = GST_RTP_THEORA_PAY (payload);
+  GstRtpTheoraPay *rtptheorapay = GST_RTP_THEORA_PAY (GST_PAD_PARENT (pad));
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_FLUSH_STOP:
@@ -806,7 +785,7 @@ gst_rtp_theora_pay_sink_event (GstRTPBasePayload * payload, GstEvent * event)
       break;
   }
   /* false to let parent handle event as well */
-  return GST_RTP_BASE_PAYLOAD_CLASS (parent_class)->sink_event (payload, event);
+  return FALSE;
 }
 
 static GstStateChangeReturn

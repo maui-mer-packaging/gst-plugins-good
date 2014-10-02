@@ -21,7 +21,7 @@
 #define __GST_RTP_AC3_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasepayload.h>
+#include <gst/rtp/gstbasertppayload.h>
 #include <gst/base/gstadapter.h>
 
 G_BEGIN_DECLS
@@ -42,7 +42,7 @@ typedef struct _GstRtpAC3PayClass GstRtpAC3PayClass;
 
 struct _GstRtpAC3Pay
 {
-  GstRTPBasePayload payload;
+  GstBaseRTPPayload payload;
 
   GstAdapter *adapter;
   GstClockTime first_ts;
@@ -52,7 +52,7 @@ struct _GstRtpAC3Pay
 
 struct _GstRtpAC3PayClass
 {
-  GstRTPBasePayloadClass parent_class;
+  GstBaseRTPPayloadClass parent_class;
 };
 
 GType gst_rtp_ac3_pay_get_type (void);

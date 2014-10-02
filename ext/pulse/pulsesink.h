@@ -56,7 +56,7 @@ typedef struct _GstPulseSinkClass GstPulseSinkClass;
 
 struct _GstPulseSink
 {
-  GstAudioBaseSink sink;
+  GstBaseAudioSink sink;
 
   gchar *server, *device, *stream_name, *client_name;
   gchar *device_description;
@@ -77,42 +77,72 @@ struct _GstPulseSink
   GstStructure *properties;
   pa_proplist *proplist;
 
-  GMutex sink_formats_lock;
+#ifdef HAVE_PULSE_1_0
+  GMutex *sink_formats_lock;
   GList *sink_formats;
   volatile gint format_lost;
   GstClockTime format_lost_time;
+#endif
 };
 
 struct _GstPulseSinkClass
 {
-  GstAudioBaseSinkClass parent_class;
+  GstBaseAudioSinkClass parent_class;
 };
 
 GType gst_pulsesink_get_type (void);
 
 #if (G_BYTE_ORDER == G_LITTLE_ENDIAN)
-# define FORMATS   "{ S16LE, S16BE, F32LE, F32BE, S32LE, S32BE, " \
-                     "S24LE, S24BE, S24_32LE, S24_32BE, U8 }"
+# define ENDIANNESS   "LITTLE_ENDIAN, BIG_ENDIAN"
 #else
-# define FORMATS   "{ S16BE, S16LE, F32BE, F32LE, S32BE, S32LE, " \
-                     "S24BE, S24LE, S24_32BE, S24_32LE, U8 }"
+# define ENDIANNESS   "BIG_ENDIAN, LITTLE_ENDIAN"
 #endif
 
 #define _PULSE_SINK_CAPS_COMMON \
-    "audio/x-raw, " \
-      "format = (string) " FORMATS ", " \
-      "layout = (string) interleaved, " \
+    "audio/x-raw-int, " \
+      "endianness = (int) { " ENDIANNESS " }, " \
+      "signed = (boolean) TRUE, " \
+      "width = (int) 16, " \
+      "depth = (int) 16, " \
+      "rate = (int) [ 1, MAX ], " \
+      "channels = (int) [ 1, 32 ];" \
+    "audio/x-raw-float, " \
+      "endianness = (int) { " ENDIANNESS " }, " \
+      "width = (int) 32, " \
+      "rate = (int) [ 1, MAX ], " \
+      "channels = (int) [ 1, 32 ];" \
+    "audio/x-raw-int, " \
+      "endianness = (int) { " ENDIANNESS " }, " \
+      "signed = (boolean) TRUE, " \
+      "width = (int) 32, " \
+      "depth = (int) 32, " \
+      "rate = (int) [ 1, MAX ], " "channels = (int) [ 1, 32 ];" \
+    "audio/x-raw-int, " \
+      "signed = (boolean) FALSE, " \
+      "width = (int) 8, " \
+      "depth = (int) 8, " \
       "rate = (int) [ 1, MAX ], " \
       "channels = (int) [ 1, 32 ];" \
     "audio/x-alaw, " \
-      "layout = (string) interleaved, " \
       "rate = (int) [ 1, MAX], " \
       "channels = (int) [ 1, 32 ];" \
     "audio/x-mulaw, " \
-      "layout = (string) interleaved, " \
-      "rate = (int) [ 1, MAX], " \
-      "channels = (int) [ 1, 32 ];"
+      "rate = (int) [ 1, MAX], " "channels = (int) [ 1, 32 ];" \
+    "audio/x-raw-int, " \
+      "endianness = (int) { " ENDIANNESS " }, " \
+      "signed = (boolean) TRUE, " \
+      "width = (int) 24, " \
+      "depth = (int) 24, " \
+      "rate = (int) [ 1, MAX ], " \
+      "channels = (int) [ 1, 32 ];" \
+    "audio/x-raw-int, " \
+      "endianness = (int) { " ENDIANNESS " }, " \
+      "signed = (boolean) TRUE, " \
+      "width = (int) 32, " \
+      "depth = (int) 24, " \
+      "rate = (int) [ 1, MAX ], " "channels = (int) [ 1, 32 ];"
 
+#ifdef HAVE_PULSE_1_0
 #define _PULSE_SINK_CAPS_1_0 \
     "audio/x-ac3, framed = (boolean) true;" \
     "audio/x-eac3, framed = (boolean) true; " \
@@ -120,10 +150,32 @@ GType gst_pulsesink_get_type (void);
       "block-size = (int) { 512, 1024, 2048 }; " \
     "audio/mpeg, mpegversion = (int) 1, " \
       "mpegaudioversion = (int) [ 1, 2 ], parsed = (boolean) true;"
+#else
+#define _PULSE_SINK_CAPS_1_0 ""
+#endif
 
 #define PULSE_SINK_TEMPLATE_CAPS \
   _PULSE_SINK_CAPS_COMMON \
   _PULSE_SINK_CAPS_1_0
+
+#ifdef HAVE_PULSE_1_0
+
+#define GST_TYPE_PULSE_AUDIO_SINK \
+  (gst_pulse_audio_sink_get_type())
+#define GST_PULSE_AUDIO_SINK(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_PULSE_AUDIO_SINK,GstPulseAudioSink))
+#define GST_PULSE_AUDIO_SINK_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_PULSE_AUDIO_SINK,GstPulseAudioSinkClass))
+#define GST_IS_PULSE_AUDIO_SINK(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_PULSE_AUDIO_SINK))
+#define GST_IS_PULSE_AUDIO_SINK_CLASS(obj) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_PULSE_AUDIO_SINK))
+#define GST_PULSE_AUDIO_SINK_CAST(obj) \
+  ((GstPulseAudioSink *)(obj))
+
+GType gst_pulse_audio_sink_get_type (void);
+
+#endif /* HAVE_PULSE_1_0 */
 
 G_END_DECLS
 

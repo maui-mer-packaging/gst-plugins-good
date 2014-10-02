@@ -17,7 +17,7 @@
 #define __GST_RTP_G726_DEPAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -37,7 +37,7 @@ typedef struct _GstRtpG726DepayClass GstRtpG726DepayClass;
 
 struct _GstRtpG726Depay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   gboolean aal2;
   gboolean force_aal2;
@@ -46,7 +46,7 @@ struct _GstRtpG726Depay
 
 struct _GstRtpG726DepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_g726_depay_get_type (void);

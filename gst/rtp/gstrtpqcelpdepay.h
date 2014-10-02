@@ -21,7 +21,7 @@
 #define __GST_RTP_QCELP_DEPAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -41,7 +41,7 @@ typedef struct _GstRtpQCELPDepayClass GstRtpQCELPDepayClass;
 
 struct _GstRtpQCELPDepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   gboolean interleaved;
   guint bundling;
@@ -50,7 +50,7 @@ struct _GstRtpQCELPDepay
 
 struct _GstRtpQCELPDepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_qcelp_depay_get_type (void);

@@ -20,13 +20,8 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/* FIXME 0.11: suppress warnings for deprecated API such as GValueArray
- * with newer GLib versions (>= 2.31.0) */
-#define GLIB_DISABLE_DEPRECATION_WARNINGS
-
 #include <gst/check/gstcheck.h>
-#include <gst/audio/audio.h>
-#include <gst/audio/audio-enumtypes.h>
+#include <gst/audio/multichannel.h>
 
 static gboolean
 bus_handler (GstBus * bus, GstMessage * message, gpointer data)

@@ -37,7 +37,9 @@ int
 main (int argc, char **argv)
 {
   GstElement *pipeline;
-  GstState state;
+#ifndef G_DISABLE_ASSERT
+  GstState state, pending;
+#endif
   GError *error = NULL;
 
   gst_init (&argc, &argv);
@@ -53,11 +55,9 @@ main (int argc, char **argv)
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
   /* lets check it gets to PLAYING */
-  if (gst_element_get_state (pipeline, &state, NULL,
-          GST_CLOCK_TIME_NONE) == GST_STATE_CHANGE_FAILURE ||
-      state != GST_STATE_PLAYING) {
-    g_warning ("State change to playing failed");
-  }
+  g_assert (gst_element_get_state (pipeline, &state, &pending,
+          GST_CLOCK_TIME_NONE) != GST_STATE_CHANGE_FAILURE);
+  g_assert (state == GST_STATE_PLAYING || pending == GST_STATE_PLAYING);
 
   /* We want to get out after 5 seconds */
   g_timeout_add (5000, (GSourceFunc) terminate_playback, pipeline);

@@ -78,10 +78,9 @@ gst_wavpack_stream_reader_push_back_byte (void *id, int c)
 
   GST_DEBUG ("Pushing back one byte: 0x%x", c);
 
-  if (rid->position == 0)
-    return rid->position;
-
   rid->position -= 1;
+  if (rid->position < 0)
+    rid->position = 0;
   return rid->position;
 }
 

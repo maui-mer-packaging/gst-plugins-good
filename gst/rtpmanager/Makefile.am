@@ -1,8 +1,5 @@
 plugin_LTLIBRARIES = libgstrtpmanager.la
 
-# FIXME 0.11: ignore GValueArray warnings for now until this is sorted
-ERROR_CFLAGS=
-
 glib_enum_define = GST_RTP_BIN
 glib_gen_prefix = gst_rtp_bin
 glib_gen_basename = gstrtpbin
@@ -39,9 +36,9 @@ noinst_HEADERS = gstrtpbin.h \
 		 gstrtpsession.h
 
 libgstrtpmanager_la_CFLAGS = $(GST_PLUGINS_BASE_CFLAGS) $(GST_CFLAGS) \
-	$(GST_NET_CFLAGS) $(WARNING_CFLAGS) $(ERROR_CFLAGS)
+	$(WARNING_CFLAGS) $(ERROR_CFLAGS)
 libgstrtpmanager_la_LIBADD = $(GST_PLUGINS_BASE_LIBS) \
-	$(GST_NET_LIBS) -lgstrtp-@GST_API_VERSION@ \
+	-lgstnetbuffer-@GST_MAJORMINOR@ -lgstrtp-@GST_MAJORMINOR@ \
 	$(GST_BASE_LIBS) $(GST_LIBS_LIBS)
 libgstrtpmanager_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS)
 libgstrtpmanager_la_LIBTOOLFLAGS = --tag=disable-static

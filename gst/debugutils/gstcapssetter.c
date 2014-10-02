@@ -97,10 +97,10 @@ GST_STATIC_PAD_TEMPLATE (GST_BASE_TRANSFORM_SINK_NAME,
 
 
 static gboolean gst_caps_setter_transform_size (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, gsize size,
-    GstCaps * othercaps, gsize * othersize);
+    GstPadDirection direction, GstCaps * caps, guint size,
+    GstCaps * othercaps, guint * othersize);
 static GstCaps *gst_caps_setter_transform_caps (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, GstCaps * cfilter);
+    GstPadDirection direction, GstCaps * caps);
 static GstFlowReturn gst_caps_setter_transform_ip (GstBaseTransform * btrans,
     GstBuffer * in);
 
@@ -111,14 +111,29 @@ static void gst_caps_setter_set_property (GObject * object, guint prop_id,
 static void gst_caps_setter_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-#define gst_caps_setter_parent_class parent_class
-G_DEFINE_TYPE (GstCapsSetter, gst_caps_setter, GST_TYPE_BASE_TRANSFORM);
+GST_BOILERPLATE (GstCapsSetter, gst_caps_setter, GstBaseTransform,
+    GST_TYPE_BASE_TRANSFORM);
+
+static void
+gst_caps_setter_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_set_details_simple (element_class, "CapsSetter",
+      "Generic",
+      "Set/merge caps on stream",
+      "Mark Nauwelaerts <mnauw@users.sourceforge.net>");
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_caps_setter_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_caps_setter_src_template);
+}
 
 static void
 gst_caps_setter_class_init (GstCapsSetterClass * g_class)
 {
   GObjectClass *gobject_class = (GObjectClass *) g_class;
-  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
   GstBaseTransformClass *trans_class = (GstBaseTransformClass *) g_class;
 
   GST_DEBUG_CATEGORY_INIT (caps_setter_debug, "capssetter", 0, "capssetter");
@@ -141,16 +156,6 @@ gst_caps_setter_class_init (GstCapsSetterClass * g_class)
           "Drop fields of incoming caps", DEFAULT_REPLACE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_set_static_metadata (element_class, "CapsSetter",
-      "Generic",
-      "Set/merge caps on stream",
-      "Mark Nauwelaerts <mnauw@users.sourceforge.net>");
-
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_caps_setter_sink_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_caps_setter_src_template));
-
   trans_class->transform_size =
       GST_DEBUG_FUNCPTR (gst_caps_setter_transform_size);
   trans_class->transform_caps =
@@ -160,7 +165,7 @@ gst_caps_setter_class_init (GstCapsSetterClass * g_class)
 }
 
 static void
-gst_caps_setter_init (GstCapsSetter * filter)
+gst_caps_setter_init (GstCapsSetter * filter, GstCapsSetterClass * g_class)
 {
   filter->caps = gst_caps_new_any ();
   filter->join = DEFAULT_JOIN;
@@ -179,8 +184,8 @@ gst_caps_setter_finalize (GObject * object)
 
 static gboolean
 gst_caps_setter_transform_size (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, gsize size,
-    GstCaps * othercaps, gsize * othersize)
+    GstPadDirection direction, GstCaps * caps, guint size,
+    GstCaps * othercaps, guint * othersize)
 {
   *othersize = size;
 
@@ -189,7 +194,7 @@ gst_caps_setter_transform_size (GstBaseTransform * trans,
 
 static GstCaps *
 gst_caps_setter_transform_caps (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, GstCaps * cfilter)
+    GstPadDirection direction, GstCaps * caps)
 {
   GstCapsSetter *filter = GST_CAPS_SETTER (trans);
   GstCaps *ret, *filter_caps;
@@ -294,7 +299,7 @@ gst_caps_setter_set_property (GObject * object, guint prop_id,
       }
 
       /* try to activate these new caps next time around */
-      gst_base_transform_reconfigure_src (GST_BASE_TRANSFORM (filter));
+      gst_base_transform_reconfigure (GST_BASE_TRANSFORM (filter));
       break;
     }
     case PROP_JOIN:

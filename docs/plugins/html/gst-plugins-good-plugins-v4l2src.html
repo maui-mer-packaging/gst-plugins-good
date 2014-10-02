@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>v4l2src</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-udpsink.html" title="udpsink">
 <link rel="next" href="gst-plugins-good-plugins-v4l2sink.html" title="v4l2sink">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-udpsink.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-v4l2sink.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -30,8 +30,6 @@
                   <a href="#gst-plugins-good-plugins-v4l2src.implemented-interfaces" class="shortcut">Implemented Interfaces</a>
                    | 
                   <a href="#gst-plugins-good-plugins-v4l2src.properties" class="shortcut">Properties</a>
-                   | 
-                  <a href="#gst-plugins-good-plugins-v4l2src.signals" class="shortcut">Signals</a>
 </td></tr>
 </table>
 <div class="refentry">
@@ -52,19 +50,18 @@
 <a name="gst-plugins-good-plugins-v4l2src.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSrc.html">GstBaseSrc</a>
-                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstPushSrc.html">GstPushSrc</a>
-                                 +----GstV4l2Src
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSrc.html">GstBaseSrc</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstPushSrc.html">GstPushSrc</a>
+                           +----GstV4l2Src
 </pre>
 </div>
 <div class="refsect1">
 <a name="gst-plugins-good-plugins-v4l2src.implemented-interfaces"></a><h2>Implemented Interfaces</h2>
 <p>
 GstV4l2Src implements
- <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/gstreamer-GstUriHandler.html#GstURIHandler">GstURIHandler</a>,  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gsttuner.html#GstTuner">GstTuner</a>,  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstcolorbalance.html#GstColorBalance">GstColorBalance</a> and  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstvideoorientation.html#GstVideoOrientation">GstVideoOrientation</a>.</p>
+ <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/gstreamer-GstUriHandler.html#GstURIHandler">GstURIHandler</a>,  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstImplementsInterface.html">GstImplementsInterface</a>,  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gsttuner.html#GstTuner">GstTuner</a>,  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstcolorbalance.html#GstColorBalance">GstColorBalance</a>,  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstvideoorientation.html#GstVideoOrientation">GstVideoOrientation</a> and  <a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstpropertyprobe.html#GstPropertyProbe">GstPropertyProbe</a>.</p>
 </div>
 <div class="refsect1">
 <a name="gst-plugins-good-plugins-v4l2src.properties"></a><h2>Properties</h2>
@@ -81,13 +78,6 @@ GstV4l2Src implements
   "<a class="link" href="gst-plugins-good-plugins-v4l2src.html#GstV4l2Src--hue" title='The "hue" property'>hue</a>"                      <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>                  : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-v4l2src.html#GstV4l2Src--saturation" title='The "saturation" property'>saturation</a>"               <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>                  : Read / Write
   "<a class="link" href="gst-plugins-good-plugins-v4l2src.html#GstV4l2Src--norm" title='The "norm" property'>norm</a>"                     <span class="type">V4L2_TV_norms</span>         : Read / Write
-  "<a class="link" href="gst-plugins-good-plugins-v4l2src.html#GstV4l2Src--io-mode" title='The "io-mode" property'>io-mode</a>"                  <span class="type">GstV4l2IOMode</span>         : Read / Write
-</pre>
-</div>
-<div class="refsect1">
-<a name="gst-plugins-good-plugins-v4l2src.signals"></a><h2>Signals</h2>
-<pre class="synopsis">
-  "<a class="link" href="gst-plugins-good-plugins-v4l2src.html#GstV4l2Src-prepare-format" title='The "prepare-format" signal'>prepare-format</a>"                                 : <a href="http://library.gnome.org/devel/gobject/unstable/gobject-Signals.html#G-SIGNAL-RUN-LAST:CAPS"><code class="literal">Run Last</code></a>
 </pre>
 </div>
 <div class="refsect1">
@@ -95,7 +85,7 @@ GstV4l2Src implements
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp22306016"></a><h3>Element Information</h3>
+<a name="idp22038080"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -118,7 +108,7 @@ GstV4l2Src implements
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp18682688"></a><h3>Element Pads</h3>
+<a name="idp21731728"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -136,75 +126,91 @@ GstV4l2Src implements
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw, format=(string)RGB15, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td>video/x-raw-rgb, bpp=(int)8, depth=(int)8, red_mask=(int)224, green_mask=(int)28, blue_mask=(int)3, endianness=(int)1234, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)RGB16, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)16, depth=(int)15, red_mask=(int)31744, green_mask=(int)992, blue_mask=(int)31, endianness=(int)1234, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)BGR, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)16, depth=(int)16, red_mask=(int)63488, green_mask=(int)2016, blue_mask=(int)31, endianness=(int)1234, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)RGB, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)16, depth=(int)15, red_mask=(int)31744, green_mask=(int)992, blue_mask=(int)31, endianness=(int)4321, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)BGRx, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)16, depth=(int)16, red_mask=(int)63488, green_mask=(int)2016, blue_mask=(int)31, endianness=(int)4321, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)RGBx, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)24, depth=(int)24, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, endianness=(int)4321, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)GRAY8, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)24, depth=(int)24, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, endianness=(int)4321, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)YVU9, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, red_mask=(int)255, green_mask=(int)65280, blue_mask=(int)16711680, endianness=(int)4321, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)YV12, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-rgb, bpp=(int)32, depth=(int)32, red_mask=(int)-16777216, green_mask=(int)16711680, blue_mask=(int)65280, endianness=(int)4321, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)YUY2, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-gray, bpp=(int)8, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)UYVY, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)YVU9, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)Y42B, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)YV12, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)Y41B, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)YUY2, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)NV12, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)UYVY, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)NV21, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)Y42B, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)YUV9, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)Y41B, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)I420, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)Y41P, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-bayer, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)NV12, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)NV21, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)YUV9, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-yuv, format=(fourcc)I420, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-bayer, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
@@ -228,10 +234,6 @@ GstV4l2Src implements
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-h264, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
-</tr>
-<tr>
-<td><p><span class="term"></span></p></td>
 <td> video/x-sonix, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 <tr>
@@ -244,7 +246,7 @@ GstV4l2Src implements
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> video/x-raw, format=(string)YVYU, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
+<td> video/x-raw-yuv, format=(fourcc)YVYU, width=(int)[ 1, 32768 ], height=(int)[ 1, 32768 ], framerate=(fraction)[ 0/1, 100/1 ]</td>
 </tr>
 </tbody>
 </table></div>
@@ -348,40 +350,6 @@ GstV4l2Src implements
 <pre class="programlisting">  "norm"                     <span class="type">V4L2_TV_norms</span>         : Read / Write</pre>
 <p>video standard.</p>
 <p>Default value: none</p>
-</div>
-<hr>
-<div class="refsect2">
-<a name="GstV4l2Src--io-mode"></a><h3>The <code class="literal">"io-mode"</code> property</h3>
-<pre class="programlisting">  "io-mode"                  <span class="type">GstV4l2IOMode</span>         : Read / Write</pre>
-<p>I/O mode.</p>
-<p>Default value: GST_V4L2_IO_AUTO</p>
-</div>
-</div>
-<div class="refsect1">
-<a name="gst-plugins-good-plugins-v4l2src.signal-details"></a><h2>Signal Details</h2>
-<div class="refsect2">
-<a name="GstV4l2Src-prepare-format"></a><h3>The <code class="literal">"prepare-format"</code> signal</h3>
-<pre class="programlisting"><span class="returnvalue">void</span>                user_function                      (<a class="link" href="gst-plugins-good-plugins-v4l2src.html#GstV4l2Src"><span class="type">GstV4l2Src</span></a> *gstv4l2src,
-                                                        <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gint"><span class="type">gint</span></a>        arg1,
-                                                        <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>       arg2,
-                                                        <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>       arg3,
-                                                        <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#guint"><span class="type">guint</span></a>       arg4,
-                                                        <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a>    user_data)       : <a href="http://library.gnome.org/devel/gobject/unstable/gobject-Signals.html#G-SIGNAL-RUN-LAST:CAPS"><code class="literal">Run Last</code></a></pre>
-<p>
-</p>
-<div class="variablelist"><table border="0">
-<col align="left" valign="top">
-<tbody>
-<tr>
-<td><p><span class="term"><em class="parameter"><code>gstv4l2src</code></em> :</span></p></td>
-<td>the object which received the signal.</td>
-</tr>
-<tr>
-<td><p><span class="term"><em class="parameter"><code>user_data</code></em> :</span></p></td>
-<td>user data set when the signal handler was connected.</td>
-</tr>
-</tbody>
-</table></div>
 </div>
 </div>
 </div>

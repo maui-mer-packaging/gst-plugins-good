@@ -28,12 +28,13 @@
 static gboolean
 gst_caps_is_interlaced (GstCaps * caps)
 {
-  GstVideoInfo info;
+  GstStructure G_GNUC_UNUSED *structure;
+  gboolean interlaced = FALSE;
 
   fail_unless (gst_caps_is_fixed (caps));
-  fail_unless (gst_video_info_from_caps (&info, caps));
-
-  return GST_VIDEO_INFO_IS_INTERLACED (&info);
+  structure = gst_caps_get_structure (caps, 0);
+  fail_unless (gst_video_format_parse_caps_interlaced (caps, &interlaced));
+  return interlaced;
 }
 
 GST_START_TEST (test_create_and_unref)
@@ -56,40 +57,40 @@ GST_END_TEST;
     "width=(int)3200, height=(int)3400, framerate=(fraction)0/1"
 
 #define CAPS_YUY2 \
-    "video/x-raw, " \
+    "video/x-raw-yuv, " \
     CAPS_VIDEO_COMMON ", " \
-    "format=(string)YUY2"
+    "format=(fourcc)YUY2"
 
 #define CAPS_YUY2_INTERLACED \
     CAPS_YUY2 ", " \
-    "interlace-mode=interleaved"
+    "interlaced=(boolean)true"
 
 #define CAPS_YVYU \
-    "video/x-raw, " \
+    "video/x-raw-yuv, " \
     CAPS_VIDEO_COMMON ", " \
-    "format=(string)YVYU"
+    "format=(fourcc)YVYU"
 
 #define CAPS_YVYU_INTERLACED \
     CAPS_YVYU ", " \
-    "interlace-mode=interleaved"
+    "interlaced=(boolean)true"
 
 #define CAPS_YUY2_IMAGE \
-    "video/x-raw, " \
+    "video/x-raw-yuv, " \
     CAPS_IMAGE_COMMON ", " \
-    "format=(string)YUY2"
+    "format=(fourcc)YUY2"
 
 #define CAPS_YUY2_INTERLACED_IMAGE \
     CAPS_YUY2_IMAGE ", " \
-    "interlace-mode=interleaved"
+    "interlaced=(boolean)true"
 
 #define CAPS_YVYU_IMAGE \
-    "video/x-raw, " \
+    "video/x-raw-yuv, " \
     CAPS_IMAGE_COMMON ", " \
-    "format=(string)YVYU"
+    "format=(fourcc)YVYU"
 
 #define CAPS_YVYU_INTERLACED_IMAGE \
     CAPS_YVYU_IMAGE ", " \
-    "interlace-mode=interleaved"
+    "interlaced=(boolean)true"
 
 static GstElement *deinterlace;
 static GstPad *srcpad;
@@ -167,48 +168,49 @@ setup_test_pipeline (gint mode, GstCaps * infiltercaps, GstCaps * outfiltercaps,
 /*
  * Checks if 2 buffers are equal
  *
- * Equals means same data
+ * Equals means same caps and same data
  */
 static gboolean
 test_buffer_equals (GstBuffer * buf_a, GstBuffer * buf_b)
 {
-  GstMapInfo m1, m2;
-  gboolean res = FALSE;
+  GstCaps *caps_a;
+  GstCaps *caps_b;
 
-  gst_buffer_map (buf_a, &m1, GST_MAP_READ);
-  gst_buffer_map (buf_b, &m2, GST_MAP_READ);
+  if (GST_BUFFER_SIZE (buf_a) != GST_BUFFER_SIZE (buf_b))
+    return FALSE;
 
-  if (m1.size == m2.size) {
-    res = memcmp (m1.data, m2.data, m1.size) == 0;
-  }
-  gst_buffer_unmap (buf_a, &m1);
-  gst_buffer_unmap (buf_b, &m2);
+  caps_a = gst_buffer_get_caps (buf_a);
+  caps_b = gst_buffer_get_caps (buf_b);
 
-  return res;
+  if (!gst_caps_is_equal (caps_a, caps_b))
+    return FALSE;
+
+  gst_caps_unref (caps_a);
+  gst_caps_unref (caps_b);
+
+  return memcmp (GST_BUFFER_DATA (buf_a), GST_BUFFER_DATA (buf_b),
+      GST_BUFFER_SIZE (buf_a)) == 0;
 }
 
-static GstPadProbeReturn
-sinkpad_enqueue_buffer (GstPad * pad, GstPadProbeInfo * info, gpointer data)
+static gboolean
+sinkpad_enqueue_buffer (GstPad * pad, GstBuffer * buf, gpointer data)
 {
   GQueue *queue = (GQueue *) data;
-  GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER (info);
 
   /* enqueue a copy for being compared later */
   g_queue_push_tail (queue, gst_buffer_copy (buf));
 
-  return GST_PAD_PROBE_OK;
+  return TRUE;
 }
 
 /*
  * pad buffer probe that compares the buffer with the top one
  * in the GQueue passed as the user data
  */
-static GstPadProbeReturn
-srcpad_dequeue_and_compare_buffer (GstPad * pad, GstPadProbeInfo * info,
-    gpointer data)
+static gboolean
+srcpad_dequeue_and_compare_buffer (GstPad * pad, GstBuffer * buf, gpointer data)
 {
   GQueue *queue = (GQueue *) data;
-  GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER (info);
   GstBuffer *queue_buf;
 
   queue_buf = (GstBuffer *) g_queue_pop_head (queue);
@@ -218,7 +220,7 @@ srcpad_dequeue_and_compare_buffer (GstPad * pad, GstPadProbeInfo * info,
 
   gst_buffer_unref (queue_buf);
 
-  return GST_PAD_PROBE_OK;
+  return TRUE;
 }
 
 /*
@@ -241,20 +243,14 @@ deinterlace_check_passthrough (gint mode, const gchar * infiltercaps)
   queue = g_queue_new ();
 
   /* set up probes for testing */
-  gst_pad_add_probe (sinkpad, GST_PAD_PROBE_TYPE_BUFFER, sinkpad_enqueue_buffer,
-      queue, NULL);
-  gst_pad_add_probe (srcpad, GST_PAD_PROBE_TYPE_BUFFER,
-      srcpad_dequeue_and_compare_buffer, queue, NULL);
+  gst_pad_add_buffer_probe (sinkpad, (GCallback) sinkpad_enqueue_buffer, queue);
+  gst_pad_add_buffer_probe (srcpad,
+      (GCallback) srcpad_dequeue_and_compare_buffer, queue);
 
   fail_unless (gst_element_set_state (pipeline, GST_STATE_PLAYING) !=
       GST_STATE_CHANGE_FAILURE);
 
-  msg = gst_bus_poll (GST_ELEMENT_BUS (pipeline),
-      GST_MESSAGE_ERROR | GST_MESSAGE_EOS, -1);
-  if (GST_MESSAGE_TYPE (msg) == GST_MESSAGE_ERROR) {
-    GST_ERROR ("ERROR: %" GST_PTR_FORMAT, msg);
-    fail ("Unexpected error message");
-  }
+  msg = gst_bus_poll (GST_ELEMENT_BUS (pipeline), GST_MESSAGE_EOS, -1);
   gst_message_unref (msg);
 
   /* queue should be empty */
@@ -263,8 +259,6 @@ deinterlace_check_passthrough (gint mode, const gchar * infiltercaps)
   fail_unless (gst_element_set_state (pipeline, GST_STATE_NULL) ==
       GST_STATE_CHANGE_SUCCESS);
   gst_object_unref (pipeline);
-  gst_object_unref (sinkpad);
-  gst_object_unref (srcpad);
   g_queue_free (queue);
 }
 
@@ -290,11 +284,11 @@ deinterlace_set_caps_and_check (GstCaps * input, gboolean must_deinterlace)
 
     othercaps = gst_caps_make_writable (othercaps);
     s = gst_caps_get_structure (othercaps, 0);
-    gst_structure_remove_field (s, "interlace-mode");
+    gst_structure_remove_field (s, "interlaced");
 
     input = gst_caps_make_writable (input);
     s = gst_caps_get_structure (input, 0);
-    gst_structure_remove_field (s, "interlace-mode");
+    gst_structure_remove_field (s, "interlaced");
 
     fail_unless (gst_caps_is_equal (input, othercaps));
   }
@@ -438,13 +432,6 @@ deinterlace_suite (void)
 
   suite_add_tcase (s, tc_chain);
   tcase_set_timeout (tc_chain, 180);
-
-  if (!gst_registry_check_feature_version (gst_registry_get (), "deinterlace",
-          GST_VERSION_MAJOR, GST_VERSION_MINOR, GST_VERSION_MICRO)) {
-    GST_ERROR ("FIXME: port deinterlace element");
-    return s;
-  }
-
   tcase_add_test (tc_chain, test_create_and_unref);
   tcase_add_test (tc_chain, test_mode_auto_accept_caps);
   tcase_add_test (tc_chain, test_mode_forced_accept_caps);

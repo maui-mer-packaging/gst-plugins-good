@@ -32,7 +32,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 videotestsrc ! videobalance saturation=0.0 ! videoconvert ! ximagesink
+ * gst-launch videotestsrc ! videobalance saturation=0.0 ! ffmpegcolorspace ! ximagesink
  * ]| This pipeline converts the image to black and white by setting the
  * saturation to 0.0.
  * </refsect2>
@@ -49,7 +49,8 @@
 #include "gstvideobalance.h"
 #include <string.h>
 
-#include <gst/video/colorbalance.h>
+#include <gst/controller/gstcontroller.h>
+#include <gst/interfaces/colorbalance.h>
 
 GST_DEBUG_CATEGORY_STATIC (videobalance_debug);
 #define GST_CAT_DEFAULT videobalance_debug
@@ -70,38 +71,78 @@ enum
 };
 
 static GstStaticPadTemplate gst_video_balance_src_template =
-GST_STATIC_PAD_TEMPLATE ("src",
+    GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE ("{ AYUV, "
-            "ARGB, BGRA, ABGR, RGBA, Y444, xRGB, RGBx, "
-            "xBGR, BGRx, RGB, BGR, Y42B, YUY2, UYVY, YVYU, "
-            "I420, YV12, IYUV, Y41B }"))
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV ("AYUV") ";"
+        GST_VIDEO_CAPS_ARGB ";" GST_VIDEO_CAPS_BGRA ";"
+        GST_VIDEO_CAPS_ABGR ";" GST_VIDEO_CAPS_RGBA ";"
+        GST_VIDEO_CAPS_YUV ("Y444") ";"
+        GST_VIDEO_CAPS_xRGB ";" GST_VIDEO_CAPS_RGBx ";"
+        GST_VIDEO_CAPS_xBGR ";" GST_VIDEO_CAPS_BGRx ";"
+        GST_VIDEO_CAPS_RGB ";" GST_VIDEO_CAPS_BGR ";"
+        GST_VIDEO_CAPS_YUV ("Y42B") ";"
+        GST_VIDEO_CAPS_YUV ("YUY2") ";"
+        GST_VIDEO_CAPS_YUV ("UYVY") ";"
+        GST_VIDEO_CAPS_YUV ("YVYU") ";"
+        GST_VIDEO_CAPS_YUV ("I420") ";"
+        GST_VIDEO_CAPS_YUV ("YV12") ";"
+        GST_VIDEO_CAPS_YUV ("IYUV") ";" GST_VIDEO_CAPS_YUV ("Y41B")
+    )
     );
 
 static GstStaticPadTemplate gst_video_balance_sink_template =
-GST_STATIC_PAD_TEMPLATE ("sink",
+    GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE ("{ AYUV, "
-            "ARGB, BGRA, ABGR, RGBA, Y444, xRGB, RGBx, "
-            "xBGR, BGRx, RGB, BGR, Y42B, YUY2, UYVY, YVYU, "
-            "I420, YV12, IYUV, Y41B }"))
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV ("AYUV") ";"
+        GST_VIDEO_CAPS_ARGB ";" GST_VIDEO_CAPS_BGRA ";"
+        GST_VIDEO_CAPS_ABGR ";" GST_VIDEO_CAPS_RGBA ";"
+        GST_VIDEO_CAPS_YUV ("Y444") ";"
+        GST_VIDEO_CAPS_xRGB ";" GST_VIDEO_CAPS_RGBx ";"
+        GST_VIDEO_CAPS_xBGR ";" GST_VIDEO_CAPS_BGRx ";"
+        GST_VIDEO_CAPS_RGB ";" GST_VIDEO_CAPS_BGR ";"
+        GST_VIDEO_CAPS_YUV ("Y42B") ";"
+        GST_VIDEO_CAPS_YUV ("YUY2") ";"
+        GST_VIDEO_CAPS_YUV ("UYVY") ";"
+        GST_VIDEO_CAPS_YUV ("YVYU") ";"
+        GST_VIDEO_CAPS_YUV ("I420") ";"
+        GST_VIDEO_CAPS_YUV ("YV12") ";"
+        GST_VIDEO_CAPS_YUV ("IYUV") ";" GST_VIDEO_CAPS_YUV ("Y41B")
+    )
     );
 
-static void gst_video_balance_colorbalance_init (GstColorBalanceInterface *
-    iface);
+static void gst_video_balance_colorbalance_init (GstColorBalanceClass * iface);
+static void gst_video_balance_interface_init (GstImplementsInterfaceClass *
+    klass);
 
 static void gst_video_balance_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_video_balance_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-#define gst_video_balance_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstVideoBalance, gst_video_balance,
-    GST_TYPE_VIDEO_FILTER,
-    G_IMPLEMENT_INTERFACE (GST_TYPE_COLOR_BALANCE,
-        gst_video_balance_colorbalance_init));
+static void
+_do_init (GType video_balance_type)
+{
+  static const GInterfaceInfo iface_info = {
+    (GInterfaceInitFunc) gst_video_balance_interface_init,
+    NULL,
+    NULL,
+  };
+  static const GInterfaceInfo colorbalance_info = {
+    (GInterfaceInitFunc) gst_video_balance_colorbalance_init,
+    NULL,
+    NULL,
+  };
+
+  g_type_add_interface_static (video_balance_type,
+      GST_TYPE_IMPLEMENTS_INTERFACE, &iface_info);
+  g_type_add_interface_static (video_balance_type, GST_TYPE_COLOR_BALANCE,
+      &colorbalance_info);
+}
+
+GST_BOILERPLATE_FULL (GstVideoBalance, gst_video_balance, GstVideoFilter,
+    GST_TYPE_VIDEO_FILTER, _do_init);
 
 /*
  * look-up tables (LUT).
@@ -156,37 +197,36 @@ gst_video_balance_is_passthrough (GstVideoBalance * videobalance)
 static void
 gst_video_balance_update_properties (GstVideoBalance * videobalance)
 {
-  gboolean passthrough;
+  gboolean passthrough = gst_video_balance_is_passthrough (videobalance);
   GstBaseTransform *base = GST_BASE_TRANSFORM (videobalance);
 
-  GST_OBJECT_LOCK (videobalance);
-  passthrough = gst_video_balance_is_passthrough (videobalance);
+  base->passthrough = passthrough;
+
   if (!passthrough)
     gst_video_balance_update_tables (videobalance);
-  GST_OBJECT_UNLOCK (videobalance);
-
-  gst_base_transform_set_passthrough (base, passthrough);
 }
 
 static void
-gst_video_balance_planar_yuv (GstVideoBalance * videobalance,
-    GstVideoFrame * frame)
+gst_video_balance_planar_yuv (GstVideoBalance * videobalance, guint8 * data)
 {
   gint x, y;
   guint8 *ydata;
   guint8 *udata, *vdata;
   gint ystride, ustride, vstride;
+  GstVideoFormat format;
   gint width, height;
   gint width2, height2;
   guint8 *tabley = videobalance->tabley;
   guint8 **tableu = videobalance->tableu;
   guint8 **tablev = videobalance->tablev;
 
-  width = GST_VIDEO_FRAME_WIDTH (frame);
-  height = GST_VIDEO_FRAME_HEIGHT (frame);
+  format = videobalance->format;
+  width = videobalance->width;
+  height = videobalance->height;
 
-  ydata = GST_VIDEO_FRAME_PLANE_DATA (frame, 0);
-  ystride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 0);
+  ydata =
+      data + gst_video_format_get_component_offset (format, 0, width, height);
+  ystride = gst_video_format_get_row_stride (format, 0, width);
 
   for (y = 0; y < height; y++) {
     guint8 *yptr;
@@ -198,13 +238,15 @@ gst_video_balance_planar_yuv (GstVideoBalance * videobalance,
     }
   }
 
-  width2 = GST_VIDEO_FRAME_COMP_WIDTH (frame, 1);
-  height2 = GST_VIDEO_FRAME_COMP_HEIGHT (frame, 1);
+  width2 = gst_video_format_get_component_width (format, 1, width);
+  height2 = gst_video_format_get_component_height (format, 1, height);
 
-  udata = GST_VIDEO_FRAME_PLANE_DATA (frame, 1);
-  vdata = GST_VIDEO_FRAME_PLANE_DATA (frame, 2);
-  ustride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 1);
-  vstride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 2);
+  udata =
+      data + gst_video_format_get_component_offset (format, 1, width, height);
+  vdata =
+      data + gst_video_format_get_component_offset (format, 2, width, height);
+  ustride = gst_video_format_get_row_stride (format, 1, width);
+  vstride = gst_video_format_get_row_stride (format, 1, width);
 
   for (y = 0; y < height2; y++) {
     guint8 *uptr, *vptr;
@@ -224,49 +266,57 @@ gst_video_balance_planar_yuv (GstVideoBalance * videobalance,
 }
 
 static void
-gst_video_balance_packed_yuv (GstVideoBalance * videobalance,
-    GstVideoFrame * frame)
+gst_video_balance_packed_yuv (GstVideoBalance * videobalance, guint8 * data)
 {
-  gint x, y, stride;
-  guint8 *ydata, *udata, *vdata;
+  gint x, y;
+  guint8 *ydata;
+  guint8 *udata, *vdata;
+  gint ystride, ustride, vstride;
   gint yoff, uoff, voff;
+  GstVideoFormat format;
   gint width, height;
   gint width2, height2;
   guint8 *tabley = videobalance->tabley;
   guint8 **tableu = videobalance->tableu;
   guint8 **tablev = videobalance->tablev;
 
-  width = GST_VIDEO_FRAME_WIDTH (frame);
-  height = GST_VIDEO_FRAME_HEIGHT (frame);
+  format = videobalance->format;
+  width = videobalance->width;
+  height = videobalance->height;
 
-  stride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 0);
-  ydata = GST_VIDEO_FRAME_COMP_DATA (frame, 0);
-  yoff = GST_VIDEO_FRAME_COMP_PSTRIDE (frame, 0);
+  ydata =
+      data + gst_video_format_get_component_offset (format, 0, width, height);
+  ystride = gst_video_format_get_row_stride (format, 0, width);
+  yoff = gst_video_format_get_pixel_stride (format, 0);
 
   for (y = 0; y < height; y++) {
     guint8 *yptr;
 
-    yptr = ydata + y * stride;
+    yptr = ydata + y * ystride;
     for (x = 0; x < width; x++) {
       *yptr = tabley[*yptr];
       yptr += yoff;
     }
   }
 
-  width2 = GST_VIDEO_FRAME_COMP_WIDTH (frame, 1);
-  height2 = GST_VIDEO_FRAME_COMP_HEIGHT (frame, 1);
+  width2 = gst_video_format_get_component_width (format, 1, width);
+  height2 = gst_video_format_get_component_height (format, 1, height);
 
-  udata = GST_VIDEO_FRAME_COMP_DATA (frame, 1);
-  vdata = GST_VIDEO_FRAME_COMP_DATA (frame, 2);
-  uoff = GST_VIDEO_FRAME_COMP_PSTRIDE (frame, 1);
-  voff = GST_VIDEO_FRAME_COMP_PSTRIDE (frame, 2);
+  udata =
+      data + gst_video_format_get_component_offset (format, 1, width, height);
+  vdata =
+      data + gst_video_format_get_component_offset (format, 2, width, height);
+  ustride = gst_video_format_get_row_stride (format, 1, width);
+  vstride = gst_video_format_get_row_stride (format, 1, width);
+  uoff = gst_video_format_get_pixel_stride (format, 1);
+  voff = gst_video_format_get_pixel_stride (format, 2);
 
   for (y = 0; y < height2; y++) {
     guint8 *uptr, *vptr;
     guint8 u1, v1;
 
-    uptr = udata + y * stride;
-    vptr = vdata + y * stride;
+    uptr = udata + y * ustride;
+    vptr = vdata + y * vstride;
 
     for (x = 0; x < width2; x++) {
       u1 = *uptr;
@@ -296,13 +346,11 @@ static const gint cog_rgb_to_ycbcr_matrix_8bit_sdtv[] = {
 #define APPLY_MATRIX(m,o,v1,v2,v3) ((m[o*4] * v1 + m[o*4+1] * v2 + m[o*4+2] * v3 + m[o*4+3]) >> 8)
 
 static void
-gst_video_balance_packed_rgb (GstVideoBalance * videobalance,
-    GstVideoFrame * frame)
+gst_video_balance_packed_rgb (GstVideoBalance * videobalance, guint8 * data)
 {
   gint i, j, height;
-  gint width, stride, row_wrap;
+  gint width, row_stride, row_wrap;
   gint pixel_stride;
-  guint8 *data;
   gint offsets[3];
   gint r, g, b;
   gint y, u, v;
@@ -311,18 +359,24 @@ gst_video_balance_packed_rgb (GstVideoBalance * videobalance,
   guint8 **tableu = videobalance->tableu;
   guint8 **tablev = videobalance->tablev;
 
-  width = GST_VIDEO_FRAME_WIDTH (frame);
-  height = GST_VIDEO_FRAME_HEIGHT (frame);
+  offsets[0] = gst_video_format_get_component_offset (videobalance->format, 0,
+      videobalance->width, videobalance->height);
+  offsets[1] = gst_video_format_get_component_offset (videobalance->format, 1,
+      videobalance->width, videobalance->height);
+  offsets[2] = gst_video_format_get_component_offset (videobalance->format, 2,
+      videobalance->width, videobalance->height);
 
-  offsets[0] = GST_VIDEO_FRAME_COMP_OFFSET (frame, 0);
-  offsets[1] = GST_VIDEO_FRAME_COMP_OFFSET (frame, 1);
-  offsets[2] = GST_VIDEO_FRAME_COMP_OFFSET (frame, 2);
-
-  data = GST_VIDEO_FRAME_PLANE_DATA (frame, 0);
-  stride = GST_VIDEO_FRAME_PLANE_STRIDE (frame, 0);
-
-  pixel_stride = GST_VIDEO_FRAME_COMP_PSTRIDE (frame, 0);
-  row_wrap = stride - pixel_stride * width;
+  width =
+      gst_video_format_get_component_width (videobalance->format, 0,
+      videobalance->width);
+  height =
+      gst_video_format_get_component_height (videobalance->format, 0,
+      videobalance->height);
+  row_stride =
+      gst_video_format_get_row_stride (videobalance->format, 0,
+      videobalance->width);
+  pixel_stride = gst_video_format_get_pixel_stride (videobalance->format, 0);
+  row_wrap = row_stride - pixel_stride * width;
 
   for (i = 0; i < height; i++) {
     for (j = 0; j < width; j++) {
@@ -357,17 +411,25 @@ gst_video_balance_packed_rgb (GstVideoBalance * videobalance,
 
 /* get notified of caps and plug in the correct process function */
 static gboolean
-gst_video_balance_set_info (GstVideoFilter * vfilter, GstCaps * incaps,
-    GstVideoInfo * in_info, GstCaps * outcaps, GstVideoInfo * out_info)
+gst_video_balance_set_caps (GstBaseTransform * base, GstCaps * incaps,
+    GstCaps * outcaps)
 {
-  GstVideoBalance *videobalance = GST_VIDEO_BALANCE (vfilter);
+  GstVideoBalance *videobalance = GST_VIDEO_BALANCE (base);
 
   GST_DEBUG_OBJECT (videobalance,
       "in %" GST_PTR_FORMAT " out %" GST_PTR_FORMAT, incaps, outcaps);
 
   videobalance->process = NULL;
 
-  switch (GST_VIDEO_INFO_FORMAT (in_info)) {
+  if (!gst_video_format_parse_caps (incaps, &videobalance->format,
+          &videobalance->width, &videobalance->height))
+    goto invalid_caps;
+
+  videobalance->size =
+      gst_video_format_get_size (videobalance->format, videobalance->width,
+      videobalance->height);
+
+  switch (videobalance->format) {
     case GST_VIDEO_FORMAT_I420:
     case GST_VIDEO_FORMAT_YV12:
     case GST_VIDEO_FORMAT_Y41B:
@@ -394,18 +456,14 @@ gst_video_balance_set_info (GstVideoFilter * vfilter, GstCaps * incaps,
       videobalance->process = gst_video_balance_packed_rgb;
       break;
     default:
-      goto unknown_format;
       break;
   }
 
-  return TRUE;
+  return videobalance->process != NULL;
 
-  /* ERRORS */
-unknown_format:
-  {
-    GST_ERROR_OBJECT (videobalance, "unknown format %" GST_PTR_FORMAT, incaps);
-    return FALSE;
-  }
+invalid_caps:
+  GST_ERROR_OBJECT (videobalance, "Invalid caps: %" GST_PTR_FORMAT, incaps);
+  return FALSE;
 }
 
 static void
@@ -422,30 +480,63 @@ gst_video_balance_before_transform (GstBaseTransform * base, GstBuffer * buf)
       GST_TIME_ARGS (timestamp));
 
   if (GST_CLOCK_TIME_IS_VALID (stream_time))
-    gst_object_sync_values (GST_OBJECT (balance), stream_time);
+    gst_object_sync_values (G_OBJECT (balance), stream_time);
 }
 
 static GstFlowReturn
-gst_video_balance_transform_frame_ip (GstVideoFilter * vfilter,
-    GstVideoFrame * frame)
+gst_video_balance_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 {
-  GstVideoBalance *videobalance = GST_VIDEO_BALANCE (vfilter);
+  GstVideoBalance *videobalance = GST_VIDEO_BALANCE (base);
+  guint8 *data;
+  guint size;
 
   if (!videobalance->process)
     goto not_negotiated;
 
+  /* if no change is needed, we are done */
+  if (base->passthrough)
+    goto done;
+
+  data = GST_BUFFER_DATA (outbuf);
+  size = GST_BUFFER_SIZE (outbuf);
+
+  if (size != videobalance->size)
+    goto wrong_size;
+
   GST_OBJECT_LOCK (videobalance);
-  videobalance->process (videobalance, frame);
+  videobalance->process (videobalance, data);
   GST_OBJECT_UNLOCK (videobalance);
 
+done:
   return GST_FLOW_OK;
 
   /* ERRORS */
-not_negotiated:
+wrong_size:
   {
-    GST_ERROR_OBJECT (videobalance, "Not negotiated yet");
-    return GST_FLOW_NOT_NEGOTIATED;
+    GST_ELEMENT_ERROR (videobalance, STREAM, FORMAT,
+        (NULL), ("Invalid buffer size %d, expected %d", size,
+            videobalance->size));
+    return GST_FLOW_ERROR;
   }
+not_negotiated:
+  GST_ERROR_OBJECT (videobalance, "Not negotiated yet");
+  return GST_FLOW_NOT_NEGOTIATED;
+}
+
+static void
+gst_video_balance_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_set_details_simple (element_class, "Video balance",
+      "Filter/Effect/Video",
+      "Adjusts brightness, contrast, hue, saturation on a video stream",
+      "David Schleef <ds@schleef.org>");
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_video_balance_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_video_balance_src_template);
 }
 
 static void
@@ -475,9 +566,7 @@ static void
 gst_video_balance_class_init (GstVideoBalanceClass * klass)
 {
   GObjectClass *gobject_class = (GObjectClass *) klass;
-  GstElementClass *gstelement_class = (GstElementClass *) klass;
   GstBaseTransformClass *trans_class = (GstBaseTransformClass *) klass;
-  GstVideoFilterClass *vfilter_class = (GstVideoFilterClass *) klass;
 
   GST_DEBUG_CATEGORY_INIT (videobalance_debug, "videobalance", 0,
       "videobalance");
@@ -502,27 +591,16 @@ gst_video_balance_class_init (GstVideoBalanceClass * klass)
           DEFAULT_PROP_SATURATION,
           GST_PARAM_CONTROLLABLE | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_set_static_metadata (gstelement_class, "Video balance",
-      "Filter/Effect/Video",
-      "Adjusts brightness, contrast, hue, saturation on a video stream",
-      "David Schleef <ds@schleef.org>");
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_video_balance_sink_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_video_balance_src_template));
-
+  trans_class->set_caps = GST_DEBUG_FUNCPTR (gst_video_balance_set_caps);
+  trans_class->transform_ip =
+      GST_DEBUG_FUNCPTR (gst_video_balance_transform_ip);
   trans_class->before_transform =
       GST_DEBUG_FUNCPTR (gst_video_balance_before_transform);
-  trans_class->transform_ip_on_passthrough = FALSE;
-
-  vfilter_class->set_info = GST_DEBUG_FUNCPTR (gst_video_balance_set_info);
-  vfilter_class->transform_frame_ip =
-      GST_DEBUG_FUNCPTR (gst_video_balance_transform_frame_ip);
 }
 
 static void
-gst_video_balance_init (GstVideoBalance * videobalance)
+gst_video_balance_init (GstVideoBalance * videobalance,
+    GstVideoBalanceClass * klass)
 {
   const gchar *channels[4] = { "HUE", "SATURATION",
     "BRIGHTNESS", "CONTRAST"
@@ -559,6 +637,20 @@ gst_video_balance_init (GstVideoBalance * videobalance)
   }
 }
 
+static gboolean
+gst_video_balance_interface_supported (GstImplementsInterface * iface,
+    GType type)
+{
+  g_assert (type == GST_TYPE_COLOR_BALANCE);
+  return TRUE;
+}
+
+static void
+gst_video_balance_interface_init (GstImplementsInterfaceClass * klass)
+{
+  klass->supported = gst_video_balance_interface_supported;
+}
+
 static const GList *
 gst_video_balance_colorbalance_list_channels (GstColorBalance * balance)
 {
@@ -583,6 +675,7 @@ gst_video_balance_colorbalance_set_value (GstColorBalance * balance,
   g_return_if_fail (GST_IS_VIDEO_FILTER (vb));
   g_return_if_fail (channel->label != NULL);
 
+  GST_BASE_TRANSFORM_LOCK (vb);
   GST_OBJECT_LOCK (vb);
   if (!g_ascii_strcasecmp (channel->label, "HUE")) {
     new_val = (value + 1000.0) * 2.0 / 2000.0 - 1.0;
@@ -601,10 +694,11 @@ gst_video_balance_colorbalance_set_value (GstColorBalance * balance,
     changed = new_val != vb->contrast;
     vb->contrast = new_val;
   }
-  GST_OBJECT_UNLOCK (vb);
 
   if (changed)
     gst_video_balance_update_properties (vb);
+  GST_OBJECT_UNLOCK (vb);
+  GST_BASE_TRANSFORM_UNLOCK (vb);
 
   if (changed) {
     gst_color_balance_value_changed (balance, channel,
@@ -636,19 +730,13 @@ gst_video_balance_colorbalance_get_value (GstColorBalance * balance,
   return value;
 }
 
-static GstColorBalanceType
-gst_video_balance_colorbalance_get_balance_type (GstColorBalance * balance)
-{
-  return GST_COLOR_BALANCE_SOFTWARE;
-}
-
 static void
-gst_video_balance_colorbalance_init (GstColorBalanceInterface * iface)
+gst_video_balance_colorbalance_init (GstColorBalanceClass * iface)
 {
+  GST_COLOR_BALANCE_TYPE (iface) = GST_COLOR_BALANCE_SOFTWARE;
   iface->list_channels = gst_video_balance_colorbalance_list_channels;
   iface->set_value = gst_video_balance_colorbalance_set_value;
   iface->get_value = gst_video_balance_colorbalance_get_value;
-  iface->get_balance_type = gst_video_balance_colorbalance_get_balance_type;
 }
 
 static GstColorBalanceChannel *
@@ -673,6 +761,7 @@ gst_video_balance_set_property (GObject * object, guint prop_id,
   gdouble d;
   const gchar *label = NULL;
 
+  GST_BASE_TRANSFORM_LOCK (balance);
   GST_OBJECT_LOCK (balance);
   switch (prop_id) {
     case PROP_CONTRAST:
@@ -712,8 +801,9 @@ gst_video_balance_set_property (GObject * object, guint prop_id,
       break;
   }
 
-  GST_OBJECT_UNLOCK (balance);
   gst_video_balance_update_properties (balance);
+  GST_OBJECT_UNLOCK (balance);
+  GST_BASE_TRANSFORM_UNLOCK (balance);
 
   if (label) {
     GstColorBalanceChannel *channel =

@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>osssrc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-osssink.html" title="osssink">
 <link rel="next" href="gst-plugins-good-plugins-osxaudiosink.html" title="osxaudiosink">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-osssink.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-osxaudiosink.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -50,14 +50,13 @@
 <a name="gst-plugins-good-plugins-osssrc.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSrc.html">GstBaseSrc</a>
-                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstPushSrc.html">GstPushSrc</a>
-                                 +----GstAudioBaseSrc
-                                       +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudiosrc.html#GstAudioSrc">GstAudioSrc</a>
-                                             +----GstOssSrc
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseSrc.html">GstBaseSrc</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstPushSrc.html">GstPushSrc</a>
+                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstbaseaudiosrc.html#GstBaseAudioSrc">GstBaseAudioSrc</a>
+                                 +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudiosrc.html#GstAudioSrc">GstAudioSrc</a>
+                                       +----GstOssSrc
 </pre>
 </div>
 <div class="refsect1">
@@ -78,7 +77,7 @@ GstOssSrc implements
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp17489424"></a><h3>Element Information</h3>
+<a name="idp6971200"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -101,7 +100,7 @@ GstOssSrc implements
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp15972112"></a><h3>Element Pads</h3>
+<a name="idp17864816"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -119,11 +118,11 @@ GstOssSrc implements
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string){ S16LE, U16LE, S8, U8 }, layout=(string)interleaved, rate=(int)[ 1, 2147483647 ], channels=(int)1</td>
+<td>audio/x-raw-int, endianness=(int){ 1234 }, signed=(boolean){ true, false }, width=(int)16, depth=(int)16, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2 ]</td>
 </tr>
 <tr>
 <td><p><span class="term"></span></p></td>
-<td> audio/x-raw, format=(string){ S16LE, U16LE, S8, U8 }, layout=(string)interleaved, rate=(int)[ 1, 2147483647 ], channels=(int)2, channel-mask=(bitmask)0x0000000000000003</td>
+<td> audio/x-raw-int, signed=(boolean){ true, false }, width=(int)8, depth=(int)8, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2 ]</td>
 </tr>
 </tbody>
 </table></div>

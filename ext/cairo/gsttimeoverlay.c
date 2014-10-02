@@ -27,7 +27,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 videotestsrc ! cairotimeoverlay ! autovideosink
+ * gst-launch videotestsrc ! cairotimeoverlay ! autovideosink
  * ]|
  * </refsect2>
  */
@@ -261,14 +261,14 @@ gst_cairo_time_overlay_base_init (gpointer g_class)
 {
   GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
 
-  gst_element_class_set_static_metadata (element_class, "Time overlay",
+  gst_element_class_set_details_simple (element_class, "Time overlay",
       "Filter/Editor/Video",
       "Overlays the time on a video stream", "David Schleef <ds@schleef.org>");
 
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_cairo_time_overlay_sink_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&gst_cairo_time_overlay_src_template));
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_cairo_time_overlay_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_cairo_time_overlay_src_template);
 }
 
 static void

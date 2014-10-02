@@ -96,7 +96,6 @@ GST_START_TEST (test_encode_decode)
   GMainLoop *loop;
   GstBuffer *in, *out;
   guint bus_watch = 0;
-  GstMapInfo map;
 
   srcadapter = gst_adapter_new ();
   fail_unless (srcadapter != NULL);
@@ -109,7 +108,7 @@ GST_START_TEST (test_encode_decode)
   audiotestsrc = gst_element_factory_make ("audiotestsrc", "src");
   fail_unless (audiotestsrc != NULL);
   g_object_set (G_OBJECT (audiotestsrc), "wave", 0, "freq", 440.0,
-      "num-buffers", 200, NULL);
+      "num-buffers", 2000, NULL);
 
   identity1 = gst_element_factory_make ("identity", "identity1");
   fail_unless (identity1 != NULL);
@@ -171,10 +170,9 @@ GST_START_TEST (test_encode_decode)
       gst_adapter_available (sinkadapter));
   fail_unless (out != NULL);
 
-  fail_unless_equals_int (gst_buffer_get_size (in), gst_buffer_get_size (out));
-  gst_buffer_map (out, &map, GST_MAP_READ);
-  fail_unless (gst_buffer_memcmp (in, 0, map.data, map.size) == 0);
-  gst_buffer_unmap (out, &map);
+  fail_unless_equals_int (GST_BUFFER_SIZE (in), GST_BUFFER_SIZE (out));
+  fail_unless (memcmp (GST_BUFFER_DATA (in), GST_BUFFER_DATA (out),
+          GST_BUFFER_SIZE (in)) == 0);
 
   gst_buffer_unref (in);
   gst_buffer_unref (out);

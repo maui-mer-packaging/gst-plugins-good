@@ -26,6 +26,7 @@
 #include <gst/gst.h>
 #include <gst/video/video.h>
 #include <gst/video/gstvideofilter.h>
+#include <gst/controller/gstcontroller.h>
 
 G_BEGIN_DECLS
 
@@ -69,8 +70,14 @@ struct _GstAlpha
   /* <private> */
 
   /* caps */
+#if !GLIB_CHECK_VERSION (2, 31, 0)
+  GStaticMutex lock;
+#else
   GMutex lock;
+#endif
 
+  GstVideoFormat in_format, out_format;
+  gint width, height;
   gboolean in_sdtv, out_sdtv;
 
   /* properties */
@@ -90,7 +97,7 @@ struct _GstAlpha
   gboolean prefer_passthrough;
 
   /* processing function */
-  void (*process) (const GstVideoFrame *in_frame, GstVideoFrame *out_frame, GstAlpha *alpha);
+  void (*process) (const guint8 *src, guint8 *dest, gint width, gint height, GstAlpha *alpha);
 
   /* precalculated values for chroma keying */
   gint8 cb, cr;

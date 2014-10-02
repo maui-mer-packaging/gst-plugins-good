@@ -1,10 +1,10 @@
-%define majorminor  1.0
-%define gstreamer   gstreamer1
+%define majorminor  0.10
+%define gstreamer   gstreamer
 
-%define gst_minver   0.11.0
+%define gst_minver   0.10.0
 
 Name: 		%{gstreamer}-plugins-good
-Version: 	0.11.99
+Version: 	0.10.31
 Release: 	1.gst
 Summary: 	GStreamer plug-ins with good code and licensing
 
@@ -12,7 +12,7 @@ Group: 		Applications/Multimedia
 License: 	LGPL
 URL:		http://gstreamer.freedesktop.org/
 Vendor:         GStreamer Backpackers Team <package@gstreamer.freedesktop.org>
-Source:         http://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-%{version}.tar.xz
+Source:         http://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Requires: 	  %{gstreamer} >= %{gst_minver}
@@ -20,13 +20,20 @@ BuildRequires: 	  %{gstreamer}-devel >= %{gst_minver}
 
 BuildRequires:  gcc-c++
 
+BuildRequires: esound-devel >= 0.2.8
+Obsoletes:     gstreamer-esd
+
+Provides:		gstreamer-audiosrc
+Provides:		gstreamer-audiosink
 BuildRequires: flac-devel >= 1.0.3
+BuildRequires: 	GConf2-devel
 BuildRequires: libjpeg-devel
 BuildRequires: libcaca-devel
 BuildRequires: libdv-devel
 BuildRequires: libpng-devel >= 1.2.0
 BuildRequires: glibc-devel
 BuildRequires:	speex-devel
+BuildRequires: hal-devel
 BuildRequires: libshout-devel >= 2.0
 BuildRequires:  aalib-devel >= 1.3
 Provides:       gstreamer-aasink = %{version}-%{release}
@@ -51,12 +58,14 @@ plug-ins.
   --enable-debug \
   --enable-DEBUG 
 
-make %{?_smp_mflags} CFLAGS+="-Wno-error" CXXFLAGS+="-Wno-error"
+make %{?_smp_mflags}
                                                                                 
 %install
 rm -rf $RPM_BUILD_ROOT
 
+export GCONF_DISABLE_MAKEFILE_SCHEMA_INSTALL=1
 %makeinstall
+unset GCONF_DISABLE_MAKEFILE_SCHEMA_INSTALL
                                                                                 
 # Clean out files that should not be part of the rpm.
 rm -f $RPM_BUILD_ROOT%{_libdir}/gstreamer-%{majorminor}/*.la
@@ -70,13 +79,14 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/*.la
 rm -rf $RPM_BUILD_ROOT
 
 %post
+export GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source`
+gconftool-2 --makefile-install-rule %{_sysconfdir}/gconf/schemas/gstreamer-%{majorminor}.schemas > /dev/null
 
 %files -f gst-plugins-good-%{majorminor}.lang
 %defattr(-, root, root)
 %doc AUTHORS COPYING README REQUIREMENTS gst-plugins-good.doap
 %{_datadir}/gstreamer-%{majorminor}/presets/GstIirEqualizer10Bands.prs
 %{_datadir}/gstreamer-%{majorminor}/presets/GstIirEqualizer3Bands.prs
-%{_datadir}/gstreamer-%{majorminor}/presets/GstVP8Enc.prs
 
 # non-core plugins without external dependencies
 %{_libdir}/gstreamer-%{majorminor}/libgstalaw.so
@@ -86,6 +96,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/gstreamer-%{majorminor}/libgsteffectv.so
 %{_libdir}/gstreamer-%{majorminor}/libgstgoom.so
 %{_libdir}/gstreamer-%{majorminor}/libgstlevel.so
+%{_libdir}/gstreamer-%{majorminor}/libgstefence.so
 %{_libdir}/gstreamer-%{majorminor}/libgstmulaw.so
 %{_libdir}/gstreamer-%{majorminor}/libgstisomp4.so
 %{_libdir}/gstreamer-%{majorminor}/libgstrtp.so
@@ -100,7 +111,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/gstreamer-%{majorminor}/libgstdebug.so
 %{_libdir}/gstreamer-%{majorminor}/libgstnavigationtest.so
 %{_libdir}/gstreamer-%{majorminor}/libgstalphacolor.so
-#%{_libdir}/gstreamer-%{majorminor}/libgstcairo.so
+%{_libdir}/gstreamer-%{majorminor}/libgstcairo.so
 %{_libdir}/gstreamer-%{majorminor}/libgstflxdec.so
 %{_libdir}/gstreamer-%{majorminor}/libgstmatroska.so
 %{_libdir}/gstreamer-%{majorminor}/libgstvideomixer.so
@@ -109,7 +120,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/gstreamer-%{majorminor}/libgstid3demux.so
 %{_libdir}/gstreamer-%{majorminor}/libgstgdkpixbuf.so
 %{_libdir}/gstreamer-%{majorminor}/libgstapetag.so
-# %{_libdir}/gstreamer-%{majorminor}/libgstannodex.so
+%{_libdir}/gstreamer-%{majorminor}/libgstannodex.so
 %{_libdir}/gstreamer-%{majorminor}/libgstvideocrop.so
 %{_libdir}/gstreamer-%{majorminor}/libgsticydemux.so
 %{_libdir}/gstreamer-%{majorminor}/libgsttaglib.so
@@ -135,12 +146,15 @@ rm -rf $RPM_BUILD_ROOT
 
 # gstreamer-plugins with external dependencies but in the main package
 %{_libdir}/gstreamer-%{majorminor}/libgstcacasink.so
+%{_libdir}/gstreamer-%{majorminor}/libgstesd.so
 %{_libdir}/gstreamer-%{majorminor}/libgstflac.so
 %{_libdir}/gstreamer-%{majorminor}/libgstjack.so
 %{_libdir}/gstreamer-%{majorminor}/libgstjpeg.so
 %{_libdir}/gstreamer-%{majorminor}/libgstpng.so
 %{_libdir}/gstreamer-%{majorminor}/libgstossaudio.so
 %{_libdir}/gstreamer-%{majorminor}/libgstspeex.so
+%{_libdir}/gstreamer-%{majorminor}/libgstgconfelements.so
+%{_libdir}/gstreamer-%{majorminor}/libgsthalelements.so
 %{_libdir}/gstreamer-%{majorminor}/libgstshout2.so
 %{_libdir}/gstreamer-%{majorminor}/libgstaasink.so
 %{_libdir}/gstreamer-%{majorminor}/libgstdv.so
@@ -148,8 +162,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/gstreamer-%{majorminor}/libgstwavpack.so
 %{_libdir}/gstreamer-%{majorminor}/libgstsouphttpsrc.so
 %{_libdir}/gstreamer-%{majorminor}/libgstpulse.so
-%{_libdir}/gstreamer-%{majorminor}/libgstvpx.so
 
+# schema files
+%{_sysconfdir}/gconf/schemas/gstreamer-%{majorminor}.schemas
 
 %changelog
 * Tue Jun 12 2007 Jan Schmidt <jan at fluendo dot com>

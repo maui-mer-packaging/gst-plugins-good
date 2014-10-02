@@ -59,45 +59,49 @@ GST_STATIC_PAD_TEMPLATE ("src",
 
 static void gst_rtp_mp4a_pay_finalize (GObject * object);
 
-static gboolean gst_rtp_mp4a_pay_setcaps (GstRTPBasePayload * payload,
+static gboolean gst_rtp_mp4a_pay_setcaps (GstBaseRTPPayload * payload,
     GstCaps * caps);
-static GstFlowReturn gst_rtp_mp4a_pay_handle_buffer (GstRTPBasePayload *
+static GstFlowReturn gst_rtp_mp4a_pay_handle_buffer (GstBaseRTPPayload *
     payload, GstBuffer * buffer);
 
-#define gst_rtp_mp4a_pay_parent_class parent_class
-G_DEFINE_TYPE (GstRtpMP4APay, gst_rtp_mp4a_pay, GST_TYPE_RTP_BASE_PAYLOAD)
+GST_BOILERPLATE (GstRtpMP4APay, gst_rtp_mp4a_pay, GstBaseRTPPayload,
+    GST_TYPE_BASE_RTP_PAYLOAD)
 
-     static void gst_rtp_mp4a_pay_class_init (GstRtpMP4APayClass * klass)
+     static void gst_rtp_mp4a_pay_base_init (gpointer klass)
 {
-  GObjectClass *gobject_class;
-  GstElementClass *gstelement_class;
-  GstRTPBasePayloadClass *gstrtpbasepayload_class;
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
 
-  gobject_class = (GObjectClass *) klass;
-  gstelement_class = (GstElementClass *) klass;
-  gstrtpbasepayload_class = (GstRTPBasePayloadClass *) klass;
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_mp4a_pay_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_mp4a_pay_sink_template);
 
-  gobject_class->finalize = gst_rtp_mp4a_pay_finalize;
-
-  gstrtpbasepayload_class->set_caps = gst_rtp_mp4a_pay_setcaps;
-  gstrtpbasepayload_class->handle_buffer = gst_rtp_mp4a_pay_handle_buffer;
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_mp4a_pay_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_mp4a_pay_sink_template));
-
-  gst_element_class_set_static_metadata (gstelement_class,
+  gst_element_class_set_details_simple (element_class,
       "RTP MPEG4 audio payloader", "Codec/Payloader/Network/RTP",
       "Payload MPEG4 audio as RTP packets (RFC 3016)",
       "Wim Taymans <wim.taymans@gmail.com>");
+}
+
+static void
+gst_rtp_mp4a_pay_class_init (GstRtpMP4APayClass * klass)
+{
+  GObjectClass *gobject_class;
+  GstBaseRTPPayloadClass *gstbasertppayload_class;
+
+  gobject_class = (GObjectClass *) klass;
+  gstbasertppayload_class = (GstBaseRTPPayloadClass *) klass;
+
+  gobject_class->finalize = gst_rtp_mp4a_pay_finalize;
+
+  gstbasertppayload_class->set_caps = gst_rtp_mp4a_pay_setcaps;
+  gstbasertppayload_class->handle_buffer = gst_rtp_mp4a_pay_handle_buffer;
 
   GST_DEBUG_CATEGORY_INIT (rtpmp4apay_debug, "rtpmp4apay", 0,
       "MP4A-LATM RTP Payloader");
 }
 
 static void
-gst_rtp_mp4a_pay_init (GstRtpMP4APay * rtpmp4apay)
+gst_rtp_mp4a_pay_init (GstRtpMP4APay * rtpmp4apay, GstRtpMP4APayClass * klass)
 {
   rtpmp4apay->rate = 90000;
   rtpmp4apay->profile = g_strdup ("1");
@@ -132,16 +136,14 @@ static gboolean
 gst_rtp_mp4a_pay_parse_audio_config (GstRtpMP4APay * rtpmp4apay,
     GstBuffer * buffer)
 {
-  GstMapInfo map;
   guint8 *data;
-  gsize size;
+  guint size;
   guint8 objectType;
   guint8 samplingIdx;
   guint8 channelCfg;
 
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
-  data = map.data;
-  size = map.size;
+  data = GST_BUFFER_DATA (buffer);
+  size = GST_BUFFER_SIZE (buffer);
 
   if (size < 2)
     goto too_short;
@@ -185,39 +187,31 @@ gst_rtp_mp4a_pay_parse_audio_config (GstRtpMP4APay * rtpmp4apay,
       "objectType: %d, samplingIdx: %d (%d), channelCfg: %d", objectType,
       samplingIdx, rtpmp4apay->rate, channelCfg);
 
-  gst_buffer_unmap (buffer, &map);
-
   return TRUE;
 
   /* ERROR */
 too_short:
   {
     GST_ELEMENT_ERROR (rtpmp4apay, STREAM, FORMAT,
-        (NULL),
-        ("config string too short, expected 2 bytes, got %" G_GSIZE_FORMAT,
-            size));
-    gst_buffer_unmap (buffer, &map);
+        (NULL), ("config string too short, expected 2 bytes, got %d", size));
     return FALSE;
   }
 invalid_object:
   {
     GST_ELEMENT_ERROR (rtpmp4apay, STREAM, FORMAT,
         (NULL), ("invalid object type 0"));
-    gst_buffer_unmap (buffer, &map);
     return FALSE;
   }
 wrong_freq:
   {
     GST_ELEMENT_ERROR (rtpmp4apay, STREAM, NOT_IMPLEMENTED,
         (NULL), ("unsupported frequency index %d", samplingIdx));
-    gst_buffer_unmap (buffer, &map);
     return FALSE;
   }
 wrong_channels:
   {
     GST_ELEMENT_ERROR (rtpmp4apay, STREAM, NOT_IMPLEMENTED,
         (NULL), ("unsupported number of channels %d, must < 8", channelCfg));
-    gst_buffer_unmap (buffer, &map);
     return FALSE;
   }
 }
@@ -233,7 +227,7 @@ gst_rtp_mp4a_pay_new_caps (GstRtpMP4APay * rtpmp4apay)
   gst_value_set_buffer (&v, rtpmp4apay->config);
   config = gst_value_serialize (&v);
 
-  res = gst_rtp_base_payload_set_outcaps (GST_RTP_BASE_PAYLOAD (rtpmp4apay),
+  res = gst_basertppayload_set_outcaps (GST_BASE_RTP_PAYLOAD (rtpmp4apay),
       "cpresent", G_TYPE_STRING, "0", "config", G_TYPE_STRING, config, NULL);
 
   g_value_unset (&v);
@@ -243,7 +237,7 @@ gst_rtp_mp4a_pay_new_caps (GstRtpMP4APay * rtpmp4apay)
 }
 
 static gboolean
-gst_rtp_mp4a_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
+gst_rtp_mp4a_pay_setcaps (GstBaseRTPPayload * payload, GstCaps * caps)
 {
   GstRtpMP4APay *rtpmp4apay;
   GstStructure *structure;
@@ -275,9 +269,9 @@ gst_rtp_mp4a_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
     GST_LOG_OBJECT (rtpmp4apay, "got codec_data");
     if (G_VALUE_TYPE (codec_data) == GST_TYPE_BUFFER) {
       GstBuffer *buffer, *cbuffer;
-      GstMapInfo map;
-      GstMapInfo cmap;
-      guint i;
+      guint8 *config;
+      guint8 *data;
+      guint size, i;
 
       buffer = gst_value_get_buffer (codec_data);
       GST_LOG_OBJECT (rtpmp4apay, "configuring codec_data");
@@ -288,11 +282,11 @@ gst_rtp_mp4a_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
       if (!res)
         goto config_failed;
 
-      gst_buffer_map (buffer, &map, GST_MAP_READ);
+      size = GST_BUFFER_SIZE (buffer);
+      data = GST_BUFFER_DATA (buffer);
 
       /* make the StreamMuxConfig, we need 15 bits for the header */
-      cbuffer = gst_buffer_new_and_alloc (map.size + 2);
-      gst_buffer_map (cbuffer, &cmap, GST_MAP_WRITE);
+      config = g_malloc0 (size + 2);
 
       /* Create StreamMuxConfig according to ISO/IEC 14496-3:
        *
@@ -302,17 +296,19 @@ gst_rtp_mp4a_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
        * numProgram                == 0 (4 bits)
        * numLayer                  == 0 (3 bits)
        */
-      cmap.data[0] = 0x40;
-      cmap.data[1] = 0x00;
+      config[0] = 0x40;
+      config[1] = 0x00;
 
       /* append the config bits, shifting them 1 bit left */
-      for (i = 0; i < map.size; i++) {
-        cmap.data[i + 1] |= ((map.data[i] & 0x80) >> 7);
-        cmap.data[i + 2] |= ((map.data[i] & 0x7f) << 1);
+      for (i = 0; i < size; i++) {
+        config[i + 1] |= ((data[i] & 0x80) >> 7);
+        config[i + 2] |= ((data[i] & 0x7f) << 1);
       }
 
-      gst_buffer_unmap (cbuffer, &cmap);
-      gst_buffer_unmap (buffer, &map);
+      cbuffer = gst_buffer_new ();
+      GST_BUFFER_DATA (cbuffer) = config;
+      GST_BUFFER_MALLOCDATA (cbuffer) = config;
+      GST_BUFFER_SIZE (cbuffer) = size + 2;
 
       /* now we can configure the buffer */
       if (rtpmp4apay->config)
@@ -325,7 +321,7 @@ gst_rtp_mp4a_pay_setcaps (GstRTPBasePayload * payload, GstCaps * caps)
     GST_WARNING_OBJECT (payload, "Need framed AAC data as input!");
   }
 
-  gst_rtp_base_payload_set_options (payload, "audio", TRUE, "MP4A-LATM",
+  gst_basertppayload_set_options (payload, "audio", TRUE, "MP4A-LATM",
       rtpmp4apay->rate);
 
   res = gst_rtp_mp4a_pay_new_caps (rtpmp4apay);
@@ -343,15 +339,13 @@ config_failed:
 /* we expect buffers as exactly one complete AU
  */
 static GstFlowReturn
-gst_rtp_mp4a_pay_handle_buffer (GstRTPBasePayload * basepayload,
+gst_rtp_mp4a_pay_handle_buffer (GstBaseRTPPayload * basepayload,
     GstBuffer * buffer)
 {
   GstRtpMP4APay *rtpmp4apay;
   GstFlowReturn ret;
   GstBuffer *outbuf;
-  guint count, mtu;
-  GstMapInfo map;
-  gsize size;
+  guint count, mtu, size;
   guint8 *data;
   gboolean fragmented;
   GstClockTime timestamp;
@@ -360,21 +354,18 @@ gst_rtp_mp4a_pay_handle_buffer (GstRTPBasePayload * basepayload,
 
   rtpmp4apay = GST_RTP_MP4A_PAY (basepayload);
 
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
-  size = map.size;
-  data = map.data;
-
+  size = GST_BUFFER_SIZE (buffer);
+  data = GST_BUFFER_DATA (buffer);
   timestamp = GST_BUFFER_TIMESTAMP (buffer);
 
   fragmented = FALSE;
-  mtu = GST_RTP_BASE_PAYLOAD_MTU (rtpmp4apay);
+  mtu = GST_BASE_RTP_PAYLOAD_MTU (rtpmp4apay);
 
   while (size > 0) {
     guint towrite;
     guint8 *payload;
     guint payload_len;
     guint packet_len;
-    GstRTPBuffer rtp = { NULL };
 
     /* this will be the total lenght of the packet */
     packet_len = gst_rtp_buffer_calc_packet_len (size, 0, 0);
@@ -396,15 +387,14 @@ gst_rtp_mp4a_pay_handle_buffer (GstRTPBasePayload * basepayload,
     payload_len = gst_rtp_buffer_calc_payload_len (towrite, 0, 0);
 
     GST_DEBUG_OBJECT (rtpmp4apay,
-        "avail %" G_GSIZE_FORMAT ", towrite %d, packet_len %d, payload_len %d",
-        size, towrite, packet_len, payload_len);
+        "avail %d, towrite %d, packet_len %d, payload_len %d", size, towrite,
+        packet_len, payload_len);
 
     /* create buffer to hold the payload. */
     outbuf = gst_rtp_buffer_new_allocate (payload_len, 0, 0);
 
     /* copy payload */
-    gst_rtp_buffer_map (outbuf, GST_MAP_WRITE, &rtp);
-    payload = gst_rtp_buffer_get_payload (&rtp);
+    payload = gst_rtp_buffer_get_payload (outbuf);
 
     if (!fragmented) {
       /* first packet write the header */
@@ -424,19 +414,16 @@ gst_rtp_mp4a_pay_handle_buffer (GstRTPBasePayload * basepayload,
     size -= payload_len;
 
     /* marker only if the packet is complete */
-    gst_rtp_buffer_set_marker (&rtp, size == 0);
-
-    gst_rtp_buffer_unmap (&rtp);
+    gst_rtp_buffer_set_marker (outbuf, size == 0);
 
     /* copy incomming timestamp (if any) to outgoing buffers */
     GST_BUFFER_TIMESTAMP (outbuf) = timestamp;
 
-    ret = gst_rtp_base_payload_push (GST_RTP_BASE_PAYLOAD (rtpmp4apay), outbuf);
+    ret = gst_basertppayload_push (GST_BASE_RTP_PAYLOAD (rtpmp4apay), outbuf);
 
     fragmented = TRUE;
   }
 
-  gst_buffer_unmap (buffer, &map);
   gst_buffer_unref (buffer);
 
   return ret;

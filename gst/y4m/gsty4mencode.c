@@ -29,7 +29,7 @@
  * (write everything in one line, without the backslash characters)
  * <programlisting>
  * gst-launch-0.10 videotestsrc num-buffers=250 \
- * ! 'video/x-raw,format=(string)I420,width=320,height=240,framerate=(fraction)25/1' \
+ * ! 'video/x-raw-yuv,format=(fourcc)I420,width=320,height=240,framerate=(fraction)25/1' \
  * ! y4menc ! filesink location=test.yuv
  * </programlisting>
  * </para>
@@ -70,7 +70,7 @@ static GstStaticPadTemplate y4mencode_sink_factory =
 GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE ("{ IYUV, I420, Y42B, Y41B, Y444 }"))
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV ("{ IYUV, I420, Y42B, Y41B, Y444 }"))
     );
 
 
@@ -81,15 +81,28 @@ static void gst_y4m_encode_get_property (GObject * object,
 
 static void gst_y4m_encode_reset (GstY4mEncode * filter);
 
-static gboolean gst_y4m_encode_sink_event (GstPad * pad, GstObject * parent,
-    GstEvent * event);
-static GstFlowReturn gst_y4m_encode_chain (GstPad * pad, GstObject * parent,
-    GstBuffer * buf);
+static gboolean gst_y4m_encode_setcaps (GstPad * pad, GstCaps * vscaps);
+static GstFlowReturn gst_y4m_encode_chain (GstPad * pad, GstBuffer * buf);
 static GstStateChangeReturn gst_y4m_encode_change_state (GstElement * element,
     GstStateChange transition);
 
-#define gst_y4m_encode_parent_class parent_class
-G_DEFINE_TYPE (GstY4mEncode, gst_y4m_encode, GST_TYPE_ELEMENT);
+GST_BOILERPLATE (GstY4mEncode, gst_y4m_encode, GstElement, GST_TYPE_ELEMENT);
+
+
+static void
+gst_y4m_encode_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &y4mencode_src_factory);
+  gst_element_class_add_static_pad_template (element_class,
+      &y4mencode_sink_factory);
+  gst_element_class_set_details_simple (element_class, "YUV4MPEG video encoder",
+      "Codec/Encoder/Video",
+      "Encodes a YUV frame into the yuv4mpeg format (mjpegtools)",
+      "Wim Taymans <wim.taymans@gmail.com>");
+}
 
 static void
 gst_y4m_encode_class_init (GstY4mEncodeClass * klass)
@@ -100,33 +113,23 @@ gst_y4m_encode_class_init (GstY4mEncodeClass * klass)
   gobject_class = (GObjectClass *) klass;
   gstelement_class = (GstElementClass *) klass;
 
-  gobject_class->set_property = gst_y4m_encode_set_property;
-  gobject_class->get_property = gst_y4m_encode_get_property;
-
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_y4m_encode_change_state);
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&y4mencode_src_factory));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&y4mencode_sink_factory));
-
-  gst_element_class_set_static_metadata (gstelement_class,
-      "YUV4MPEG video encoder", "Codec/Encoder/Video",
-      "Encodes a YUV frame into the yuv4mpeg format (mjpegtools)",
-      "Wim Taymans <wim.taymans@gmail.com>");
+  gobject_class->set_property = gst_y4m_encode_set_property;
+  gobject_class->get_property = gst_y4m_encode_get_property;
 }
 
 static void
-gst_y4m_encode_init (GstY4mEncode * filter)
+gst_y4m_encode_init (GstY4mEncode * filter, GstY4mEncodeClass * klass)
 {
   filter->sinkpad =
       gst_pad_new_from_static_template (&y4mencode_sink_factory, "sink");
   gst_element_add_pad (GST_ELEMENT (filter), filter->sinkpad);
   gst_pad_set_chain_function (filter->sinkpad,
       GST_DEBUG_FUNCPTR (gst_y4m_encode_chain));
-  gst_pad_set_event_function (filter->sinkpad,
-      GST_DEBUG_FUNCPTR (gst_y4m_encode_sink_event));
+  gst_pad_set_setcaps_function (filter->sinkpad,
+      GST_DEBUG_FUNCPTR (gst_y4m_encode_setcaps));
 
   filter->srcpad =
       gst_pad_new_from_static_template (&y4mencode_src_factory, "src");
@@ -140,107 +143,103 @@ gst_y4m_encode_init (GstY4mEncode * filter)
 static void
 gst_y4m_encode_reset (GstY4mEncode * filter)
 {
-  filter->negotiated = FALSE;
+  filter->width = filter->height = -1;
+  filter->fps_num = filter->fps_den = 1;
+  filter->par_num = filter->par_den = 1;
+  filter->colorspace = "unknown";
 }
 
 static gboolean
 gst_y4m_encode_setcaps (GstPad * pad, GstCaps * vscaps)
 {
-  gboolean ret;
   GstY4mEncode *filter;
-  GstVideoInfo info;
+  GstStructure *structure;
+  gboolean res;
+  gint w, h;
+  guint32 fourcc;
+  const GValue *fps, *par, *interlaced;
 
   filter = GST_Y4M_ENCODE (GST_PAD_PARENT (pad));
 
-  if (!gst_video_info_from_caps (&info, vscaps))
-    goto invalid_format;
+  structure = gst_caps_get_structure (vscaps, 0);
 
-  switch (GST_VIDEO_INFO_FORMAT (&info)) {
-    case GST_VIDEO_FORMAT_I420:
+  res = gst_structure_get_int (structure, "width", &w);
+  res &= gst_structure_get_int (structure, "height", &h);
+  res &= ((fps = gst_structure_get_value (structure, "framerate")) != NULL);
+  res &= gst_structure_get_fourcc (structure, "format", &fourcc);
+
+  switch (fourcc) {             /* Translate fourcc to Y4M colorspace code */
+    case GST_MAKE_FOURCC ('I', '4', '2', '0'):
+    case GST_MAKE_FOURCC ('I', 'Y', 'U', 'V'):
       filter->colorspace = "420";
       break;
-    case GST_VIDEO_FORMAT_Y42B:
+    case GST_MAKE_FOURCC ('Y', '4', '2', 'B'):
       filter->colorspace = "422";
       break;
-    case GST_VIDEO_FORMAT_Y41B:
+    case GST_MAKE_FOURCC ('Y', '4', '1', 'B'):
       filter->colorspace = "411";
       break;
-    case GST_VIDEO_FORMAT_Y444:
+    case GST_MAKE_FOURCC ('Y', '4', '4', '4'):
       filter->colorspace = "444";
       break;
     default:
-      goto invalid_format;
+      res = FALSE;
+      break;
   }
 
-  filter->info = info;
-
-  /* the template caps will do for the src pad, should always accept */
-  ret = gst_pad_set_caps (filter->srcpad,
-      gst_static_pad_template_get_caps (&y4mencode_src_factory));
-
-  filter->negotiated = ret;
-
-  return ret;
-
-  /* ERRORS */
-invalid_format:
-  {
-    GST_ERROR_OBJECT (filter, "got invalid caps");
+  if (!res || w <= 0 || h <= 0 || !GST_VALUE_HOLDS_FRACTION (fps))
     return FALSE;
+
+  /* optional interlaced info */
+  interlaced = gst_structure_get_value (structure, "interlaced");
+
+  /* optional par info */
+  par = gst_structure_get_value (structure, "pixel-aspect-ratio");
+
+  filter->width = w;
+  filter->height = h;
+  filter->fps_num = gst_value_get_fraction_numerator (fps);
+  filter->fps_den = gst_value_get_fraction_denominator (fps);
+  if ((par != NULL) && GST_VALUE_HOLDS_FRACTION (par)) {
+    filter->par_num = gst_value_get_fraction_numerator (par);
+    filter->par_den = gst_value_get_fraction_denominator (par);
+  } else {                      /* indicates unknown */
+    filter->par_num = 0;
+    filter->par_den = 0;
   }
-}
-
-static gboolean
-gst_y4m_encode_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
-{
-  gboolean res;
-
-  switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
-
-      gst_event_parse_caps (event, &caps);
-      res = gst_y4m_encode_setcaps (pad, caps);
-      gst_event_unref (event);
-      break;
-    }
-    default:
-      res = gst_pad_event_default (pad, parent, event);
-      break;
+  if ((interlaced != NULL) && G_VALUE_HOLDS (interlaced, G_TYPE_BOOLEAN)) {
+    filter->interlaced = g_value_get_boolean (interlaced);
+  } else {
+    /* assume progressive if no interlaced property in caps */
+    filter->interlaced = FALSE;
   }
-  return res;
+  /* the template caps will do for the src pad, should always accept */
+  return gst_pad_set_caps (filter->srcpad,
+      gst_static_pad_template_get_caps (&y4mencode_src_factory));
 }
 
 static inline GstBuffer *
-gst_y4m_encode_get_stream_header (GstY4mEncode * filter, gboolean tff)
+gst_y4m_encode_get_stream_header (GstY4mEncode * filter)
 {
   gpointer header;
   GstBuffer *buf;
   gchar interlaced;
-  gsize len;
 
-  if (GST_VIDEO_INFO_IS_INTERLACED (&filter->info)) {
-    if (tff)
-      interlaced = 't';
-    else
-      interlaced = 'b';
-  } else {
-    interlaced = 'p';
-  }
+  interlaced = 'p';
+
+  if (filter->interlaced && filter->top_field_first)
+    interlaced = 't';
+  else if (filter->interlaced)
+    interlaced = 'b';
 
   header = g_strdup_printf ("YUV4MPEG2 C%s W%d H%d I%c F%d:%d A%d:%d\n",
-      filter->colorspace, GST_VIDEO_INFO_WIDTH (&filter->info),
-      GST_VIDEO_INFO_HEIGHT (&filter->info), interlaced,
-      GST_VIDEO_INFO_FPS_N (&filter->info),
-      GST_VIDEO_INFO_FPS_D (&filter->info),
-      GST_VIDEO_INFO_PAR_N (&filter->info),
-      GST_VIDEO_INFO_PAR_D (&filter->info));
-  len = strlen (header);
+      filter->colorspace, filter->width, filter->height, interlaced,
+      filter->fps_num, filter->fps_den, filter->par_num, filter->par_den);
 
   buf = gst_buffer_new ();
-  gst_buffer_append_memory (buf,
-      gst_memory_new_wrapped (0, header, len, 0, len, header, g_free));
+  gst_buffer_set_data (buf, header, strlen (header));
+  /* so it gets free'd when needed */
+  GST_BUFFER_MALLOCDATA (buf) = header;
 
   return buf;
 }
@@ -250,61 +249,57 @@ gst_y4m_encode_get_frame_header (GstY4mEncode * filter)
 {
   gpointer header;
   GstBuffer *buf;
-  gsize len;
 
   header = g_strdup_printf ("FRAME\n");
-  len = strlen (header);
 
   buf = gst_buffer_new ();
-  gst_buffer_append_memory (buf,
-      gst_memory_new_wrapped (0, header, len, 0, len, header, g_free));
+  gst_buffer_set_data (buf, header, strlen (header));
+  /* so it gets free'd when needed */
+  GST_BUFFER_MALLOCDATA (buf) = header;
 
   return buf;
 }
 
 static GstFlowReturn
-gst_y4m_encode_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
+gst_y4m_encode_chain (GstPad * pad, GstBuffer * buf)
 {
-  GstY4mEncode *filter = GST_Y4M_ENCODE (parent);
+  GstY4mEncode *filter = GST_Y4M_ENCODE (GST_PAD_PARENT (pad));
   GstBuffer *outbuf;
   GstClockTime timestamp;
 
   /* check we got some decent info from caps */
-  if (GST_VIDEO_INFO_FORMAT (&filter->info) == GST_VIDEO_FORMAT_UNKNOWN)
-    goto not_negotiated;
-
-  timestamp = GST_BUFFER_TIMESTAMP (buf);
-
-  if (G_UNLIKELY (!filter->header)) {
-    gboolean tff;
-
-    if (GST_VIDEO_INFO_IS_INTERLACED (&filter->info)) {
-      tff = GST_BUFFER_FLAG_IS_SET (buf, GST_VIDEO_BUFFER_FLAG_TFF);
-    }
-    outbuf = gst_y4m_encode_get_stream_header (filter, tff);
-    filter->header = TRUE;
-    outbuf =
-        gst_buffer_append (outbuf, gst_y4m_encode_get_frame_header (filter));
-  } else {
-    outbuf = gst_y4m_encode_get_frame_header (filter);
-  }
-  /* join with data, FIXME, strides are all wrong etc */
-  outbuf = gst_buffer_append (outbuf, buf);
-  /* decorate */
-  outbuf = gst_buffer_make_writable (outbuf);
-
-  GST_BUFFER_TIMESTAMP (outbuf) = timestamp;
-
-  return gst_pad_push (filter->srcpad, outbuf);
-
-  /* ERRORS */
-not_negotiated:
-  {
-    GST_ELEMENT_ERROR (filter, CORE, NEGOTIATION, (NULL),
+  if (filter->width < 0) {
+    GST_ELEMENT_ERROR ("filter", CORE, NEGOTIATION, (NULL),
         ("format wasn't negotiated before chain function"));
     gst_buffer_unref (buf);
     return GST_FLOW_NOT_NEGOTIATED;
   }
+
+  timestamp = GST_BUFFER_TIMESTAMP (buf);
+
+  if (G_UNLIKELY (!filter->header)) {
+    if (filter->interlaced == TRUE) {
+      if (GST_BUFFER_FLAG_IS_SET (buf, GST_VIDEO_BUFFER_TFF)) {
+        filter->top_field_first = TRUE;
+      } else {
+        filter->top_field_first = FALSE;
+      }
+    }
+    outbuf = gst_y4m_encode_get_stream_header (filter);
+    filter->header = TRUE;
+    outbuf = gst_buffer_join (outbuf, gst_y4m_encode_get_frame_header (filter));
+  } else {
+    outbuf = gst_y4m_encode_get_frame_header (filter);
+  }
+  /* join with data */
+  outbuf = gst_buffer_join (outbuf, buf);
+  /* decorate */
+  gst_buffer_make_metadata_writable (outbuf);
+  gst_buffer_set_caps (outbuf, GST_PAD_CAPS (filter->srcpad));
+
+  GST_BUFFER_TIMESTAMP (outbuf) = timestamp;
+
+  return gst_pad_push (filter->srcpad, outbuf);
 }
 
 static void
@@ -377,6 +372,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    y4menc,
+    "y4menc",
     "Encodes a YUV frame into the yuv4mpeg format (mjpegtools)",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

@@ -22,7 +22,7 @@
 #define __GST_RTP_G723_DEPAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,12 +42,12 @@ typedef struct _GstRtpG723DepayClass GstRtpG723DepayClass;
 
 struct _GstRtpG723Depay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 };
 
 struct _GstRtpG723DepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_g723_depay_get_type (void);

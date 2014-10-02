@@ -28,21 +28,22 @@
 
 #include <gst/gst.h>
 #include <pulse/pulseaudio.h>
-#include <gst/audio/gstaudioringbuffer.h>
 #include <gst/audio/gstaudiosink.h>
 
-gboolean gst_pulse_fill_sample_spec (GstAudioRingBufferSpec * spec,
+gboolean gst_pulse_fill_sample_spec (GstRingBufferSpec * spec,
     pa_sample_spec * ss);
-gboolean gst_pulse_fill_format_info (GstAudioRingBufferSpec * spec,
+#ifdef HAVE_PULSE_1_0
+gboolean gst_pulse_fill_format_info (GstRingBufferSpec * spec,
     pa_format_info ** f, guint * channels);
+#endif
 
 gchar *gst_pulse_client_name (void);
 
 pa_channel_map *gst_pulse_gst_to_channel_map (pa_channel_map * map,
-    const GstAudioRingBufferSpec * spec);
+    const GstRingBufferSpec * spec);
 
-GstAudioRingBufferSpec *gst_pulse_channel_map_to_gst (const pa_channel_map * map,
-    GstAudioRingBufferSpec * spec);
+GstRingBufferSpec *gst_pulse_channel_map_to_gst (const pa_channel_map * map,
+    GstRingBufferSpec * spec);
 
 void gst_pulse_cvolume_from_linear (pa_cvolume *v, unsigned channels, gdouble volume);
 

@@ -24,6 +24,7 @@
 #endif
 
 #include "pulseutil.h"
+#include <gst/audio/multichannel.h>
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>            /* getpid on UNIX */
@@ -32,101 +33,84 @@
 # include <process.h>           /* getpid on win32 */
 #endif
 
-static const struct
-{
-  GstAudioChannelPosition gst_pos;
-  pa_channel_position_t pa_pos;
-} gst_pa_pos_table[] = {
-  {
-  GST_AUDIO_CHANNEL_POSITION_MONO, PA_CHANNEL_POSITION_MONO}, {
-  GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT, PA_CHANNEL_POSITION_FRONT_LEFT}, {
-  GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT, PA_CHANNEL_POSITION_FRONT_RIGHT}, {
-  GST_AUDIO_CHANNEL_POSITION_REAR_CENTER, PA_CHANNEL_POSITION_REAR_CENTER}, {
-  GST_AUDIO_CHANNEL_POSITION_REAR_LEFT, PA_CHANNEL_POSITION_REAR_LEFT}, {
-  GST_AUDIO_CHANNEL_POSITION_REAR_RIGHT, PA_CHANNEL_POSITION_REAR_RIGHT}, {
-  GST_AUDIO_CHANNEL_POSITION_LFE1, PA_CHANNEL_POSITION_LFE}, {
-  GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER, PA_CHANNEL_POSITION_FRONT_CENTER}, {
-  GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER,
-        PA_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER}, {
-  GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER,
-        PA_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER}, {
-  GST_AUDIO_CHANNEL_POSITION_SIDE_LEFT, PA_CHANNEL_POSITION_SIDE_LEFT}, {
-  GST_AUDIO_CHANNEL_POSITION_SIDE_RIGHT, PA_CHANNEL_POSITION_SIDE_RIGHT}, {
-  GST_AUDIO_CHANNEL_POSITION_TOP_CENTER, PA_CHANNEL_POSITION_TOP_CENTER}, {
-  GST_AUDIO_CHANNEL_POSITION_TOP_FRONT_LEFT,
-        PA_CHANNEL_POSITION_TOP_FRONT_LEFT}, {
-  GST_AUDIO_CHANNEL_POSITION_TOP_FRONT_RIGHT,
-        PA_CHANNEL_POSITION_TOP_FRONT_RIGHT}, {
-  GST_AUDIO_CHANNEL_POSITION_TOP_FRONT_CENTER,
-        PA_CHANNEL_POSITION_TOP_FRONT_CENTER}, {
-  GST_AUDIO_CHANNEL_POSITION_TOP_REAR_LEFT, PA_CHANNEL_POSITION_TOP_REAR_LEFT}, {
-  GST_AUDIO_CHANNEL_POSITION_TOP_REAR_RIGHT,
-        PA_CHANNEL_POSITION_TOP_REAR_RIGHT}, {
-  GST_AUDIO_CHANNEL_POSITION_TOP_REAR_CENTER,
-        PA_CHANNEL_POSITION_TOP_REAR_CENTER}, {
-  GST_AUDIO_CHANNEL_POSITION_NONE, PA_CHANNEL_POSITION_INVALID}
+static const pa_channel_position_t gst_pos_to_pa[GST_AUDIO_CHANNEL_POSITION_NUM]
+    = {
+  [GST_AUDIO_CHANNEL_POSITION_FRONT_MONO] = PA_CHANNEL_POSITION_MONO,
+  [GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT] = PA_CHANNEL_POSITION_FRONT_LEFT,
+  [GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT] = PA_CHANNEL_POSITION_FRONT_RIGHT,
+  [GST_AUDIO_CHANNEL_POSITION_REAR_CENTER] = PA_CHANNEL_POSITION_REAR_CENTER,
+  [GST_AUDIO_CHANNEL_POSITION_REAR_LEFT] = PA_CHANNEL_POSITION_REAR_LEFT,
+  [GST_AUDIO_CHANNEL_POSITION_REAR_RIGHT] = PA_CHANNEL_POSITION_REAR_RIGHT,
+  [GST_AUDIO_CHANNEL_POSITION_LFE] = PA_CHANNEL_POSITION_LFE,
+  [GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER] = PA_CHANNEL_POSITION_FRONT_CENTER,
+  [GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER] =
+      PA_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER,
+  [GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER] =
+      PA_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER,
+  [GST_AUDIO_CHANNEL_POSITION_SIDE_LEFT] = PA_CHANNEL_POSITION_SIDE_LEFT,
+  [GST_AUDIO_CHANNEL_POSITION_SIDE_RIGHT] = PA_CHANNEL_POSITION_SIDE_RIGHT,
+  [GST_AUDIO_CHANNEL_POSITION_NONE] = PA_CHANNEL_POSITION_INVALID
 };
 
-static gboolean
-gstaudioformat_to_pasampleformat (GstAudioFormat format,
-    pa_sample_format_t * sf)
-{
-  switch (format) {
-    case GST_AUDIO_FORMAT_U8:
-      *sf = PA_SAMPLE_U8;
-      break;
-    case GST_AUDIO_FORMAT_S16LE:
-      *sf = PA_SAMPLE_S16LE;
-      break;
-    case GST_AUDIO_FORMAT_S16BE:
-      *sf = PA_SAMPLE_S16BE;
-      break;
-    case GST_AUDIO_FORMAT_F32LE:
-      *sf = PA_SAMPLE_FLOAT32LE;
-      break;
-    case GST_AUDIO_FORMAT_F32BE:
-      *sf = PA_SAMPLE_FLOAT32BE;
-      break;
-    case GST_AUDIO_FORMAT_S32LE:
-      *sf = PA_SAMPLE_S32LE;
-      break;
-    case GST_AUDIO_FORMAT_S32BE:
-      *sf = PA_SAMPLE_S32BE;
-      break;
-    case GST_AUDIO_FORMAT_S24LE:
-      *sf = PA_SAMPLE_S24LE;
-      break;
-    case GST_AUDIO_FORMAT_S24BE:
-      *sf = PA_SAMPLE_S24BE;
-      break;
-    case GST_AUDIO_FORMAT_S24_32LE:
-      *sf = PA_SAMPLE_S24_32LE;
-      break;
-    case GST_AUDIO_FORMAT_S24_32BE:
-      *sf = PA_SAMPLE_S24_32BE;
-      break;
-    default:
-      return FALSE;
-  }
-  return TRUE;
-}
+/* All index are increased by one because PA_CHANNEL_POSITION_INVALID == -1 */
+static const GstAudioChannelPosition
+    pa_to_gst_pos[GST_AUDIO_CHANNEL_POSITION_NUM]
+    = {
+  [PA_CHANNEL_POSITION_MONO + 1] = GST_AUDIO_CHANNEL_POSITION_FRONT_MONO,
+  [PA_CHANNEL_POSITION_FRONT_LEFT + 1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT,
+  [PA_CHANNEL_POSITION_FRONT_RIGHT + 1] =
+      GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT,
+  [PA_CHANNEL_POSITION_REAR_CENTER + 1] =
+      GST_AUDIO_CHANNEL_POSITION_REAR_CENTER,
+  [PA_CHANNEL_POSITION_REAR_LEFT + 1] = GST_AUDIO_CHANNEL_POSITION_REAR_LEFT,
+  [PA_CHANNEL_POSITION_REAR_RIGHT + 1] = GST_AUDIO_CHANNEL_POSITION_REAR_RIGHT,
+  [PA_CHANNEL_POSITION_LFE + 1] = GST_AUDIO_CHANNEL_POSITION_LFE,
+  [PA_CHANNEL_POSITION_FRONT_CENTER + 1] =
+      GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER,
+  [PA_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER + 1] =
+      GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT_OF_CENTER,
+  [PA_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER + 1] =
+      GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT_OF_CENTER,
+  [PA_CHANNEL_POSITION_SIDE_LEFT + 1] = GST_AUDIO_CHANNEL_POSITION_SIDE_LEFT,
+  [PA_CHANNEL_POSITION_SIDE_RIGHT + 1] = GST_AUDIO_CHANNEL_POSITION_SIDE_RIGHT,
+  [PA_CHANNEL_POSITION_INVALID + 1] = GST_AUDIO_CHANNEL_POSITION_NONE,
+};
 
 gboolean
-gst_pulse_fill_sample_spec (GstAudioRingBufferSpec * spec, pa_sample_spec * ss)
+gst_pulse_fill_sample_spec (GstRingBufferSpec * spec, pa_sample_spec * ss)
 {
-  if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW) {
-    if (!gstaudioformat_to_pasampleformat (GST_AUDIO_INFO_FORMAT (&spec->info),
-            &ss->format))
-      return FALSE;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_MU_LAW) {
+
+  if (spec->format == GST_MU_LAW && spec->width == 8)
     ss->format = PA_SAMPLE_ULAW;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_A_LAW) {
+  else if (spec->format == GST_A_LAW && spec->width == 8)
     ss->format = PA_SAMPLE_ALAW;
-  } else
+  else if (spec->format == GST_U8 && spec->width == 8)
+    ss->format = PA_SAMPLE_U8;
+  else if (spec->format == GST_S16_LE && spec->width == 16)
+    ss->format = PA_SAMPLE_S16LE;
+  else if (spec->format == GST_S16_BE && spec->width == 16)
+    ss->format = PA_SAMPLE_S16BE;
+  else if (spec->format == GST_FLOAT32_LE && spec->width == 32)
+    ss->format = PA_SAMPLE_FLOAT32LE;
+  else if (spec->format == GST_FLOAT32_BE && spec->width == 32)
+    ss->format = PA_SAMPLE_FLOAT32BE;
+  else if (spec->format == GST_S32_LE && spec->width == 32)
+    ss->format = PA_SAMPLE_S32LE;
+  else if (spec->format == GST_S32_BE && spec->width == 32)
+    ss->format = PA_SAMPLE_S32BE;
+  else if (spec->format == GST_S24_3LE && spec->width == 24)
+    ss->format = PA_SAMPLE_S24LE;
+  else if (spec->format == GST_S24_3BE && spec->width == 24)
+    ss->format = PA_SAMPLE_S24BE;
+  else if (spec->format == GST_S24_LE && spec->width == 32)
+    ss->format = PA_SAMPLE_S24_32LE;
+  else if (spec->format == GST_S24_BE && spec->width == 32)
+    ss->format = PA_SAMPLE_S24_32BE;
+  else
     return FALSE;
 
-  ss->channels = GST_AUDIO_INFO_CHANNELS (&spec->info);
-  ss->rate = GST_AUDIO_INFO_RATE (&spec->info);
+  ss->channels = spec->channels;
+  ss->rate = spec->rate;
 
   if (!pa_sample_spec_valid (ss))
     return FALSE;
@@ -134,35 +118,62 @@ gst_pulse_fill_sample_spec (GstAudioRingBufferSpec * spec, pa_sample_spec * ss)
   return TRUE;
 }
 
+#ifdef HAVE_PULSE_1_0
 gboolean
-gst_pulse_fill_format_info (GstAudioRingBufferSpec * spec, pa_format_info ** f,
+gst_pulse_fill_format_info (GstRingBufferSpec * spec, pa_format_info ** f,
     guint * channels)
 {
   pa_format_info *format;
   pa_sample_format_t sf = PA_SAMPLE_INVALID;
-  GstAudioInfo *ainfo = &spec->info;
 
   format = pa_format_info_new ();
 
-  if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_MU_LAW
-      && GST_AUDIO_INFO_WIDTH (ainfo) == 8) {
+  if (spec->format == GST_MU_LAW && spec->width == 8) {
     format->encoding = PA_ENCODING_PCM;
     sf = PA_SAMPLE_ULAW;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_A_LAW
-      && GST_AUDIO_INFO_WIDTH (ainfo) == 8) {
+  } else if (spec->format == GST_A_LAW && spec->width == 8) {
     format->encoding = PA_ENCODING_PCM;
     sf = PA_SAMPLE_ALAW;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_RAW) {
+  } else if (spec->format == GST_U8 && spec->width == 8) {
     format->encoding = PA_ENCODING_PCM;
-    if (!gstaudioformat_to_pasampleformat (GST_AUDIO_INFO_FORMAT (ainfo), &sf))
-      goto fail;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_AC3) {
+    sf = PA_SAMPLE_U8;
+  } else if (spec->format == GST_S16_LE && spec->width == 16) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S16LE;
+  } else if (spec->format == GST_S16_BE && spec->width == 16) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S16BE;
+  } else if (spec->format == GST_FLOAT32_LE && spec->width == 32) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_FLOAT32LE;
+  } else if (spec->format == GST_FLOAT32_BE && spec->width == 32) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_FLOAT32BE;
+  } else if (spec->format == GST_S32_LE && spec->width == 32) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S32LE;
+  } else if (spec->format == GST_S32_BE && spec->width == 32) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S32BE;
+  } else if (spec->format == GST_S24_3LE && spec->width == 24) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S24LE;
+  } else if (spec->format == GST_S24_3BE && spec->width == 24) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S24BE;
+  } else if (spec->format == GST_S24_LE && spec->width == 32) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S24_32LE;
+  } else if (spec->format == GST_S24_BE && spec->width == 32) {
+    format->encoding = PA_ENCODING_PCM;
+    sf = PA_SAMPLE_S24_32BE;
+  } else if (spec->format == GST_AC3) {
     format->encoding = PA_ENCODING_AC3_IEC61937;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_EAC3) {
+  } else if (spec->format == GST_EAC3) {
     format->encoding = PA_ENCODING_EAC3_IEC61937;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_DTS) {
+  } else if (spec->format == GST_DTS) {
     format->encoding = PA_ENCODING_DTS_IEC61937;
-  } else if (spec->type == GST_AUDIO_RING_BUFFER_FORMAT_TYPE_MPEG) {
+  } else if (spec->format == GST_MPEG) {
     format->encoding = PA_ENCODING_MPEG_IEC61937;
   } else {
     goto fail;
@@ -170,16 +181,16 @@ gst_pulse_fill_format_info (GstAudioRingBufferSpec * spec, pa_format_info ** f,
 
   if (format->encoding == PA_ENCODING_PCM) {
     pa_format_info_set_sample_format (format, sf);
-    pa_format_info_set_channels (format, GST_AUDIO_INFO_CHANNELS (ainfo));
+    pa_format_info_set_channels (format, spec->channels);
   }
 
-  pa_format_info_set_rate (format, GST_AUDIO_INFO_RATE (ainfo));
+  pa_format_info_set_rate (format, spec->rate);
 
   if (!pa_format_info_valid (format))
     goto fail;
 
   *f = format;
-  *channels = GST_AUDIO_INFO_CHANNELS (ainfo);
+  *channels = spec->channels;
 
   return TRUE;
 
@@ -188,6 +199,7 @@ fail:
     pa_format_info_free (format);
   return FALSE;
 }
+#endif
 
 /* PATH_MAX is not defined everywhere, e.g. on GNU Hurd */
 #ifndef PATH_MAX
@@ -211,33 +223,32 @@ gst_pulse_client_name (void)
 
 pa_channel_map *
 gst_pulse_gst_to_channel_map (pa_channel_map * map,
-    const GstAudioRingBufferSpec * spec)
+    const GstRingBufferSpec * spec)
 {
-  gint i, j;
-  gint channels;
-  const GstAudioChannelPosition *pos;
+  int i;
+  GstAudioChannelPosition *pos;
 
   pa_channel_map_init (map);
 
-  channels = GST_AUDIO_INFO_CHANNELS (&spec->info);
-  pos = spec->info.position;
-
-  for (j = 0; j < channels; j++) {
-    for (i = 0; i < G_N_ELEMENTS (gst_pa_pos_table); i++) {
-      if (pos[j] == gst_pa_pos_table[i].gst_pos) {
-        map->map[j] = gst_pa_pos_table[i].pa_pos;
-        break;
-      }
-    }
-    if (i == G_N_ELEMENTS (gst_pa_pos_table))
-      return NULL;
-  }
-
-  if (j != spec->info.channels) {
+  if (!(pos =
+          gst_audio_get_channel_positions (gst_caps_get_structure (spec->caps,
+                  0)))) {
     return NULL;
   }
 
-  map->channels = spec->info.channels;
+  for (i = 0; i < spec->channels; i++) {
+    if (pos[i] == GST_AUDIO_CHANNEL_POSITION_NONE) {
+      /* no valid mappings for these channels */
+      g_free (pos);
+      return NULL;
+    } else if (pos[i] < GST_AUDIO_CHANNEL_POSITION_NUM)
+      map->map[i] = gst_pos_to_pa[pos[i]];
+    else
+      map->map[i] = PA_CHANNEL_POSITION_INVALID;
+  }
+
+  g_free (pos);
+  map->channels = spec->channels;
 
   if (!pa_channel_map_valid (map)) {
     return NULL;
@@ -246,43 +257,41 @@ gst_pulse_gst_to_channel_map (pa_channel_map * map,
   return map;
 }
 
-GstAudioRingBufferSpec *
+GstRingBufferSpec *
 gst_pulse_channel_map_to_gst (const pa_channel_map * map,
-    GstAudioRingBufferSpec * spec)
+    GstRingBufferSpec * spec)
 {
-  gint i, j;
-  gboolean invalid = FALSE;
-  gint channels;
+  int i;
   GstAudioChannelPosition *pos;
+  gboolean invalid = FALSE;
 
-  channels = GST_AUDIO_INFO_CHANNELS (&spec->info);
+  g_return_val_if_fail (map->channels == spec->channels, NULL);
 
-  g_return_val_if_fail (map->channels == channels, NULL);
+  pos = g_new0 (GstAudioChannelPosition, spec->channels + 1);
 
-  pos = spec->info.position;
-
-  for (j = 0; j < channels; j++) {
-    for (i = 0; j < channels && i < G_N_ELEMENTS (gst_pa_pos_table); i++) {
-      if (map->map[j] == gst_pa_pos_table[i].pa_pos) {
-        pos[j] = gst_pa_pos_table[i].gst_pos;
-        break;
-      }
+  for (i = 0; i < spec->channels; i++) {
+    if (map->map[i] == PA_CHANNEL_POSITION_INVALID) {
+      invalid = TRUE;
+      break;
+    } else if ((int) map->map[i] < (int) GST_AUDIO_CHANNEL_POSITION_NUM) {
+      pos[i] = pa_to_gst_pos[map->map[i] + 1];
+    } else {
+      invalid = TRUE;
+      break;
     }
-    if (i == G_N_ELEMENTS (gst_pa_pos_table))
-      return NULL;
   }
 
-  if (!invalid
-      && !gst_audio_check_valid_channel_positions (pos, channels, FALSE))
+  if (!invalid && !gst_audio_check_channel_positions (pos, spec->channels))
     invalid = TRUE;
 
   if (invalid) {
-    for (i = 0; i < channels; i++)
+    for (i = 0; i < spec->channels; i++)
       pos[i] = GST_AUDIO_CHANNEL_POSITION_NONE;
-  } else {
-    if (pos[0] != GST_AUDIO_CHANNEL_POSITION_NONE)
-      spec->info.flags &= ~GST_AUDIO_FLAG_UNPOSITIONED;
   }
+
+  gst_audio_set_channel_positions (gst_caps_get_structure (spec->caps, 0), pos);
+
+  g_free (pos);
 
   return spec;
 }

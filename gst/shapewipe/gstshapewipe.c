@@ -32,7 +32,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v videotestsrc ! video/x-raw,format=(string)AYUV,width=640,height=480 ! shapewipe position=0.5 name=shape ! videomixer name=mixer ! videoconvert ! autovideosink     filesrc location=mask.png ! typefind ! decodebin2 ! videoconvert ! videoscale ! queue ! shape.mask_sink    videotestsrc pattern=snow ! video/x-raw,format=(string)AYUV,width=640,height=480 ! queue ! mixer.
+ * gst-launch -v videotestsrc ! video/x-raw-yuv,format=(fourcc)AYUV,width=640,height=480 ! shapewipe position=0.5 name=shape ! videomixer name=mixer ! ffmpegcolorspace ! autovideosink     filesrc location=mask.png ! typefind ! decodebin2 ! ffmpegcolorspace ! videoscale ! queue ! shape.mask_sink    videotestsrc pattern=snow ! video/x-raw-yuv,format=(fourcc)AYUV,width=640,height=480 ! queue ! mixer.
  * ]| This pipeline adds the transition from mask.png with position 0.5 to an SMPTE test screen and snow.
  * </refsect2>
  */
@@ -45,6 +45,8 @@
 #include <string.h>
 
 #include <gst/gst.h>
+#include <gst/controller/gstcontroller.h>
+#include <gst/glib-compat-private.h>
 
 #include "gstshapewipe.h"
 
@@ -65,30 +67,24 @@ static GstStateChangeReturn gst_shape_wipe_change_state (GstElement * element,
     GstStateChange transition);
 
 static GstFlowReturn gst_shape_wipe_video_sink_chain (GstPad * pad,
-    GstObject * parent, GstBuffer * buffer);
+    GstBuffer * buffer);
 static gboolean gst_shape_wipe_video_sink_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
-static gboolean gst_shape_wipe_video_sink_setcaps (GstShapeWipe * self,
-    GstCaps * caps);
-static GstCaps *gst_shape_wipe_video_sink_getcaps (GstShapeWipe * self,
-    GstPad * pad, GstCaps * filter);
-static gboolean gst_shape_wipe_video_sink_query (GstPad * pad,
-    GstObject * parent, GstQuery * query);
-static GstFlowReturn gst_shape_wipe_mask_sink_chain (GstPad * pad,
-    GstObject * parent, GstBuffer * buffer);
-static gboolean gst_shape_wipe_mask_sink_event (GstPad * pad,
-    GstObject * parent, GstEvent * event);
-static gboolean gst_shape_wipe_mask_sink_setcaps (GstShapeWipe * self,
-    GstCaps * caps);
-static GstCaps *gst_shape_wipe_mask_sink_getcaps (GstShapeWipe * self,
-    GstPad * pad, GstCaps * filter);
-static gboolean gst_shape_wipe_mask_sink_query (GstPad * pad,
-    GstObject * parent, GstQuery * query);
-static gboolean gst_shape_wipe_src_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
-static GstCaps *gst_shape_wipe_src_getcaps (GstPad * pad, GstCaps * filter);
-static gboolean gst_shape_wipe_src_query (GstPad * pad, GstObject * parent,
+static gboolean gst_shape_wipe_video_sink_setcaps (GstPad * pad,
+    GstCaps * caps);
+static GstCaps *gst_shape_wipe_video_sink_getcaps (GstPad * pad);
+static GstFlowReturn gst_shape_wipe_video_sink_bufferalloc (GstPad * pad,
+    guint64 offset, guint size, GstCaps * caps, GstBuffer ** buf);
+static gboolean gst_shape_wipe_video_sink_query (GstPad * pad,
     GstQuery * query);
+static GstFlowReturn gst_shape_wipe_mask_sink_chain (GstPad * pad,
+    GstBuffer * buffer);
+static gboolean gst_shape_wipe_mask_sink_event (GstPad * pad, GstEvent * event);
+static gboolean gst_shape_wipe_mask_sink_setcaps (GstPad * pad, GstCaps * caps);
+static GstCaps *gst_shape_wipe_mask_sink_getcaps (GstPad * pad);
+static gboolean gst_shape_wipe_src_event (GstPad * pad, GstEvent * event);
+static GstCaps *gst_shape_wipe_src_getcaps (GstPad * pad);
+static gboolean gst_shape_wipe_src_query (GstPad * pad, GstQuery * query);
 
 enum
 {
@@ -101,32 +97,53 @@ enum
 #define DEFAULT_BORDER 0.0
 
 static GstStaticPadTemplate video_sink_pad_template =
-GST_STATIC_PAD_TEMPLATE ("video_sink",
+    GST_STATIC_PAD_TEMPLATE ("video_sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE ("{ AYUV, ARGB, BGRA, ABGR, RGBA }")));
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV ("AYUV") " ; " GST_VIDEO_CAPS_ARGB " ; "
+        GST_VIDEO_CAPS_BGRA ";" GST_VIDEO_CAPS_ABGR ";" GST_VIDEO_CAPS_RGBA));
 
 static GstStaticPadTemplate mask_sink_pad_template =
     GST_STATIC_PAD_TEMPLATE ("mask_sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("video/x-raw, "
-        "format = (string) GRAY8, "
+    GST_STATIC_CAPS ("video/x-raw-gray, "
+        "bpp = 8, "
+        "depth = 8, "
         "width = " GST_VIDEO_SIZE_RANGE ", "
         "height = " GST_VIDEO_SIZE_RANGE ", " "framerate = 0/1 ; "
-        "video/x-raw, " "format = (string) " GST_VIDEO_NE (GRAY16) ", "
-        "width = " GST_VIDEO_SIZE_RANGE ", "
+        "video/x-raw-gray, " "bpp = 16, " "depth = 16, "
+        "endianness = BYTE_ORDER, " "width = " GST_VIDEO_SIZE_RANGE ", "
         "height = " GST_VIDEO_SIZE_RANGE ", " "framerate = 0/1"));
 
 static GstStaticPadTemplate src_pad_template =
-GST_STATIC_PAD_TEMPLATE ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE ("{ AYUV, ARGB, BGRA, ABGR, RGBA }")));
+    GST_STATIC_PAD_TEMPLATE ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_YUV ("AYUV") " ; " GST_VIDEO_CAPS_ARGB " ; "
+        GST_VIDEO_CAPS_BGRA ";" GST_VIDEO_CAPS_ABGR ";" GST_VIDEO_CAPS_RGBA));
 
 GST_DEBUG_CATEGORY_STATIC (gst_shape_wipe_debug);
 #define GST_CAT_DEFAULT gst_shape_wipe_debug
 
-#define gst_shape_wipe_parent_class parent_class
-G_DEFINE_TYPE (GstShapeWipe, gst_shape_wipe, GST_TYPE_ELEMENT);
+GST_BOILERPLATE (GstShapeWipe, gst_shape_wipe, GstElement, GST_TYPE_ELEMENT);
+
+static void
+gst_shape_wipe_base_init (gpointer g_class)
+{
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_set_details_simple (gstelement_class,
+      "Shape Wipe transition filter",
+      "Filter/Editor/Video",
+      "Adds a shape wipe transition to a video stream",
+      "Sebastian Dröge <sebastian.droege@collabora.co.uk>");
+
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &video_sink_pad_template);
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &mask_sink_pad_template);
+  gst_element_class_add_static_pad_template (gstelement_class,
+      &src_pad_template);
+}
 
 static void
 gst_shape_wipe_class_init (GstShapeWipeClass * klass)
@@ -149,23 +166,10 @@ gst_shape_wipe_class_init (GstShapeWipeClass * klass)
 
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_shape_wipe_change_state);
-
-  gst_element_class_set_static_metadata (gstelement_class,
-      "Shape Wipe transition filter",
-      "Filter/Editor/Video",
-      "Adds a shape wipe transition to a video stream",
-      "Sebastian Dröge <sebastian.droege@collabora.co.uk>");
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&video_sink_pad_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&mask_sink_pad_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_pad_template));
 }
 
 static void
-gst_shape_wipe_init (GstShapeWipe * self)
+gst_shape_wipe_init (GstShapeWipe * self, GstShapeWipeClass * g_class)
 {
   self->video_sinkpad =
       gst_pad_new_from_static_template (&video_sink_pad_template, "video_sink");
@@ -173,6 +177,12 @@ gst_shape_wipe_init (GstShapeWipe * self)
       GST_DEBUG_FUNCPTR (gst_shape_wipe_video_sink_chain));
   gst_pad_set_event_function (self->video_sinkpad,
       GST_DEBUG_FUNCPTR (gst_shape_wipe_video_sink_event));
+  gst_pad_set_setcaps_function (self->video_sinkpad,
+      GST_DEBUG_FUNCPTR (gst_shape_wipe_video_sink_setcaps));
+  gst_pad_set_getcaps_function (self->video_sinkpad,
+      GST_DEBUG_FUNCPTR (gst_shape_wipe_video_sink_getcaps));
+  gst_pad_set_bufferalloc_function (self->video_sinkpad,
+      GST_DEBUG_FUNCPTR (gst_shape_wipe_video_sink_bufferalloc));
   gst_pad_set_query_function (self->video_sinkpad,
       GST_DEBUG_FUNCPTR (gst_shape_wipe_video_sink_query));
   gst_element_add_pad (GST_ELEMENT (self), self->video_sinkpad);
@@ -183,19 +193,23 @@ gst_shape_wipe_init (GstShapeWipe * self)
       GST_DEBUG_FUNCPTR (gst_shape_wipe_mask_sink_chain));
   gst_pad_set_event_function (self->mask_sinkpad,
       GST_DEBUG_FUNCPTR (gst_shape_wipe_mask_sink_event));
-  gst_pad_set_query_function (self->mask_sinkpad,
-      GST_DEBUG_FUNCPTR (gst_shape_wipe_mask_sink_query));
+  gst_pad_set_setcaps_function (self->mask_sinkpad,
+      GST_DEBUG_FUNCPTR (gst_shape_wipe_mask_sink_setcaps));
+  gst_pad_set_getcaps_function (self->mask_sinkpad,
+      GST_DEBUG_FUNCPTR (gst_shape_wipe_mask_sink_getcaps));
   gst_element_add_pad (GST_ELEMENT (self), self->mask_sinkpad);
 
   self->srcpad = gst_pad_new_from_static_template (&src_pad_template, "src");
   gst_pad_set_event_function (self->srcpad,
       GST_DEBUG_FUNCPTR (gst_shape_wipe_src_event));
+  gst_pad_set_getcaps_function (self->srcpad,
+      GST_DEBUG_FUNCPTR (gst_shape_wipe_src_getcaps));
   gst_pad_set_query_function (self->srcpad,
       GST_DEBUG_FUNCPTR (gst_shape_wipe_src_query));
   gst_element_add_pad (GST_ELEMENT (self), self->srcpad);
 
-  g_mutex_init (&self->mask_mutex);
-  g_cond_init (&self->mask_cond);
+  self->mask_mutex = g_mutex_new ();
+  self->mask_cond = g_cond_new ();
 
   gst_shape_wipe_reset (self);
 }
@@ -253,8 +267,13 @@ gst_shape_wipe_finalize (GObject * object)
 
   gst_shape_wipe_reset (self);
 
-  g_cond_clear (&self->mask_cond);
-  g_mutex_clear (&self->mask_mutex);
+  if (self->mask_cond)
+    g_cond_free (self->mask_cond);
+  self->mask_cond = NULL;
+
+  if (self->mask_mutex)
+    g_mutex_free (self->mask_mutex);
+  self->mask_mutex = NULL;
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
@@ -268,12 +287,12 @@ gst_shape_wipe_reset (GstShapeWipe * self)
     gst_buffer_unref (self->mask);
   self->mask = NULL;
 
-  g_mutex_lock (&self->mask_mutex);
-  g_cond_signal (&self->mask_cond);
-  g_mutex_unlock (&self->mask_mutex);
+  g_mutex_lock (self->mask_mutex);
+  g_cond_signal (self->mask_cond);
+  g_mutex_unlock (self->mask_mutex);
 
-  gst_video_info_init (&self->vinfo);
-  gst_video_info_init (&self->minfo);
+  self->fmt = GST_VIDEO_FORMAT_UNKNOWN;
+  self->width = self->height = 0;
   self->mask_bpp = 0;
 
   gst_segment_init (&self->segment, GST_FORMAT_TIME);
@@ -282,64 +301,89 @@ gst_shape_wipe_reset (GstShapeWipe * self)
   self->frame_duration = 0;
 }
 
-static gboolean
-gst_shape_wipe_video_sink_setcaps (GstShapeWipe * self, GstCaps * caps)
+static GstFlowReturn
+gst_shape_wipe_video_sink_bufferalloc (GstPad * pad, guint64 offset, guint size,
+    GstCaps * caps, GstBuffer ** buf)
 {
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
+  GstFlowReturn ret = GST_FLOW_OK;
+
+  GST_LOG_OBJECT (pad, "Allocating buffer with offset 0x%" G_GINT64_MODIFIER
+      "x and size %u with caps: %" GST_PTR_FORMAT, offset, size, caps);
+
+  *buf = NULL;
+
+  ret = gst_pad_alloc_buffer (self->srcpad, offset, size, caps, buf);
+  if (G_UNLIKELY (ret != GST_FLOW_OK))
+    GST_ERROR_OBJECT (pad, "Allocating buffer failed: %s",
+        gst_flow_get_name (ret));
+
+  gst_object_unref (self);
+
+  return ret;
+}
+
+static gboolean
+gst_shape_wipe_video_sink_setcaps (GstPad * pad, GstCaps * caps)
+{
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
   gboolean ret = TRUE;
-  GstVideoInfo info;
+  GstStructure *s;
+  GstVideoFormat fmt;
+  gint width, height;
+  gint fps_n, fps_d;
 
-  GST_DEBUG_OBJECT (self, "Setting caps: %" GST_PTR_FORMAT, caps);
+  GST_DEBUG_OBJECT (pad, "Setting caps: %" GST_PTR_FORMAT, caps);
 
-  if (!gst_video_info_from_caps (&info, caps))
-    goto invalid_caps;
+  s = gst_caps_get_structure (caps, 0);
 
-  if ((self->vinfo.width != info.width || self->vinfo.height != info.height) &&
-      self->vinfo.width > 0 && self->vinfo.height > 0) {
-    g_mutex_lock (&self->mask_mutex);
+  if (!gst_video_format_parse_caps (caps, &fmt, &width, &height) ||
+      !gst_structure_get_fraction (s, "framerate", &fps_n, &fps_d)) {
+    GST_ERROR_OBJECT (pad, "Invalid caps");
+    ret = FALSE;
+    goto done;
+  }
+
+  self->fmt = fmt;
+  if (self->width != width || self->height != height) {
+    g_mutex_lock (self->mask_mutex);
+    self->width = width;
+    self->height = height;
+
     if (self->mask)
       gst_buffer_unref (self->mask);
     self->mask = NULL;
-    g_mutex_unlock (&self->mask_mutex);
+    g_mutex_unlock (self->mask_mutex);
   }
 
-
-  if (info.fps_n != 0)
-    self->frame_duration =
-        gst_util_uint64_scale (GST_SECOND, info.fps_d, info.fps_n);
+  if (fps_n != 0)
+    self->frame_duration = gst_util_uint64_scale (GST_SECOND, fps_d, fps_n);
   else
     self->frame_duration = 0;
 
-  self->vinfo = info;
-
   ret = gst_pad_set_caps (self->srcpad, caps);
 
-  return ret;
+done:
+  gst_object_unref (self);
 
-  /* ERRORS */
-invalid_caps:
-  {
-    GST_ERROR_OBJECT (self, "Invalid caps");
-    return FALSE;
-  }
+  return ret;
 }
 
 static GstCaps *
-gst_shape_wipe_video_sink_getcaps (GstShapeWipe * self, GstPad * pad,
-    GstCaps * filter)
+gst_shape_wipe_video_sink_getcaps (GstPad * pad)
 {
-  GstCaps *templ, *ret, *tmp;
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
+  GstCaps *ret, *tmp;
 
-  if (gst_pad_has_current_caps (pad))
-    return gst_pad_get_current_caps (pad);
+  if (GST_PAD_CAPS (pad))
+    return gst_caps_copy (GST_PAD_CAPS (pad));
 
-  templ = gst_pad_get_pad_template_caps (pad);
-  tmp = gst_pad_peer_query_caps (self->srcpad, NULL);
+  tmp = gst_pad_peer_get_caps (self->srcpad);
   if (tmp) {
-    ret = gst_caps_intersect (tmp, templ);
-    gst_caps_unref (templ);
+    ret = gst_caps_intersect (tmp, gst_pad_get_pad_template_caps (pad));
     gst_caps_unref (tmp);
   } else {
-    ret = templ;
+    ret = gst_caps_copy (gst_pad_get_pad_template_caps (pad));
   }
 
   GST_LOG_OBJECT (pad, "srcpad accepted caps: %" GST_PTR_FORMAT, ret);
@@ -347,7 +391,7 @@ gst_shape_wipe_video_sink_getcaps (GstShapeWipe * self, GstPad * pad,
   if (gst_caps_is_empty (ret))
     goto done;
 
-  tmp = gst_pad_peer_query_caps (pad, NULL);
+  tmp = gst_pad_peer_get_caps (pad);
 
   GST_LOG_OBJECT (pad, "peerpad accepted caps: %" GST_PTR_FORMAT, tmp);
   if (tmp) {
@@ -364,41 +408,50 @@ gst_shape_wipe_video_sink_getcaps (GstShapeWipe * self, GstPad * pad,
   if (gst_caps_is_empty (ret))
     goto done;
 
-  if (self->vinfo.height && self->vinfo.width) {
+  if (self->height && self->width) {
     guint i, n;
 
-    ret = gst_caps_make_writable (ret);
     n = gst_caps_get_size (ret);
     for (i = 0; i < n; i++) {
       GstStructure *s = gst_caps_get_structure (ret, i);
 
-      gst_structure_set (s, "width", G_TYPE_INT, self->vinfo.width, "height",
-          G_TYPE_INT, self->vinfo.height, NULL);
+      gst_structure_set (s, "width", G_TYPE_INT, self->width, "height",
+          G_TYPE_INT, self->height, NULL);
     }
   }
 
-  tmp = gst_pad_peer_query_caps (self->mask_sinkpad, NULL);
+  tmp = gst_pad_peer_get_caps (self->mask_sinkpad);
 
   GST_LOG_OBJECT (pad, "mask accepted caps: %" GST_PTR_FORMAT, tmp);
   if (tmp) {
     GstCaps *intersection, *tmp2;
     guint i, n;
 
-    tmp2 = gst_pad_get_pad_template_caps (self->mask_sinkpad);
+    tmp = gst_caps_make_writable (tmp);
+
+    tmp2 = gst_caps_copy (gst_pad_get_pad_template_caps (self->mask_sinkpad));
+
     intersection = gst_caps_intersect (tmp, tmp2);
     gst_caps_unref (tmp);
     gst_caps_unref (tmp2);
     tmp = intersection;
 
-    tmp = gst_caps_make_writable (tmp);
     n = gst_caps_get_size (tmp);
 
+    tmp2 = gst_caps_new_empty ();
     for (i = 0; i < n; i++) {
       GstStructure *s = gst_caps_get_structure (tmp, i);
+      GstStructure *c;
 
-      gst_structure_remove_fields (s, "format", "framerate", NULL);
-      gst_structure_set_name (s, "video/x-raw");
+      gst_structure_remove_fields (s, "format", "bpp", "depth", "endianness",
+          "framerate", "red_mask", "green_mask", "blue_mask", "alpha_mask",
+          NULL);
+      gst_structure_set_name (s, "video/x-raw-yuv");
+      c = gst_structure_copy (s);
+      gst_structure_set_name (c, "video/x-raw-rgb");
+      gst_caps_append_structure (tmp2, c);
     }
+    gst_caps_append (tmp, tmp2);
 
     intersection = gst_caps_intersect (tmp, ret);
     gst_caps_unref (tmp);
@@ -406,62 +459,70 @@ gst_shape_wipe_video_sink_getcaps (GstShapeWipe * self, GstPad * pad,
     ret = intersection;
   }
 done:
+
+  gst_object_unref (self);
+
   GST_LOG_OBJECT (pad, "Returning caps: %" GST_PTR_FORMAT, ret);
 
   return ret;
 }
 
 static gboolean
-gst_shape_wipe_mask_sink_setcaps (GstShapeWipe * self, GstCaps * caps)
+gst_shape_wipe_mask_sink_setcaps (GstPad * pad, GstCaps * caps)
 {
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
   gboolean ret = TRUE;
+  GstStructure *s;
   gint width, height, bpp;
-  GstVideoInfo info;
 
-  GST_DEBUG_OBJECT (self, "Setting caps: %" GST_PTR_FORMAT, caps);
+  GST_DEBUG_OBJECT (pad, "Setting caps: %" GST_PTR_FORMAT, caps);
 
-  if (!gst_video_info_from_caps (&info, caps)) {
+  s = gst_caps_get_structure (caps, 0);
+
+  if (!gst_structure_get_int (s, "width", &width) ||
+      !gst_structure_get_int (s, "height", &height) ||
+      !gst_structure_get_int (s, "bpp", &bpp)) {
     ret = FALSE;
     goto done;
   }
 
-  width = GST_VIDEO_INFO_WIDTH (&info);
-  height = GST_VIDEO_INFO_HEIGHT (&info);
-  bpp = GST_VIDEO_INFO_COMP_DEPTH (&info, 0);
-
-  if ((self->vinfo.width != width || self->vinfo.height != height) &&
-      self->vinfo.width > 0 && self->vinfo.height > 0) {
-    GST_ERROR_OBJECT (self, "Mask caps must have the same width/height "
+  if ((self->width != width || self->height != height) &&
+      self->width > 0 && self->height > 0) {
+    GST_ERROR_OBJECT (pad, "Mask caps must have the same width/height "
         "as the video caps");
     ret = FALSE;
     goto done;
+  } else {
+    self->width = width;
+    self->height = height;
   }
 
   self->mask_bpp = bpp;
-  self->minfo = info;
 
 done:
+  gst_object_unref (self);
+
   return ret;
 }
 
 static GstCaps *
-gst_shape_wipe_mask_sink_getcaps (GstShapeWipe * self, GstPad * pad,
-    GstCaps * filter)
+gst_shape_wipe_mask_sink_getcaps (GstPad * pad)
 {
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
   GstCaps *ret, *tmp;
   guint i, n;
 
-  if (gst_pad_has_current_caps (pad))
-    return gst_pad_get_current_caps (pad);
+  if (GST_PAD_CAPS (pad))
+    return gst_caps_copy (GST_PAD_CAPS (pad));
 
-  tmp = gst_pad_peer_query_caps (self->video_sinkpad, NULL);
+  tmp = gst_pad_peer_get_caps (self->video_sinkpad);
   if (tmp) {
     ret =
         gst_caps_intersect (tmp,
         gst_pad_get_pad_template_caps (self->video_sinkpad));
     gst_caps_unref (tmp);
   } else {
-    ret = gst_pad_get_pad_template_caps (self->video_sinkpad);
+    ret = gst_caps_copy (gst_pad_get_pad_template_caps (self->video_sinkpad));
   }
 
   GST_LOG_OBJECT (pad, "video sink accepted caps: %" GST_PTR_FORMAT, ret);
@@ -469,7 +530,7 @@ gst_shape_wipe_mask_sink_getcaps (GstShapeWipe * self, GstPad * pad,
   if (gst_caps_is_empty (ret))
     goto done;
 
-  tmp = gst_pad_peer_query_caps (self->srcpad, NULL);
+  tmp = gst_pad_peer_get_caps (self->srcpad);
   GST_LOG_OBJECT (pad, "srcpad accepted caps: %" GST_PTR_FORMAT, ret);
 
   if (tmp) {
@@ -492,25 +553,28 @@ gst_shape_wipe_mask_sink_getcaps (GstShapeWipe * self, GstPad * pad,
     GstStructure *s = gst_caps_get_structure (ret, i);
     GstStructure *t;
 
-    gst_structure_set_name (s, "video/x-raw");
-    gst_structure_remove_fields (s, "format", "framerate", NULL);
+    gst_structure_set_name (s, "video/x-raw-gray");
+    gst_structure_remove_fields (s, "format", "framerate", "bpp", "depth",
+        "endianness", "framerate", "red_mask", "green_mask", "blue_mask",
+        "alpha_mask", NULL);
 
-    if (self->vinfo.width && self->vinfo.height)
-      gst_structure_set (s, "width", G_TYPE_INT, self->vinfo.width, "height",
-          G_TYPE_INT, self->vinfo.height, NULL);
+    if (self->width && self->height)
+      gst_structure_set (s, "width", G_TYPE_INT, self->width, "height",
+          G_TYPE_INT, self->height, NULL);
 
     gst_structure_set (s, "framerate", GST_TYPE_FRACTION, 0, 1, NULL);
 
     t = gst_structure_copy (s);
 
-    gst_structure_set (s, "format", G_TYPE_STRING, GST_VIDEO_NE (GRAY16), NULL);
-    gst_structure_set (t, "format", G_TYPE_STRING, "GRAY8", NULL);
+    gst_structure_set (s, "bpp", G_TYPE_INT, 16, "depth", G_TYPE_INT, 16,
+        "endianness", G_TYPE_INT, G_BYTE_ORDER, NULL);
+    gst_structure_set (t, "bpp", G_TYPE_INT, 8, "depth", G_TYPE_INT, 8, NULL);
 
     gst_caps_append_structure (tmp, t);
   }
   gst_caps_append (ret, tmp);
 
-  tmp = gst_pad_peer_query_caps (pad, NULL);
+  tmp = gst_pad_peer_get_caps (pad);
   GST_LOG_OBJECT (pad, "peer accepted caps: %" GST_PTR_FORMAT, tmp);
 
   if (tmp) {
@@ -523,30 +587,32 @@ gst_shape_wipe_mask_sink_getcaps (GstShapeWipe * self, GstPad * pad,
   }
 
 done:
+  gst_object_unref (self);
+
   GST_LOG_OBJECT (pad, "Returning caps: %" GST_PTR_FORMAT, ret);
 
   return ret;
 }
 
 static GstCaps *
-gst_shape_wipe_src_getcaps (GstPad * pad, GstCaps * filter)
+gst_shape_wipe_src_getcaps (GstPad * pad)
 {
   GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
-  GstCaps *templ, *ret, *tmp;
+  GstCaps *ret, *tmp;
 
-  if (gst_pad_has_current_caps (pad))
-    return gst_pad_get_current_caps (pad);
-  else if (gst_pad_has_current_caps (self->video_sinkpad))
-    return gst_pad_get_current_caps (self->video_sinkpad);
+  if (GST_PAD_CAPS (pad))
+    return gst_caps_copy (GST_PAD_CAPS (pad));
+  else if (GST_PAD_CAPS (self->video_sinkpad))
+    return gst_caps_copy (GST_PAD_CAPS (self->video_sinkpad));
 
-  templ = gst_pad_get_pad_template_caps (self->video_sinkpad);
-  tmp = gst_pad_peer_query_caps (self->video_sinkpad, NULL);
+  tmp = gst_pad_peer_get_caps (self->video_sinkpad);
   if (tmp) {
-    ret = gst_caps_intersect (tmp, templ);
-    gst_caps_unref (templ);
+    ret =
+        gst_caps_intersect (tmp,
+        gst_pad_get_pad_template_caps (self->video_sinkpad));
     gst_caps_unref (tmp);
   } else {
-    ret = templ;
+    ret = gst_caps_copy (gst_pad_get_pad_template_caps (self->video_sinkpad));
   }
 
   GST_LOG_OBJECT (pad, "video sink accepted caps: %" GST_PTR_FORMAT, ret);
@@ -554,7 +620,7 @@ gst_shape_wipe_src_getcaps (GstPad * pad, GstCaps * filter)
   if (gst_caps_is_empty (ret))
     goto done;
 
-  tmp = gst_pad_peer_query_caps (pad, NULL);
+  tmp = gst_pad_peer_get_caps (pad);
   GST_LOG_OBJECT (pad, "peer accepted caps: %" GST_PTR_FORMAT, ret);
   if (tmp) {
     GstCaps *intersection;
@@ -570,39 +636,48 @@ gst_shape_wipe_src_getcaps (GstPad * pad, GstCaps * filter)
   if (gst_caps_is_empty (ret))
     goto done;
 
-  if (self->vinfo.height && self->vinfo.width) {
+  if (self->height && self->width) {
     guint i, n;
 
-    ret = gst_caps_make_writable (ret);
     n = gst_caps_get_size (ret);
     for (i = 0; i < n; i++) {
       GstStructure *s = gst_caps_get_structure (ret, i);
 
-      gst_structure_set (s, "width", G_TYPE_INT, self->vinfo.width, "height",
-          G_TYPE_INT, self->vinfo.height, NULL);
+      gst_structure_set (s, "width", G_TYPE_INT, self->width, "height",
+          G_TYPE_INT, self->height, NULL);
     }
   }
 
-  tmp = gst_pad_peer_query_caps (self->mask_sinkpad, NULL);
+  tmp = gst_pad_peer_get_caps (self->mask_sinkpad);
   GST_LOG_OBJECT (pad, "mask sink accepted caps: %" GST_PTR_FORMAT, ret);
   if (tmp) {
     GstCaps *intersection, *tmp2;
     guint i, n;
 
-    tmp2 = gst_pad_get_pad_template_caps (self->mask_sinkpad);
+    tmp = gst_caps_make_writable (tmp);
+    tmp2 = gst_caps_copy (gst_pad_get_pad_template_caps (self->mask_sinkpad));
+
     intersection = gst_caps_intersect (tmp, tmp2);
     gst_caps_unref (tmp);
     gst_caps_unref (tmp2);
 
-    tmp = gst_caps_make_writable (intersection);
+    tmp = intersection;
     n = gst_caps_get_size (tmp);
 
+    tmp2 = gst_caps_new_empty ();
     for (i = 0; i < n; i++) {
       GstStructure *s = gst_caps_get_structure (tmp, i);
+      GstStructure *c;
 
-      gst_structure_remove_fields (s, "format", "framerate", NULL);
-      gst_structure_set_name (s, "video/x-raw");
+      gst_structure_remove_fields (s, "format", "bpp", "depth", "endianness",
+          "framerate", "red_mask", "green_mask", "blue_mask", "alpha_mask",
+          NULL);
+      gst_structure_set_name (s, "video/x-raw-yuv");
+      c = gst_structure_copy (s);
+
+      gst_caps_append_structure (tmp2, c);
     }
+    gst_caps_append (tmp, tmp2);
 
     intersection = gst_caps_intersect (tmp, ret);
     gst_caps_unref (tmp);
@@ -620,61 +695,46 @@ done:
 }
 
 static gboolean
-gst_shape_wipe_video_sink_query (GstPad * pad, GstObject * parent,
-    GstQuery * query)
+gst_shape_wipe_video_sink_query (GstPad * pad, GstQuery * query)
 {
-  GstShapeWipe *self = (GstShapeWipe *) parent;
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
   gboolean ret;
+  GstPad *peer = gst_pad_get_peer (self->srcpad);
 
   GST_LOG_OBJECT (pad, "Handling query of type '%s'",
       gst_query_type_get_name (GST_QUERY_TYPE (query)));
 
-  switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CAPS:
-    {
-      GstCaps *filter, *caps;
-
-      gst_query_parse_caps (query, &filter);
-      caps = gst_shape_wipe_video_sink_getcaps (self, pad, filter);
-      gst_query_set_caps_result (query, caps);
-      gst_caps_unref (caps);
-      ret = TRUE;
-      break;
-    }
-    default:
-      ret = gst_pad_query_default (pad, parent, query);
-      break;
+  if (!peer) {
+    GST_INFO_OBJECT (pad, "No peer yet, dropping query");
+    ret = FALSE;
+  } else {
+    ret = gst_pad_query (peer, query);
+    gst_object_unref (peer);
   }
 
+  gst_object_unref (self);
   return ret;
 }
 
 static gboolean
-gst_shape_wipe_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
+gst_shape_wipe_src_query (GstPad * pad, GstQuery * query)
 {
-  GstShapeWipe *self = GST_SHAPE_WIPE (parent);
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
   gboolean ret;
+  GstPad *peer = gst_pad_get_peer (self->video_sinkpad);
 
   GST_LOG_OBJECT (pad, "Handling query of type '%s'",
       gst_query_type_get_name (GST_QUERY_TYPE (query)));
 
-  switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CAPS:
-    {
-      GstCaps *filter, *caps;
-
-      gst_query_parse_caps (query, &filter);
-      caps = gst_shape_wipe_src_getcaps (pad, filter);
-      gst_query_set_caps_result (query, caps);
-      gst_caps_unref (caps);
-      ret = TRUE;
-      break;
-    }
-    default:
-      ret = gst_pad_peer_query (self->video_sinkpad, query);
-      break;
+  if (!peer) {
+    GST_INFO_OBJECT (pad, "No peer yet, dropping query");
+    ret = FALSE;
+  } else {
+    ret = gst_pad_query (peer, query);
+    gst_object_unref (peer);
   }
 
+  gst_object_unref (self);
   return ret;
 }
 
@@ -753,21 +813,20 @@ gst_shape_wipe_do_qos (GstShapeWipe * self, GstClockTime timestamp)
 
 #define CREATE_ARGB_FUNCTIONS(depth, name, shift, a, r, g, b) \
 static void \
-gst_shape_wipe_blend_##name##_##depth (GstShapeWipe * self, GstVideoFrame * inframe, \
-    GstVideoFrame * maskframe, GstVideoFrame * outframe) \
+gst_shape_wipe_blend_##name##_##depth (GstShapeWipe * self, GstBuffer * inbuf, \
+    GstBuffer * maskbuf, GstBuffer * outbuf) \
 { \
-  const guint##depth *mask = (const guint##depth *) GST_VIDEO_FRAME_PLANE_DATA (maskframe, 0); \
-  const guint8 *input = (const guint8 *) GST_VIDEO_FRAME_PLANE_DATA (inframe, 0); \
-  guint8 *output = (guint8 *) GST_VIDEO_FRAME_PLANE_DATA (outframe, 0); \
+  const guint##depth *mask = (const guint##depth *) GST_BUFFER_DATA (maskbuf); \
+  const guint8 *input = (const guint8 *) GST_BUFFER_DATA (inbuf); \
+  guint8 *output = (guint8 *) GST_BUFFER_DATA (outbuf); \
   guint i, j; \
-  gint width = GST_VIDEO_FRAME_WIDTH (inframe); \
-  gint height = GST_VIDEO_FRAME_HEIGHT (inframe); \
-  guint mask_increment = ((depth == 16) ? GST_ROUND_UP_2 (width) : \
-                           GST_ROUND_UP_4 (width)) - width; \
+  guint mask_increment = ((depth == 16) ? GST_ROUND_UP_2 (self->width) : \
+                           GST_ROUND_UP_4 (self->width)) - self->width; \
   gfloat position = self->mask_position; \
   gfloat low = position - (self->mask_border / 2.0f); \
   gfloat high = position + (self->mask_border / 2.0f); \
   guint32 low_i, high_i, round_i; \
+  gint width = self->width, height = self->height; \
   \
   if (low < 0.0f) { \
     high = 0.0f; \
@@ -824,18 +883,15 @@ CREATE_ARGB_FUNCTIONS (16, bgra, 0, 3, 2, 1, 0);
 CREATE_ARGB_FUNCTIONS (8, bgra, 8, 3, 2, 1, 0);
 
 static GstFlowReturn
-gst_shape_wipe_video_sink_chain (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer)
+gst_shape_wipe_video_sink_chain (GstPad * pad, GstBuffer * buffer)
 {
-  GstShapeWipe *self = GST_SHAPE_WIPE (parent);
+  GstShapeWipe *self = GST_SHAPE_WIPE (GST_PAD_PARENT (pad));
   GstFlowReturn ret = GST_FLOW_OK;
   GstBuffer *mask = NULL, *outbuf = NULL;
   GstClockTime timestamp;
   gboolean new_outbuf = FALSE;
-  GstVideoFrame inframe, outframe, maskframe;
 
-  if (G_UNLIKELY (GST_VIDEO_INFO_FORMAT (&self->vinfo) ==
-          GST_VIDEO_FORMAT_UNKNOWN))
+  if (G_UNLIKELY (self->fmt == GST_VIDEO_FORMAT_UNKNOWN))
     goto not_negotiated;
 
   timestamp = GST_BUFFER_TIMESTAMP (buffer);
@@ -843,25 +899,25 @@ gst_shape_wipe_video_sink_chain (GstPad * pad, GstObject * parent,
       gst_segment_to_stream_time (&self->segment, GST_FORMAT_TIME, timestamp);
 
   if (GST_CLOCK_TIME_IS_VALID (timestamp))
-    gst_object_sync_values (GST_OBJECT (self), timestamp);
+    gst_object_sync_values (G_OBJECT (self), timestamp);
 
   GST_LOG_OBJECT (self,
       "Blending buffer with timestamp %" GST_TIME_FORMAT " at position %f",
       GST_TIME_ARGS (timestamp), self->mask_position);
 
-  g_mutex_lock (&self->mask_mutex);
+  g_mutex_lock (self->mask_mutex);
   if (self->shutdown)
     goto shutdown;
 
   if (!self->mask)
-    g_cond_wait (&self->mask_cond, &self->mask_mutex);
+    g_cond_wait (self->mask_cond, self->mask_mutex);
 
   if (self->mask == NULL || self->shutdown) {
     goto shutdown;
   } else {
     mask = gst_buffer_ref (self->mask);
   }
-  g_mutex_unlock (&self->mask_mutex);
+  g_mutex_unlock (self->mask_mutex);
 
   if (!gst_shape_wipe_do_qos (self, GST_BUFFER_TIMESTAMP (buffer)))
     goto qos;
@@ -869,45 +925,38 @@ gst_shape_wipe_video_sink_chain (GstPad * pad, GstObject * parent,
   /* Try to blend inplace, if it's not possible
    * get a new buffer from downstream. */
   if (!gst_buffer_is_writable (buffer)) {
-    outbuf = gst_buffer_new_allocate (NULL, gst_buffer_get_size (buffer), NULL);
-    gst_buffer_copy_into (outbuf, buffer, GST_BUFFER_COPY_METADATA, 0, -1);
+    ret =
+        gst_pad_alloc_buffer_and_set_caps (self->srcpad, GST_BUFFER_OFFSET_NONE,
+        GST_BUFFER_SIZE (buffer), GST_PAD_CAPS (self->srcpad), &outbuf);
+    if (G_UNLIKELY (ret != GST_FLOW_OK))
+      goto alloc_failed;
+
+    gst_buffer_copy_metadata (outbuf, buffer, GST_BUFFER_COPY_ALL);
     new_outbuf = TRUE;
   } else {
     outbuf = buffer;
   }
 
-  gst_video_frame_map (&inframe, &self->vinfo, buffer,
-      new_outbuf ? GST_MAP_READ : GST_MAP_READWRITE);
-  gst_video_frame_map (&outframe, &self->vinfo, outbuf,
-      new_outbuf ? GST_MAP_WRITE : GST_MAP_READWRITE);
-
-  gst_video_frame_map (&maskframe, &self->minfo, mask, GST_MAP_READ);
-
-  switch (GST_VIDEO_INFO_FORMAT (&self->vinfo)) {
+  switch (self->fmt) {
     case GST_VIDEO_FORMAT_AYUV:
     case GST_VIDEO_FORMAT_ARGB:
     case GST_VIDEO_FORMAT_ABGR:
       if (self->mask_bpp == 16)
-        gst_shape_wipe_blend_argb_16 (self, &inframe, &maskframe, &outframe);
+        gst_shape_wipe_blend_argb_16 (self, buffer, mask, outbuf);
       else
-        gst_shape_wipe_blend_argb_8 (self, &inframe, &maskframe, &outframe);
+        gst_shape_wipe_blend_argb_8 (self, buffer, mask, outbuf);
       break;
     case GST_VIDEO_FORMAT_BGRA:
     case GST_VIDEO_FORMAT_RGBA:
       if (self->mask_bpp == 16)
-        gst_shape_wipe_blend_bgra_16 (self, &inframe, &maskframe, &outframe);
+        gst_shape_wipe_blend_bgra_16 (self, buffer, mask, outbuf);
       else
-        gst_shape_wipe_blend_bgra_8 (self, &inframe, &maskframe, &outframe);
+        gst_shape_wipe_blend_bgra_8 (self, buffer, mask, outbuf);
       break;
     default:
       g_assert_not_reached ();
       break;
   }
-
-  gst_video_frame_unmap (&outframe);
-  gst_video_frame_unmap (&inframe);
-
-  gst_video_frame_unmap (&maskframe);
 
   gst_buffer_unref (mask);
   if (new_outbuf)
@@ -921,45 +970,42 @@ gst_shape_wipe_video_sink_chain (GstPad * pad, GstObject * parent,
 
   /* Errors */
 not_negotiated:
-  {
-    GST_ERROR_OBJECT (self, "No valid caps yet");
-    gst_buffer_unref (buffer);
-    return GST_FLOW_NOT_NEGOTIATED;
-  }
+  GST_ERROR_OBJECT (self, "No valid caps yet");
+  gst_buffer_unref (buffer);
+  return GST_FLOW_NOT_NEGOTIATED;
 shutdown:
-  {
-    GST_DEBUG_OBJECT (self, "Shutting down");
-    gst_buffer_unref (buffer);
-    return GST_FLOW_FLUSHING;
-  }
+  GST_DEBUG_OBJECT (self, "Shutting down");
+  gst_buffer_unref (buffer);
+  return GST_FLOW_WRONG_STATE;
 qos:
-  {
-    GST_DEBUG_OBJECT (self, "Dropping buffer because of QoS");
-    gst_buffer_unref (buffer);
-    gst_buffer_unref (mask);
-    return GST_FLOW_OK;
-  }
+  GST_DEBUG_OBJECT (self, "Dropping buffer because of QoS");
+  gst_buffer_unref (buffer);
+  gst_buffer_unref (mask);
+  return GST_FLOW_OK;
+alloc_failed:
+  GST_ERROR_OBJECT (self, "Buffer allocation from downstream failed: %s",
+      gst_flow_get_name (ret));
+  gst_buffer_unref (buffer);
+  gst_buffer_unref (mask);
+  return ret;
 push_failed:
-  {
-    GST_ERROR_OBJECT (self, "Pushing buffer downstream failed: %s",
-        gst_flow_get_name (ret));
-    return ret;
-  }
+  GST_ERROR_OBJECT (self, "Pushing buffer downstream failed: %s",
+      gst_flow_get_name (ret));
+  return ret;
 }
 
 static GstFlowReturn
-gst_shape_wipe_mask_sink_chain (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer)
+gst_shape_wipe_mask_sink_chain (GstPad * pad, GstBuffer * buffer)
 {
-  GstShapeWipe *self = GST_SHAPE_WIPE (parent);
+  GstShapeWipe *self = GST_SHAPE_WIPE (GST_PAD_PARENT (pad));
   GstFlowReturn ret = GST_FLOW_OK;
 
-  g_mutex_lock (&self->mask_mutex);
+  g_mutex_lock (self->mask_mutex);
   GST_DEBUG_OBJECT (self, "Setting new mask buffer: %" GST_PTR_FORMAT, buffer);
 
   gst_buffer_replace (&self->mask, buffer);
-  g_cond_signal (&self->mask_cond);
-  g_mutex_unlock (&self->mask_mutex);
+  g_cond_signal (self->mask_cond);
+  g_mutex_unlock (self->mask_mutex);
 
   gst_buffer_unref (buffer);
 
@@ -978,10 +1024,10 @@ gst_shape_wipe_change_state (GstElement * element, GstStateChange transition)
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
       /* Unblock video sink chain function */
-      g_mutex_lock (&self->mask_mutex);
+      g_mutex_lock (self->mask_mutex);
       self->shutdown = TRUE;
-      g_cond_signal (&self->mask_cond);
-      g_mutex_unlock (&self->mask_mutex);
+      g_cond_signal (self->mask_cond);
+      g_mutex_unlock (self->mask_mutex);
       break;
     default:
       break;
@@ -1002,33 +1048,29 @@ gst_shape_wipe_change_state (GstElement * element, GstStateChange transition)
 }
 
 static gboolean
-gst_shape_wipe_video_sink_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_shape_wipe_video_sink_event (GstPad * pad, GstEvent * event)
 {
-  GstShapeWipe *self = GST_SHAPE_WIPE (parent);
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
   gboolean ret;
 
   GST_LOG_OBJECT (pad, "Got %s event", GST_EVENT_TYPE_NAME (event));
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
+    case GST_EVENT_NEWSEGMENT:{
+      GstFormat fmt;
+      gboolean is_update;
+      gint64 start, end, base;
+      gdouble rate;
 
-      gst_event_parse_caps (event, &caps);
-      ret = gst_shape_wipe_video_sink_setcaps (self, caps);
-      gst_event_unref (event);
-      break;
-    }
-    case GST_EVENT_SEGMENT:
-    {
-      GstSegment seg;
-
-      gst_event_copy_segment (event, &seg);
-      if (seg.format == GST_FORMAT_TIME) {
+      gst_event_parse_new_segment (event, &is_update, &rate, &fmt, &start,
+          &end, &base);
+      if (fmt == GST_FORMAT_TIME) {
         GST_DEBUG_OBJECT (pad,
-            "Got SEGMENT event in GST_FORMAT_TIME %" GST_PTR_FORMAT, &seg);
-        self->segment = seg;
+            "Got NEWSEGMENT event in GST_FORMAT_TIME, passing on (%"
+            GST_TIME_FORMAT " - %" GST_TIME_FORMAT ")", GST_TIME_ARGS (start),
+            GST_TIME_ARGS (end));
+        gst_segment_set_newsegment (&self->segment, is_update, rate, fmt, start,
+            end, base);
       } else {
         gst_segment_init (&self->segment, GST_FORMAT_TIME);
       }
@@ -1042,30 +1084,22 @@ gst_shape_wipe_video_sink_event (GstPad * pad, GstObject * parent,
       break;
   }
 
+  gst_object_unref (self);
   return ret;
 }
 
 static gboolean
-gst_shape_wipe_mask_sink_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
+gst_shape_wipe_mask_sink_event (GstPad * pad, GstEvent * event)
 {
-  GstShapeWipe *self = GST_SHAPE_WIPE (parent);
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
 
   GST_LOG_OBJECT (pad, "Got %s event", GST_EVENT_TYPE_NAME (event));
 
   switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_CAPS:
-    {
-      GstCaps *caps;
-
-      gst_event_parse_caps (event, &caps);
-      gst_shape_wipe_mask_sink_setcaps (self, caps);
-      break;
-    }
     case GST_EVENT_FLUSH_STOP:
-      g_mutex_lock (&self->mask_mutex);
+      g_mutex_lock (self->mask_mutex);
       gst_buffer_replace (&self->mask, NULL);
-      g_mutex_unlock (&self->mask_mutex);
+      g_mutex_unlock (self->mask_mutex);
       break;
     default:
       break;
@@ -1074,56 +1108,25 @@ gst_shape_wipe_mask_sink_event (GstPad * pad, GstObject * parent,
   /* Dropping all events here */
   gst_event_unref (event);
 
+  gst_object_unref (self);
   return TRUE;
 }
 
 static gboolean
-gst_shape_wipe_mask_sink_query (GstPad * pad, GstObject * parent,
-    GstQuery * query)
+gst_shape_wipe_src_event (GstPad * pad, GstEvent * event)
 {
-  GstShapeWipe *self = GST_SHAPE_WIPE (parent);
-  gboolean ret;
-
-  GST_LOG_OBJECT (pad, "Handling query of type '%s'",
-      gst_query_type_get_name (GST_QUERY_TYPE (query)));
-
-  switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CAPS:
-    {
-      GstCaps *filter, *caps;
-
-      gst_query_parse_caps (query, &filter);
-      caps = gst_shape_wipe_mask_sink_getcaps (self, pad, filter);
-      gst_query_set_caps_result (query, caps);
-      gst_caps_unref (caps);
-      ret = TRUE;
-      break;
-    }
-    default:
-      ret = gst_pad_query_default (pad, parent, query);
-      break;
-  }
-
-  return ret;
-}
-
-
-static gboolean
-gst_shape_wipe_src_event (GstPad * pad, GstObject * parent, GstEvent * event)
-{
-  GstShapeWipe *self = GST_SHAPE_WIPE (parent);
+  GstShapeWipe *self = GST_SHAPE_WIPE (gst_pad_get_parent (pad));
   gboolean ret;
 
   GST_LOG_OBJECT (pad, "Got %s event", GST_EVENT_TYPE_NAME (event));
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_QOS:{
-      GstQOSType type;
       GstClockTimeDiff diff;
       GstClockTime timestamp;
       gdouble proportion;
 
-      gst_event_parse_qos (event, &type, &proportion, &diff, &timestamp);
+      gst_event_parse_qos (event, &proportion, &diff, &timestamp);
 
       gst_shape_wipe_update_qos (self, proportion, diff, timestamp);
     }
@@ -1133,6 +1136,7 @@ gst_shape_wipe_src_event (GstPad * pad, GstObject * parent, GstEvent * event)
       break;
   }
 
+  gst_object_unref (self);
   return ret;
 }
 
@@ -1141,6 +1145,8 @@ plugin_init (GstPlugin * plugin)
 {
   GST_DEBUG_CATEGORY_INIT (gst_shape_wipe_debug, "shapewipe", 0,
       "shapewipe element");
+
+  gst_controller_init (NULL, NULL);
 
   if (!gst_element_register (plugin, "shapewipe", GST_RANK_NONE,
           GST_TYPE_SHAPE_WIPE))
@@ -1151,6 +1157,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    shapewipe,
+    "shapewipe",
     "Shape Wipe transition filter",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

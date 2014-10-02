@@ -3,7 +3,7 @@ GST_DOC_SCANOBJ = $(top_srcdir)/common/gstdoc-scangobj
 ## Process this file with automake to produce Makefile.in
 
 # The name of the module, e.g. 'glib'.
-#DOC_MODULE=gst-plugins-libs-@GST_API_VERSION@
+#DOC_MODULE=gst-plugins-libs-@GST_MAJORMINOR@
 MODULE=gst-plugins-good
 DOC_MODULE=$(MODULE)-plugins
 
@@ -53,20 +53,31 @@ IGNORE_CFILES =
 
 EXTRA_HFILES = \
 	$(top_srcdir)/ext/aalib/gstaasink.h \
+	$(top_srcdir)/ext/annodex/gstcmmldec.h \
+	$(top_srcdir)/ext/annodex/gstcmmlenc.h \
 	$(top_srcdir)/ext/cairo/gsttextoverlay.h \
 	$(top_srcdir)/ext/cairo/gsttimeoverlay.h \
 	$(top_srcdir)/ext/cairo/gstcairorender.h \
 	$(top_srcdir)/ext/cairo/gstcairooverlay.h \
 	$(top_srcdir)/ext/dv/gstdvdec.h \
 	$(top_srcdir)/ext/dv/gstdvdemux.h \
+	$(top_srcdir)/ext/esd/esdsink.h \
 	$(top_srcdir)/ext/flac/gstflacdec.h \
 	$(top_srcdir)/ext/flac/gstflacenc.h \
 	$(top_srcdir)/ext/flac/gstflactag.h \
+	$(top_srcdir)/ext/gconf/gstgconfaudiosrc.h \
+	$(top_srcdir)/ext/gconf/gstgconfaudiosink.h \
+	$(top_srcdir)/ext/gconf/gstgconfvideosrc.h \
+	$(top_srcdir)/ext/gconf/gstgconfvideosink.h \
 	$(top_srcdir)/ext/gdk_pixbuf/gstgdkpixbufsink.h \
+	$(top_srcdir)/ext/hal/gsthalaudiosink.h \
+	$(top_srcdir)/ext/hal/gsthalaudiosrc.h \
 	$(top_srcdir)/ext/jack/gstjackaudiosrc.h \
 	$(top_srcdir)/ext/jack/gstjackaudiosink.h \
 	$(top_srcdir)/ext/jpeg/gstjpegdec.h \
 	$(top_srcdir)/ext/jpeg/gstjpegenc.h \
+	$(top_srcdir)/ext/jpeg/gstsmokedec.h \
+	$(top_srcdir)/ext/jpeg/gstsmokeenc.h \
 	$(top_srcdir)/ext/libcaca/gstcacasink.h \
 	$(top_srcdir)/ext/libpng/gstpngdec.h \
 	$(top_srcdir)/ext/libpng/gstpngenc.h \
@@ -77,12 +88,12 @@ EXTRA_HFILES = \
 	$(top_srcdir)/ext/taglib/gstid3v2mux.h \
 	$(top_srcdir)/ext/pulse/pulsesink.h \
 	$(top_srcdir)/ext/pulse/pulsesrc.h \
+	$(top_srcdir)/ext/pulse/pulsemixer.h \
 	$(top_srcdir)/ext/speex/gstspeexenc.h \
 	$(top_srcdir)/ext/speex/gstspeexdec.h \
-	$(top_srcdir)/ext/vpx/gstvp8dec.h \
-	$(top_srcdir)/ext/vpx/gstvp8enc.h \
 	$(top_srcdir)/ext/wavpack/gstwavpackdec.h \
 	$(top_srcdir)/ext/wavpack/gstwavpackenc.h \
+	$(top_srcdir)/ext/wavpack/gstwavpackparse.h \
 	$(top_srcdir)/gst/alpha/gstalpha.h \
 	$(top_srcdir)/gst/alpha/gstalphacolor.h \
 	$(top_srcdir)/gst/apetag/gstapedemux.h \
@@ -185,14 +196,18 @@ EXTRA_HFILES = \
 	$(top_srcdir)/gst/videofilter/gstgamma.h \
 	$(top_srcdir)/gst/videofilter/gstvideobalance.h \
 	$(top_srcdir)/gst/videofilter/gstvideoflip.h \
+	$(top_srcdir)/gst/videomixer/videomixer.h \
+	$(top_srcdir)/gst/videomixer/videomixerpad.h \
 	$(top_srcdir)/gst/videomixer/videomixer2.h \
 	$(top_srcdir)/gst/videomixer/videomixer2pad.h \
 	$(top_srcdir)/gst/wavenc/gstwavenc.h \
 	$(top_srcdir)/gst/wavparse/gstwavparse.h \
 	$(top_srcdir)/gst/y4m/gsty4mencode.h \
 	$(top_srcdir)/sys/directsound/gstdirectsoundsink.h \
+	$(top_srcdir)/sys/oss4/oss4-mixer.h \
 	$(top_srcdir)/sys/oss4/oss4-sink.h \
 	$(top_srcdir)/sys/oss4/oss4-source.h \
+	$(top_srcdir)/sys/oss/gstossmixerelement.h \
 	$(top_srcdir)/sys/oss/gstosssink.h \
 	$(top_srcdir)/sys/oss/gstosssrc.h \
 	$(top_srcdir)/sys/osxaudio/gstosxaudiosrc.h \

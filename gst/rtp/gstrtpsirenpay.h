@@ -23,7 +23,7 @@
 #define __GST_RTP_SIREN_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbaseaudiopayload.h>
+#include <gst/rtp/gstbasertpaudiopayload.h>
 
 G_BEGIN_DECLS
 #define GST_TYPE_RTP_SIREN_PAY \
@@ -41,12 +41,12 @@ typedef struct _GstRTPSirenPayClass GstRTPSirenPayClass;
 
 struct _GstRTPSirenPay
 {
-  GstRTPBaseAudioPayload audiopayload;
+  GstBaseRTPAudioPayload audiopayload;
 };
 
 struct _GstRTPSirenPayClass
 {
-  GstRTPBaseAudioPayloadClass parent_class;
+  GstBaseRTPAudioPayloadClass parent_class;
 };
 
 GType gst_rtp_siren_pay_get_type (void);

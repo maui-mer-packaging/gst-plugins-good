@@ -45,7 +45,7 @@ GST_DEBUG_CATEGORY (ebmlread_debug);
 
 /* Peeks following element id and element length in datastream provided
  * by @peek with @ctx as user data.
- * Returns GST_FLOW_EOS if not enough data to read id and length.
+ * Returns GST_FLOW_UNEXPECTED if not enough data to read id and length.
  * Otherwise, @needed provides the prefix length (id + length), and
  * @length provides element length.
  *
@@ -171,10 +171,9 @@ gst_ebml_read_init (GstEbmlRead * ebml, GstElement * el, GstBuffer * buf,
   ebml->el = el;
   ebml->offset = offset;
   ebml->buf = buf;
-  gst_buffer_map (buf, &ebml->map, GST_MAP_READ);
   ebml->readers = g_array_sized_new (FALSE, FALSE, sizeof (GstEbmlMaster), 10);
   m.offset = ebml->offset;
-  gst_byte_reader_init (&m.br, ebml->map.data, ebml->map.size);
+  gst_byte_reader_init (&m.br, GST_BUFFER_DATA (buf), GST_BUFFER_SIZE (buf));
   g_array_append_val (ebml->readers, m);
 }
 
@@ -184,10 +183,8 @@ gst_ebml_read_clear (GstEbmlRead * ebml)
   if (ebml->readers)
     g_array_free (ebml->readers, TRUE);
   ebml->readers = NULL;
-  if (ebml->buf) {
-    gst_buffer_unmap (ebml->buf, &ebml->map);
+  if (ebml->buf)
     gst_buffer_unref (ebml->buf);
-  }
   ebml->buf = NULL;
   ebml->el = NULL;
 }
@@ -198,7 +195,7 @@ gst_ebml_read_peek (GstByteReader * br, guint peek, const guint8 ** data)
   if (G_LIKELY (gst_byte_reader_peek_data (br, peek, data)))
     return GST_FLOW_OK;
   else
-    return GST_FLOW_EOS;
+    return GST_FLOW_UNEXPECTED;
 }
 
 static GstFlowReturn
@@ -223,12 +220,11 @@ gst_ebml_peek_id_full (GstEbmlRead * ebml, guint32 * id, guint64 * length,
     GstByteReader *br = gst_ebml_read_br (ebml);
     guint size = gst_byte_reader_get_remaining (br);
 
-    if (gst_byte_reader_peek_data (br, size, &data)) {
+    gst_byte_reader_peek_data (br, size, &data);
 
-      GST_LOG_OBJECT (ebml->el, "current br %p; remaining %d", br, size);
-      if (data)
-        GST_MEMDUMP_OBJECT (ebml->el, "element", data, MIN (size, *length));
-    }
+    GST_LOG_OBJECT (ebml->el, "current br %p; remaining %d", br, size);
+    if (data)
+      GST_MEMDUMP_OBJECT (ebml->el, "element", data, MIN (size, *length));
   }
 #endif
 
@@ -338,8 +334,7 @@ gst_ebml_read_buffer (GstEbmlRead * ebml, guint32 * id, GstBuffer ** buf)
 
     offset = gst_ebml_read_get_pos (ebml) - ebml->offset;
     if (G_LIKELY (gst_byte_reader_skip (gst_ebml_read_br (ebml), length))) {
-      *buf = gst_buffer_copy_region (ebml->buf, GST_BUFFER_COPY_ALL,
-          offset, length);
+      *buf = gst_buffer_create_sub (ebml->buf, offset, length);
     } else {
       *buf = NULL;
       return GST_FLOW_PARSE;

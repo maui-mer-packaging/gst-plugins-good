@@ -49,11 +49,12 @@ typedef struct _GstCACASinkClass GstCACASinkClass;
 struct _GstCACASink {
   GstBaseSink parent;
 
-  GstVideoInfo info;
+  gint width, height;
   gint screen_width, screen_height;
-
+  guint bpp;
   guint dither;
   gboolean antialiasing;
+  guint red_mask, green_mask, blue_mask;
 
   struct caca_bitmap *bitmap;
 };

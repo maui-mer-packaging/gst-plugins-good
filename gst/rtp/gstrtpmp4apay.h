@@ -21,7 +21,7 @@
 #define __GST_RTP_MP4A_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasepayload.h>
+#include <gst/rtp/gstbasertppayload.h>
 #include <gst/base/gstadapter.h>
 
 G_BEGIN_DECLS
@@ -42,7 +42,7 @@ typedef struct _GstRtpMP4APayClass GstRtpMP4APayClass;
 
 struct _GstRtpMP4APay
 {
-  GstRTPBasePayload    payload;
+  GstBaseRTPPayload    payload;
 
   gint          rate;
   gchar        *params;
@@ -53,7 +53,7 @@ struct _GstRtpMP4APay
 
 struct _GstRtpMP4APayClass
 {
-  GstRTPBasePayloadClass parent_class;
+  GstBaseRTPPayloadClass parent_class;
 };
 
 GType gst_rtp_mp4a_pay_get_type (void);

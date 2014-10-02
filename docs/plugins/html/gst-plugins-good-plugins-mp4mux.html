@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>mp4mux</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-mpegaudioparse.html" title="mpegaudioparse">
 <link rel="next" href="gst-plugins-good-plugins-mulawdec.html" title="mulawdec">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-mpegaudioparse.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-mulawdec.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -50,10 +50,9 @@
 <a name="gst-plugins-good-plugins-mp4mux.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----GstMP4Mux
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstMP4Mux
 </pre>
 </div>
 <div class="refsect1">
@@ -93,7 +92,7 @@ nearly identical to the so-called ISO Base Media file format defined in
 ISO 14496-12 (except for some media specific parts).
 In turn, the latter ISO Base Media format was further specialized as a
 Motion JPEG-2000 file format in ISO 15444-3 (mj2mux)
-and in various 3GPP(2) specs (3gppmux).
+and in various 3GPP(2) specs (gppmux).
 The fragmented file features defined (only) in ISO Base Media are used by
 ISMV files making up (a.o.) Smooth Streaming (ismlmux).
 </p>
@@ -133,13 +132,13 @@ presentation-timestamp.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp11474528"></a><h3>Example pipelines</h3>
+<a name="idp15348992"></a><h3>Example pipelines</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> v4l2src num<span class="gtkdoc opt">-</span>buffers<span class="gtkdoc opt">=</span><span class="number">50</span> <span class="gtkdoc opt">!</span> queue <span class="gtkdoc opt">!</span> x264enc <span class="gtkdoc opt">!</span> mp4mux <span class="gtkdoc opt">!</span> filesink location<span class="gtkdoc opt">=</span>video<span class="gtkdoc opt">.</span>mp4</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch gst<span class="gtkdoc opt">-</span>launch v4l2src num<span class="gtkdoc opt">-</span>buffers<span class="gtkdoc opt">=</span><span class="number">50</span> <span class="gtkdoc opt">!</span> queue <span class="gtkdoc opt">!</span> x264enc <span class="gtkdoc opt">!</span> mp4mux <span class="gtkdoc opt">!</span> filesink location<span class="gtkdoc opt">=</span>video<span class="gtkdoc opt">.</span>mp4</pre></td>
       </tr>
     </tbody>
   </table>
@@ -156,7 +155,7 @@ Documentation last reviewed on 2011-04-21
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp16238688"></a><h3>Element Information</h3>
+<a name="idp15759168"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -179,13 +178,13 @@ Documentation last reviewed on 2011-04-21
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp14380400"></a><h3>Element Pads</h3>
+<a name="idp16263872"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
 <tr>
 <td><p><span class="term">name</span></p></td>
-<td>audio_%u</td>
+<td>audio_%d</td>
 </tr>
 <tr>
 <td><p><span class="term">direction</span></p></td>
@@ -214,7 +213,7 @@ Documentation last reviewed on 2011-04-21
 <tbody>
 <tr>
 <td><p><span class="term">name</span></p></td>
-<td>video_%u</td>
+<td>video_%d</td>
 </tr>
 <tr>
 <td><p><span class="term">direction</span></p></td>

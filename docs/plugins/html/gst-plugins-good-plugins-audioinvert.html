@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>audioinvert</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-audiodynamic.html" title="audiodynamic">
 <link rel="next" href="gst-plugins-good-plugins-audiopanorama.html" title="audiopanorama">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-audiodynamic.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-audiopanorama.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,12 +48,11 @@
 <a name="gst-plugins-good-plugins-audioinvert.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
-                           +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudiofilter.html#GstAudioFilter">GstAudioFilter</a>
-                                 +----GstAudioInvert
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
+                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-gstaudiofilter.html#GstAudioFilter">GstAudioFilter</a>
+                           +----GstAudioInvert
 </pre>
 </div>
 <div class="refsect1">
@@ -72,7 +71,7 @@ Creating a stereo sample from a mono source, with one channel inverted produces 
 <p>
 </p>
 <div class="refsect2">
-<a name="idp11226448"></a><h3>Example launch line</h3>
+<a name="idp6642112"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
@@ -80,9 +79,9 @@ Creating a stereo sample from a mono source, with one channel inverted produces 
         <td class="listing_lines" align="right"><pre>1
 2
 3</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> audiotestsrc wave<span class="gtkdoc opt">=</span>saw <span class="gtkdoc opt">!</span> audioinvert invert<span class="gtkdoc opt">=</span><span class="number">0.4</span> <span class="gtkdoc opt">!</span> alsasink
-gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> filesrc location<span class="gtkdoc opt">=</span><span class="string">&quot;melo1.ogg&quot;</span> <span class="gtkdoc opt">!</span> oggdemux <span class="gtkdoc opt">!</span> vorbisdec <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> audioinvert invert<span class="gtkdoc opt">=</span><span class="number">0.4</span> <span class="gtkdoc opt">!</span> alsasink
-gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> audiotestsrc wave<span class="gtkdoc opt">=</span>saw <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> audioinvert invert<span class="gtkdoc opt">=</span><span class="number">0.4</span> <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> alsasink</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch audiotestsrc wave<span class="gtkdoc opt">=</span>saw <span class="gtkdoc opt">!</span> audioinvert invert<span class="gtkdoc opt">=</span><span class="number">0.4</span> <span class="gtkdoc opt">!</span> alsasink
+gst<span class="gtkdoc opt">-</span>launch filesrc location<span class="gtkdoc opt">=</span><span class="string">&quot;melo1.ogg&quot;</span> <span class="gtkdoc opt">!</span> oggdemux <span class="gtkdoc opt">!</span> vorbisdec <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> audioinvert invert<span class="gtkdoc opt">=</span><span class="number">0.4</span> <span class="gtkdoc opt">!</span> alsasink
+gst<span class="gtkdoc opt">-</span>launch audiotestsrc wave<span class="gtkdoc opt">=</span>saw <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> audioinvert invert<span class="gtkdoc opt">=</span><span class="number">0.4</span> <span class="gtkdoc opt">!</span> audioconvert <span class="gtkdoc opt">!</span> alsasink</pre></td>
       </tr>
     </tbody>
   </table>
@@ -94,7 +93,7 @@ gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp2698768"></a><h3>Element Information</h3>
+<a name="idp9835120"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -117,7 +116,7 @@ gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp11101408"></a><h3>Element Pads</h3>
+<a name="idp6132752"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -135,7 +134,11 @@ gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string){ S16LE, F32LE }, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ], layout=(string){ interleaved, non-interleaved }</td>
+<td>audio/x-raw-int, depth=(int)16, width=(int)16, endianness=(int)1234, signed=(boolean)true, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-float, width=(int)32, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
 </tr>
 </tbody>
 </table></div>
@@ -156,7 +159,11 @@ gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string){ S16LE, F32LE }, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ], layout=(string){ interleaved, non-interleaved }</td>
+<td>audio/x-raw-int, depth=(int)16, width=(int)16, endianness=(int)1234, signed=(boolean)true, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> audio/x-raw-float, width=(int)32, endianness=(int)1234, rate=(int)[ 1, 2147483647 ], channels=(int)[ 1, 2147483647 ]</td>
 </tr>
 </tbody>
 </table></div>

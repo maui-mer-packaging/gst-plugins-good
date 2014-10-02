@@ -25,7 +25,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v videotestsrc num-buffers=300 ! theoraenc ! oggmux !
+ * gst-launch -v videotestsrc num-buffers=300 ! theoraenc ! oggmux !
  *   souphttpclientsink location=http://server/filename.ogv
  * ]|
  * 
@@ -109,21 +109,51 @@ GST_STATIC_PAD_TEMPLATE ("sink",
 
 /* class initialization */
 
-#define gst_soup_http_client_sink_parent_class parent_class
-G_DEFINE_TYPE (GstSoupHttpClientSink, gst_soup_http_client_sink,
-    GST_TYPE_BASE_SINK);
+#define DEBUG_INIT(bla) \
+  GST_DEBUG_CATEGORY_INIT (souphttpclientsink_dbg, "souphttpclientsink", 0, \
+      "souphttpclientsink element");
+
+GST_BOILERPLATE_FULL (GstSoupHttpClientSink, gst_soup_http_client_sink,
+    GstBaseSink, GST_TYPE_BASE_SINK, DEBUG_INIT);
+
+static void
+gst_soup_http_client_sink_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_soup_http_client_sink_sink_template);
+
+  gst_element_class_set_details_simple (element_class, "HTTP client sink",
+      "Generic", "Sends streams to HTTP server via PUT",
+      "David Schleef <ds@entropywave.com>");
+}
 
 static void
 gst_soup_http_client_sink_class_init (GstSoupHttpClientSinkClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstBaseSinkClass *base_sink_class = GST_BASE_SINK_CLASS (klass);
 
   gobject_class->set_property = gst_soup_http_client_sink_set_property;
   gobject_class->get_property = gst_soup_http_client_sink_get_property;
   gobject_class->dispose = gst_soup_http_client_sink_dispose;
   gobject_class->finalize = gst_soup_http_client_sink_finalize;
+  base_sink_class->set_caps =
+      GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_set_caps);
+  if (0)
+    base_sink_class->get_times =
+        GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_get_times);
+  base_sink_class->start = GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_start);
+  base_sink_class->stop = GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_stop);
+  base_sink_class->unlock =
+      GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_unlock);
+  base_sink_class->event = GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_event);
+  if (0)
+    base_sink_class->preroll =
+        GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_preroll);
+  base_sink_class->render =
+      GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_render);
 
   g_object_class_install_property (gobject_class,
       PROP_LOCATION,
@@ -169,41 +199,16 @@ gst_soup_http_client_sink_class_init (GstSoupHttpClientSinkClass * klass)
       g_param_spec_boxed ("cookies", "Cookies", "HTTP request cookies",
           G_TYPE_STRV, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_soup_http_client_sink_sink_template));
-
-  gst_element_class_set_static_metadata (gstelement_class, "HTTP client sink",
-      "Generic", "Sends streams to HTTP server via PUT",
-      "David Schleef <ds@entropywave.com>");
-
-  base_sink_class->set_caps =
-      GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_set_caps);
-  if (0)
-    base_sink_class->get_times =
-        GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_get_times);
-  base_sink_class->start = GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_start);
-  base_sink_class->stop = GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_stop);
-  base_sink_class->unlock =
-      GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_unlock);
-  base_sink_class->event = GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_event);
-  if (0)
-    base_sink_class->preroll =
-        GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_preroll);
-  base_sink_class->render =
-      GST_DEBUG_FUNCPTR (gst_soup_http_client_sink_render);
-
-  GST_DEBUG_CATEGORY_INIT (souphttpclientsink_dbg, "souphttpclientsink", 0,
-      "souphttpclientsink element");
-
 }
 
 static void
-gst_soup_http_client_sink_init (GstSoupHttpClientSink * souphttpsink)
+gst_soup_http_client_sink_init (GstSoupHttpClientSink * souphttpsink,
+    GstSoupHttpClientSinkClass * souphttpsink_class)
 {
   const char *proxy;
 
-  g_mutex_init (&souphttpsink->mutex);
-  g_cond_init (&souphttpsink->cond);
+  souphttpsink->mutex = g_mutex_new ();
+  souphttpsink->cond = g_cond_new ();
 
   souphttpsink->location = NULL;
   souphttpsink->automatic_redirect = TRUE;
@@ -260,7 +265,7 @@ gst_soup_http_client_sink_set_property (GObject * object, guint property_id,
 {
   GstSoupHttpClientSink *souphttpsink = GST_SOUP_HTTP_CLIENT_SINK (object);
 
-  g_mutex_lock (&souphttpsink->mutex);
+  g_mutex_lock (souphttpsink->mutex);
   switch (property_id) {
     case PROP_SESSION:
       if (souphttpsink->prop_session) {
@@ -321,7 +326,7 @@ gst_soup_http_client_sink_set_property (GObject * object, guint property_id,
       break;
   }
 done:
-  g_mutex_unlock (&souphttpsink->mutex);
+  g_mutex_unlock (souphttpsink->mutex);
 }
 
 void
@@ -403,8 +408,8 @@ gst_soup_http_client_sink_finalize (GObject * object)
     soup_uri_free (souphttpsink->proxy);
   g_free (souphttpsink->location);
 
-  g_cond_clear (&souphttpsink->cond);
-  g_mutex_clear (&souphttpsink->mutex);
+  g_cond_free (souphttpsink->cond);
+  g_mutex_free (souphttpsink->mutex);
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
@@ -454,9 +459,9 @@ thread_ready_idle_cb (gpointer data)
 
   GST_LOG_OBJECT (souphttpsink, "thread ready");
 
-  g_mutex_lock (&souphttpsink->mutex);
-  g_cond_signal (&souphttpsink->cond);
-  g_mutex_unlock (&souphttpsink->mutex);
+  g_mutex_lock (souphttpsink->mutex);
+  g_cond_signal (souphttpsink->cond);
+  g_mutex_unlock (souphttpsink->mutex);
 
   return FALSE;                 /* only run once */
 }
@@ -497,15 +502,20 @@ gst_soup_http_client_sink_start (GstBaseSink * sink)
 
     souphttpsink->loop = g_main_loop_new (souphttpsink->context, TRUE);
 
-    g_mutex_lock (&souphttpsink->mutex);
+    g_mutex_lock (souphttpsink->mutex);
 
     /* FIXME: error handling */
+#if !GLIB_CHECK_VERSION (2, 31, 0)
+    souphttpsink->thread = g_thread_create (thread_func, souphttpsink,
+        TRUE, &error);
+#else
     souphttpsink->thread = g_thread_try_new ("souphttpclientsink-thread",
         thread_func, souphttpsink, &error);
+#endif
 
     GST_LOG_OBJECT (souphttpsink, "waiting for main loop thread to start up");
-    g_cond_wait (&souphttpsink->cond, &souphttpsink->mutex);
-    g_mutex_unlock (&souphttpsink->mutex);
+    g_cond_wait (souphttpsink->cond, souphttpsink->mutex);
+    g_mutex_unlock (souphttpsink->mutex);
     GST_LOG_OBJECT (souphttpsink, "main loop thread running");
 
     souphttpsink->session =
@@ -569,16 +579,16 @@ gst_soup_http_client_sink_event (GstBaseSink * sink, GstEvent * event)
 
   if (GST_EVENT_TYPE (event) == GST_EVENT_EOS) {
     GST_DEBUG_OBJECT (souphttpsink, "got eos");
-    g_mutex_lock (&souphttpsink->mutex);
+    g_mutex_lock (souphttpsink->mutex);
     while (souphttpsink->message) {
       GST_DEBUG_OBJECT (souphttpsink, "waiting");
-      g_cond_wait (&souphttpsink->cond, &souphttpsink->mutex);
+      g_cond_wait (souphttpsink->cond, souphttpsink->mutex);
     }
-    g_mutex_unlock (&souphttpsink->mutex);
+    g_mutex_unlock (souphttpsink->mutex);
     GST_DEBUG_OBJECT (souphttpsink, "finished eos");
   }
 
-  return GST_BASE_SINK_CLASS (parent_class)->event (sink, event);
+  return TRUE;
 }
 
 static GstFlowReturn
@@ -623,28 +633,20 @@ send_message_locked (GstSoupHttpClientSink * souphttpsink)
   if (souphttpsink->offset == 0) {
     for (g = souphttpsink->streamheader_buffers; g; g = g_list_next (g)) {
       GstBuffer *buffer = g->data;
-      GstMapInfo map;
-
-      /* FIXME, lifetime of the buffer? */
-      gst_buffer_map (buffer, &map, GST_MAP_READ);
       soup_message_body_append (souphttpsink->message->request_body,
-          SOUP_MEMORY_STATIC, map.data, map.size);
-      n += map.size;
-      gst_buffer_unmap (buffer, &map);
+          SOUP_MEMORY_STATIC, GST_BUFFER_DATA (buffer),
+          GST_BUFFER_SIZE (buffer));
+      n += GST_BUFFER_SIZE (buffer);
     }
   }
 
   for (g = souphttpsink->queued_buffers; g; g = g_list_next (g)) {
     GstBuffer *buffer = g->data;
-    if (!GST_BUFFER_FLAG_IS_SET (buffer, GST_BUFFER_FLAG_HEADER)) {
-      GstMapInfo map;
-
-      /* FIXME, lifetime of the buffer? */
-      gst_buffer_map (buffer, &map, GST_MAP_READ);
+    if (!GST_BUFFER_FLAG_IS_SET (buffer, GST_BUFFER_FLAG_IN_CAPS)) {
       soup_message_body_append (souphttpsink->message->request_body,
-          SOUP_MEMORY_STATIC, map.data, map.size);
-      n += map.size;
-      gst_buffer_unmap (buffer, &map);
+          SOUP_MEMORY_STATIC, GST_BUFFER_DATA (buffer),
+          GST_BUFFER_SIZE (buffer));
+      n += GST_BUFFER_SIZE (buffer);
     }
   }
 
@@ -680,9 +682,9 @@ send_message_locked (GstSoupHttpClientSink * souphttpsink)
 static gboolean
 send_message (GstSoupHttpClientSink * souphttpsink)
 {
-  g_mutex_lock (&souphttpsink->mutex);
+  g_mutex_lock (souphttpsink->mutex);
   send_message_locked (souphttpsink);
-  g_mutex_unlock (&souphttpsink->mutex);
+  g_mutex_unlock (souphttpsink->mutex);
 
   return FALSE;
 }
@@ -695,14 +697,14 @@ callback (SoupSession * session, SoupMessage * msg, gpointer user_data)
   GST_DEBUG_OBJECT (souphttpsink, "callback status=%d %s",
       msg->status_code, msg->reason_phrase);
 
-  g_mutex_lock (&souphttpsink->mutex);
-  g_cond_signal (&souphttpsink->cond);
+  g_mutex_lock (souphttpsink->mutex);
+  g_cond_signal (souphttpsink->cond);
   souphttpsink->message = NULL;
 
   if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code)) {
     souphttpsink->status_code = msg->status_code;
     souphttpsink->reason_phrase = g_strdup (msg->reason_phrase);
-    g_mutex_unlock (&souphttpsink->mutex);
+    g_mutex_unlock (souphttpsink->mutex);
     return;
   }
 
@@ -710,7 +712,7 @@ callback (SoupSession * session, SoupMessage * msg, gpointer user_data)
   souphttpsink->sent_buffers = NULL;
 
   send_message_locked (souphttpsink);
-  g_mutex_unlock (&souphttpsink->mutex);
+  g_mutex_unlock (souphttpsink->mutex);
 }
 
 static GstFlowReturn
@@ -729,7 +731,7 @@ gst_soup_http_client_sink_render (GstBaseSink * sink, GstBuffer * buffer)
     return GST_FLOW_ERROR;
   }
 
-  g_mutex_lock (&souphttpsink->mutex);
+  g_mutex_lock (souphttpsink->mutex);
   if (souphttpsink->location != NULL) {
     wake = (souphttpsink->queued_buffers == NULL);
     souphttpsink->queued_buffers =
@@ -743,7 +745,7 @@ gst_soup_http_client_sink_render (GstBaseSink * sink, GstBuffer * buffer)
       g_source_unref (source);
     }
   }
-  g_mutex_unlock (&souphttpsink->mutex);
+  g_mutex_unlock (souphttpsink->mutex);
 
   return GST_FLOW_OK;
 }

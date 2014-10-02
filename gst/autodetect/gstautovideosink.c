@@ -30,7 +30,7 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v -m videotestsrc ! autovideosink
+ * gst-launch -v -m videotestsrc ! autovideosink
  * ]|
  * </refsect2>
  */
@@ -44,14 +44,11 @@
 #include "gstautovideosink.h"
 #include "gstautodetect.h"
 
-#define DEFAULT_TS_OFFSET           0
-
 /* Properties */
 enum
 {
   PROP_0,
   PROP_CAPS,
-  PROP_TS_OFFSET,
 };
 
 static GstStateChangeReturn
@@ -65,13 +62,24 @@ static void gst_auto_video_sink_set_property (GObject * object, guint prop_id,
 static void gst_auto_video_sink_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-#define gst_auto_video_sink_parent_class parent_class
-G_DEFINE_TYPE (GstAutoVideoSink, gst_auto_video_sink, GST_TYPE_BIN);
+GST_BOILERPLATE (GstAutoVideoSink, gst_auto_video_sink, GstBin, GST_TYPE_BIN);
 
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
+
+static void
+gst_auto_video_sink_base_init (gpointer klass)
+{
+  GstElementClass *eklass = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (eklass, &sink_template);
+  gst_element_class_set_details_simple (eklass, "Auto video sink",
+      "Sink/Video",
+      "Wrapper video sink for automatically detected video sink",
+      "Jan Schmidt <thaytan@noraisin.net>");
+}
 
 static void
 gst_auto_video_sink_class_init (GstAutoVideoSinkClass * klass)
@@ -100,18 +108,6 @@ gst_auto_video_sink_class_init (GstAutoVideoSinkClass * klass)
       g_param_spec_boxed ("filter-caps", "Filter caps",
           "Filter sink candidates using these caps.", GST_TYPE_CAPS,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
-  g_object_class_install_property (gobject_class, PROP_TS_OFFSET,
-      g_param_spec_int64 ("ts-offset", "TS Offset",
-          "Timestamp offset in nanoseconds", G_MININT64, G_MAXINT64,
-          DEFAULT_TS_OFFSET, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
-  gst_element_class_add_pad_template (eklass,
-      gst_static_pad_template_get (&sink_template));
-  gst_element_class_set_static_metadata (eklass, "Auto video sink",
-      "Sink/Video",
-      "Wrapper video sink for automatically detected video sink",
-      "Jan Schmidt <thaytan@noraisin.net>");
 }
 
 static void
@@ -134,7 +130,7 @@ gst_auto_video_sink_clear_kid (GstAutoVideoSink * sink)
     gst_bin_remove (GST_BIN (sink), sink->kid);
     sink->kid = NULL;
     /* Don't lose the SINK flag */
-    GST_OBJECT_FLAG_SET (sink, GST_ELEMENT_FLAG_SINK);
+    GST_OBJECT_FLAG_SET (sink, GST_ELEMENT_IS_SINK);
   }
 }
 
@@ -161,10 +157,12 @@ gst_auto_video_sink_reset (GstAutoVideoSink * sink)
   gst_object_unref (targetpad);
 }
 
-static GstStaticCaps raw_caps = GST_STATIC_CAPS ("video/x-raw");
+static GstStaticCaps raw_caps =
+    GST_STATIC_CAPS ("video/x-raw-yuv; video/x-raw-rgb");
 
 static void
-gst_auto_video_sink_init (GstAutoVideoSink * sink)
+gst_auto_video_sink_init (GstAutoVideoSink * sink,
+    GstAutoVideoSinkClass * g_class)
 {
   sink->pad = gst_ghost_pad_new_no_target ("sink", GST_PAD_SINK);
   gst_element_add_pad (GST_ELEMENT (sink), sink->pad);
@@ -173,10 +171,9 @@ gst_auto_video_sink_init (GstAutoVideoSink * sink)
 
   /* set the default raw video caps */
   sink->filter_caps = gst_static_caps_get (&raw_caps);
-  sink->ts_offset = DEFAULT_TS_OFFSET;
 
   /* mark as sink */
-  GST_OBJECT_FLAG_SET (sink, GST_ELEMENT_FLAG_SINK);
+  GST_OBJECT_FLAG_SET (sink, GST_ELEMENT_IS_SINK);
 }
 
 static gboolean
@@ -190,8 +187,7 @@ gst_auto_video_sink_factory_filter (GstPluginFeature * feature, gpointer data)
     return FALSE;
 
   /* video sinks */
-  klass = gst_element_factory_get_metadata (GST_ELEMENT_FACTORY (feature),
-      GST_ELEMENT_METADATA_KLASS);
+  klass = gst_element_factory_get_klass (GST_ELEMENT_FACTORY (feature));
   if (!(strstr (klass, "Sink") && strstr (klass, "Video")))
     return FALSE;
 
@@ -222,7 +218,7 @@ gst_auto_video_sink_create_element_with_pretty_name (GstAutoVideoSink * sink,
   GstElement *element;
   gchar *name, *marker;
 
-  marker = g_strdup (GST_OBJECT_NAME (factory));
+  marker = g_strdup (GST_PLUGIN_FEATURE (factory)->name);
   if (g_str_has_suffix (marker, "sink"))
     marker[strlen (marker) - 4] = '\0';
   if (g_str_has_prefix (marker, "gst"))
@@ -248,7 +244,7 @@ gst_auto_video_sink_find_best (GstAutoVideoSink * sink)
   GstCaps *el_caps = NULL;
   gboolean no_match = TRUE;
 
-  list = gst_registry_feature_filter (gst_registry_get (),
+  list = gst_registry_feature_filter (gst_registry_get_default (),
       (GstPluginFeatureFilter) gst_auto_video_sink_factory_filter, FALSE, sink);
   list = g_list_sort (list, (GCompareFunc) gst_auto_video_sink_compare_ranks);
 
@@ -261,13 +257,13 @@ gst_auto_video_sink_find_best (GstAutoVideoSink * sink)
     if ((el = gst_auto_video_sink_create_element_with_pretty_name (sink, f))) {
       GstStateChangeReturn ret;
 
-      GST_DEBUG_OBJECT (sink, "Testing %s", GST_OBJECT_NAME (f));
+      GST_DEBUG_OBJECT (sink, "Testing %s", GST_PLUGIN_FEATURE (f)->name);
 
       /* If autovideosink has been provided with filter caps,
        * accept only sinks that match with the filter caps */
       if (sink->filter_caps) {
         el_pad = gst_element_get_static_pad (GST_ELEMENT (el), "sink");
-        el_caps = gst_pad_query_caps (el_pad, NULL);
+        el_caps = gst_pad_get_caps (el_pad);
         gst_object_unref (el_pad);
         GST_DEBUG_OBJECT (sink,
             "Checking caps: %" GST_PTR_FORMAT " vs. %" GST_PTR_FORMAT,
@@ -342,8 +338,6 @@ gst_auto_video_sink_detect (GstAutoVideoSink * sink)
   if (!(esink = gst_auto_video_sink_find_best (sink)))
     goto no_sink;
 
-  g_object_set (G_OBJECT (esink), "ts-offset", sink->ts_offset, NULL);
-
   sink->kid = esink;
   gst_bin_add (GST_BIN (sink), esink);
 
@@ -415,11 +409,6 @@ gst_auto_video_sink_set_property (GObject * object, guint prop_id,
         gst_caps_unref (sink->filter_caps);
       sink->filter_caps = gst_caps_copy (gst_value_get_caps (value));
       break;
-    case PROP_TS_OFFSET:
-      sink->ts_offset = g_value_get_int64 (value);
-      if (sink->kid)
-        g_object_set_property (G_OBJECT (sink->kid), pspec->name, value);
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -437,9 +426,6 @@ gst_auto_video_sink_get_property (GObject * object, guint prop_id,
       gst_value_set_caps (value, sink->filter_caps);
       break;
     }
-    case PROP_TS_OFFSET:
-      g_value_set_int64 (value, sink->ts_offset);
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;

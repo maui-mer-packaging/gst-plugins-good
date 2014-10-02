@@ -71,10 +71,14 @@ typedef struct _GstVideoFlipClass GstVideoFlipClass;
  */
 struct _GstVideoFlip {
   GstVideoFilter videofilter;
-
+  
   /* < private > */
+  GstVideoFormat format;
+  gint from_width, from_height;
+  gint to_width, to_height;
+  
   GstVideoFlipMethod method;
-  void (*process) (GstVideoFlip *videoflip, GstVideoFrame *dest, const GstVideoFrame *src);
+  void (*process) (GstVideoFlip *videoflip, guint8 *dest, const guint8 *src);
 };
 
 struct _GstVideoFlipClass {

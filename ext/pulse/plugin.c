@@ -27,6 +27,7 @@
 
 #include "pulsesink.h"
 #include "pulsesrc.h"
+#include "pulsemixer.h"
 
 GST_DEBUG_CATEGORY (pulse_debug);
 
@@ -48,12 +49,22 @@ plugin_init (GstPlugin * plugin)
           GST_TYPE_PULSESRC))
     return FALSE;
 
+#ifdef HAVE_PULSE_1_0
+  if (!gst_element_register (plugin, "pulseaudiosink", GST_RANK_MARGINAL - 1,
+          GST_TYPE_PULSE_AUDIO_SINK))
+    return FALSE;
+#endif
+
+  if (!gst_element_register (plugin, "pulsemixer", GST_RANK_NONE,
+          GST_TYPE_PULSEMIXER))
+    return FALSE;
+
   GST_DEBUG_CATEGORY_INIT (pulse_debug, "pulse", 0, "PulseAudio elements");
   return TRUE;
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    pulseaudio,
+    "pulseaudio",
     "PulseAudio plugin library",
     plugin_init, VERSION, "LGPL", GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

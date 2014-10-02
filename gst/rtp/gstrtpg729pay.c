@@ -44,9 +44,9 @@ GST_DEBUG_CATEGORY_STATIC (rtpg729pay_debug);
 #define G729_FRAME_DURATION_MS (10)
 
 static gboolean
-gst_rtp_g729_pay_set_caps (GstRTPBasePayload * payload, GstCaps * caps);
+gst_rtp_g729_pay_set_caps (GstBaseRTPPayload * payload, GstCaps * caps);
 static GstFlowReturn
-gst_rtp_g729_pay_handle_buffer (GstRTPBasePayload * payload, GstBuffer * buf);
+gst_rtp_g729_pay_handle_buffer (GstBaseRTPPayload * payload, GstBuffer * buf);
 
 static GstStateChangeReturn
 gst_rtp_g729_pay_change_state (GstElement * element, GstStateChange transition);
@@ -74,8 +74,26 @@ static GstStaticPadTemplate gst_rtp_g729_pay_src_template =
         "clock-rate = (int) 8000, " "encoding-name = (string) \"G729\"")
     );
 
-#define gst_rtp_g729_pay_parent_class parent_class
-G_DEFINE_TYPE (GstRTPG729Pay, gst_rtp_g729_pay, GST_TYPE_RTP_BASE_PAYLOAD);
+GST_BOILERPLATE (GstRTPG729Pay, gst_rtp_g729_pay, GstBaseRTPPayload,
+    GST_TYPE_BASE_RTP_PAYLOAD);
+
+static void
+gst_rtp_g729_pay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_g729_pay_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_g729_pay_src_template);
+  gst_element_class_set_details_simple (element_class, "RTP G.729 payloader",
+      "Codec/Payloader/Network/RTP",
+      "Packetize G.729 audio into RTP packets",
+      "Olivier Crete <olivier.crete@collabora.co.uk>");
+
+  GST_DEBUG_CATEGORY_INIT (rtpg729pay_debug, "rtpg729pay", 0,
+      "G.729 RTP Payloader");
+}
 
 static void
 gst_rtp_g729_pay_finalize (GObject * object)
@@ -92,36 +110,23 @@ gst_rtp_g729_pay_class_init (GstRTPG729PayClass * klass)
 {
   GObjectClass *gobject_class = (GObjectClass *) klass;
   GstElementClass *gstelement_class = (GstElementClass *) klass;
-  GstRTPBasePayloadClass *payload_class = GST_RTP_BASE_PAYLOAD_CLASS (klass);
-
-  GST_DEBUG_CATEGORY_INIT (rtpg729pay_debug, "rtpg729pay", 0,
-      "G.729 RTP Payloader");
+  GstBaseRTPPayloadClass *payload_class = GST_BASE_RTP_PAYLOAD_CLASS (klass);
 
   gobject_class->finalize = gst_rtp_g729_pay_finalize;
 
   gstelement_class->change_state = gst_rtp_g729_pay_change_state;
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_g729_pay_sink_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_g729_pay_src_template));
-
-  gst_element_class_set_static_metadata (gstelement_class,
-      "RTP G.729 payloader", "Codec/Payloader/Network/RTP",
-      "Packetize G.729 audio into RTP packets",
-      "Olivier Crete <olivier.crete@collabora.co.uk>");
 
   payload_class->set_caps = gst_rtp_g729_pay_set_caps;
   payload_class->handle_buffer = gst_rtp_g729_pay_handle_buffer;
 }
 
 static void
-gst_rtp_g729_pay_init (GstRTPG729Pay * pay)
+gst_rtp_g729_pay_init (GstRTPG729Pay * pay, GstRTPG729PayClass * klass)
 {
-  GstRTPBasePayload *payload = GST_RTP_BASE_PAYLOAD (pay);
+  GstBaseRTPPayload *payload = GST_BASE_RTP_PAYLOAD (pay);
 
   payload->pt = GST_RTP_PAYLOAD_G729;
-  gst_rtp_base_payload_set_options (payload, "audio", FALSE, "G729", 8000);
+  gst_basertppayload_set_options (payload, "audio", FALSE, "G729", 8000);
 
   pay->adapter = gst_adapter_new ();
 }
@@ -137,7 +142,7 @@ gst_rtp_g729_pay_reset (GstRTPG729Pay * pay)
 }
 
 static gboolean
-gst_rtp_g729_pay_set_caps (GstRTPBasePayload * payload, GstCaps * caps)
+gst_rtp_g729_pay_set_caps (GstBaseRTPPayload * payload, GstCaps * caps)
 {
   gboolean res;
   GstStructure *structure;
@@ -150,7 +155,7 @@ gst_rtp_g729_pay_set_caps (GstRTPBasePayload * payload, GstCaps * caps)
   payload->pt = pt;
   payload->dynamic = pt != GST_RTP_PAYLOAD_G729;
 
-  res = gst_rtp_base_payload_set_outcaps (payload, NULL);
+  res = gst_basertppayload_set_outcaps (payload, NULL);
 
   return res;
 }
@@ -159,15 +164,14 @@ static GstFlowReturn
 gst_rtp_g729_pay_push (GstRTPG729Pay * rtpg729pay,
     const guint8 * data, guint payload_len)
 {
-  GstRTPBasePayload *basepayload;
+  GstBaseRTPPayload *basepayload;
   GstClockTime duration;
   guint frames;
   GstBuffer *outbuf;
   guint8 *payload;
   GstFlowReturn ret;
-  GstRTPBuffer rtp = { NULL };
 
-  basepayload = GST_RTP_BASE_PAYLOAD (rtpg729pay);
+  basepayload = GST_BASE_RTP_PAYLOAD (rtpg729pay);
 
   GST_DEBUG_OBJECT (rtpg729pay, "Pushing %d bytes ts %" GST_TIME_FORMAT,
       payload_len, GST_TIME_ARGS (rtpg729pay->next_ts));
@@ -175,10 +179,8 @@ gst_rtp_g729_pay_push (GstRTPG729Pay * rtpg729pay,
   /* create buffer to hold the payload */
   outbuf = gst_rtp_buffer_new_allocate (payload_len, 0, 0);
 
-  gst_rtp_buffer_map (outbuf, GST_MAP_READWRITE, &rtp);
-
   /* copy payload */
-  payload = gst_rtp_buffer_get_payload (&rtp);
+  payload = gst_rtp_buffer_get_payload (outbuf);
   memcpy (payload, data, payload_len);
 
   /* set metadata */
@@ -194,12 +196,11 @@ gst_rtp_g729_pay_push (GstRTPG729Pay * rtpg729pay,
   if (G_UNLIKELY (rtpg729pay->discont)) {
     GST_DEBUG_OBJECT (basepayload, "discont, setting marker bit");
     GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_DISCONT);
-    gst_rtp_buffer_set_marker (&rtp, TRUE);
+    gst_rtp_buffer_set_marker (outbuf, TRUE);
     rtpg729pay->discont = FALSE;
   }
-  gst_rtp_buffer_unmap (&rtp);
 
-  ret = gst_rtp_base_payload_push (basepayload, outbuf);
+  ret = gst_basertppayload_push (basepayload, outbuf);
 
   return ret;
 }
@@ -223,7 +224,7 @@ gst_rtp_g729_pay_recalc_rtp_time (GstRTPG729Pay * rtpg729pay, GstClockTime time)
 }
 
 static GstFlowReturn
-gst_rtp_g729_pay_handle_buffer (GstRTPBasePayload * payload, GstBuffer * buf)
+gst_rtp_g729_pay_handle_buffer (GstBaseRTPPayload * payload, GstBuffer * buf)
 {
   GstFlowReturn ret = GST_FLOW_OK;
   GstRTPG729Pay *rtpg729pay = GST_RTP_G729_PAY (payload);
@@ -234,13 +235,11 @@ gst_rtp_g729_pay_handle_buffer (GstRTPBasePayload * payload, GstBuffer * buf)
   guint minptime_octets = 0;
   guint min_payload_len;
   guint max_payload_len;
-  gsize size;
-  GstClockTime timestamp;
 
-  size = gst_buffer_get_size (buf);
+  available = GST_BUFFER_SIZE (buf);
 
-  if (size % G729_FRAME_SIZE != 0 &&
-      size % G729_FRAME_SIZE != G729B_CN_FRAME_SIZE)
+  if (available % G729_FRAME_SIZE != 0 &&
+      available % G729_FRAME_SIZE != G729B_CN_FRAME_SIZE)
     goto invalid_size;
 
   /* max number of bytes based on given ptime, has to be multiple of
@@ -261,7 +260,7 @@ gst_rtp_g729_pay_handle_buffer (GstRTPBasePayload * payload, GstBuffer * buf)
 
   max_payload_len = MIN (
       /* MTU max */
-      (int) (gst_rtp_buffer_calc_payload_len (GST_RTP_BASE_PAYLOAD_MTU
+      (int) (gst_rtp_buffer_calc_payload_len (GST_BASE_RTP_PAYLOAD_MTU
               (payload), 0, 0) / G729_FRAME_SIZE)
       * G729_FRAME_SIZE,
       /* ptime max */
@@ -284,8 +283,8 @@ gst_rtp_g729_pay_handle_buffer (GstRTPBasePayload * payload, GstBuffer * buf)
   }
 
   /* If the ptime is specified in the caps, tried to adhere to it exactly */
-  if (payload->ptime) {
-    guint64 ptime = payload->ptime / GST_MSECOND;
+  if (payload->abidata.ABI.ptime) {
+    guint64 ptime = payload->abidata.ABI.ptime / GST_MSECOND;
     guint ptime_in_bytes = G729_FRAME_SIZE *
         (guint) (ptime / G729_FRAME_DURATION_MS);
 
@@ -303,8 +302,6 @@ gst_rtp_g729_pay_handle_buffer (GstRTPBasePayload * payload, GstBuffer * buf)
   adapter = rtpg729pay->adapter;
   available = gst_adapter_available (adapter);
 
-  timestamp = GST_BUFFER_TIMESTAMP (buf);
-
   /* resync rtp time on discont or a discontinuous cn packet */
   if (GST_BUFFER_IS_DISCONT (buf)) {
     /* flush remainder */
@@ -314,27 +311,26 @@ gst_rtp_g729_pay_handle_buffer (GstRTPBasePayload * payload, GstBuffer * buf)
       available = 0;
     }
     rtpg729pay->discont = TRUE;
-    gst_rtp_g729_pay_recalc_rtp_time (rtpg729pay, timestamp);
+    gst_rtp_g729_pay_recalc_rtp_time (rtpg729pay, GST_BUFFER_TIMESTAMP (buf));
   }
 
-  if (size < G729_FRAME_SIZE)
-    gst_rtp_g729_pay_recalc_rtp_time (rtpg729pay, timestamp);
+  if (GST_BUFFER_SIZE (buf) < G729_FRAME_SIZE)
+    gst_rtp_g729_pay_recalc_rtp_time (rtpg729pay, GST_BUFFER_TIMESTAMP (buf));
 
   if (G_UNLIKELY (!GST_CLOCK_TIME_IS_VALID (rtpg729pay->first_ts))) {
-    rtpg729pay->first_ts = timestamp;
+    rtpg729pay->first_ts = GST_BUFFER_TIMESTAMP (buf);
     rtpg729pay->first_rtp_time = rtpg729pay->next_rtp_time;
   }
 
   /* let's reset the base timestamp when the adapter is empty */
   if (available == 0)
-    rtpg729pay->next_ts = timestamp;
+    rtpg729pay->next_ts = GST_BUFFER_TIMESTAMP (buf);
 
-  if (available == 0 && size >= min_payload_len && size <= max_payload_len) {
-    GstMapInfo map;
-
-    gst_buffer_map (buf, &map, GST_MAP_READ);
-    ret = gst_rtp_g729_pay_push (rtpg729pay, map.data, map.size);
-    gst_buffer_unmap (buf, &map);
+  if (available == 0 &&
+      GST_BUFFER_SIZE (buf) >= min_payload_len &&
+      GST_BUFFER_SIZE (buf) <= max_payload_len) {
+    ret = gst_rtp_g729_pay_push (rtpg729pay,
+        GST_BUFFER_DATA (buf), GST_BUFFER_SIZE (buf));
     gst_buffer_unref (buf);
     return ret;
   }
@@ -368,7 +364,7 @@ invalid_size:
         ("Invalid input buffer size"),
         ("Invalid buffer size, should be a multiple of"
             " G729_FRAME_SIZE(10) with an optional G729B_CN_FRAME_SIZE(2)"
-            " added to it, but it is %" G_GSIZE_FORMAT, size));
+            " added to it, but it is %u", available));
     gst_buffer_unref (buf);
     return GST_FLOW_ERROR;
   }

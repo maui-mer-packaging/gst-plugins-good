@@ -65,18 +65,17 @@ typedef struct _GstJackAudioSrcClass GstJackAudioSrcClass;
 
 struct _GstJackAudioSrc
 {
-    GstAudioBaseSrc src;
+    GstBaseAudioSrc src;
 
     /*< private >*/
     /* cached caps */
     GstCaps         *caps;
 
     /* properties */
-    GstJackConnect   connect;
+    GstJackConnect connect;
     gchar           *server;
     jack_client_t   *jclient;
     gchar           *client_name;
-    guint            transport;
 
     /* our client */
     GstJackAudioClient *client;
@@ -89,7 +88,7 @@ struct _GstJackAudioSrc
 
 struct _GstJackAudioSrcClass
 {
-    GstAudioBaseSrcClass parent_class;
+    GstBaseAudioSrcClass parent_class;
 };
 
 GType gst_jack_audio_src_get_type (void);

@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>mulawenc</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-mulawdec.html" title="mulawdec">
 <link rel="next" href="gst-plugins-good-plugins-multifilesink.html" title="multifilesink">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-mulawdec.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-multifilesink.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -49,7 +49,7 @@ This element encode mulaw audio. Mulaw coding is also known as G.711.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp10583248"></a><h3>Element Information</h3>
+<a name="idp7903232"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -72,7 +72,7 @@ This element encode mulaw audio. Mulaw coding is also known as G.711.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp13008032"></a><h3>Element Pads</h3>
+<a name="idp5464752"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -90,7 +90,7 @@ This element encode mulaw audio. Mulaw coding is also known as G.711.
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>audio/x-raw, format=(string)S16LE, layout=(string)interleaved, rate=(int)[ 8000, 192000 ], channels=(int)[ 1, 2 ]</td>
+<td>audio/x-raw-int, rate=(int)[ 8000, 192000 ], channels=(int)[ 1, 2 ], endianness=(int)1234, width=(int)16, depth=(int)16, signed=(boolean)true</td>
 </tr>
 </tbody>
 </table></div>

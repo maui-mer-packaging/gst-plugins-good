@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>taginject</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-streaktv.html" title="streaktv">
 <link rel="next" href="gst-plugins-good-plugins-udpsrc.html" title="udpsrc">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-streaktv.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-udpsrc.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -48,11 +48,10 @@
 <a name="gst-plugins-good-plugins-taginject.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
-                           +----GstTagInject
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-libs/html/GstBaseTransform.html">GstBaseTransform</a>
+                     +----GstTagInject
 </pre>
 </div>
 <div class="refsect1">
@@ -70,13 +69,13 @@ unmodified.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp14668368"></a><h3>Example launch lines</h3>
+<a name="idp16281008"></a><h3>Example launch lines</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> audiotestsrc num<span class="gtkdoc opt">-</span>buffers<span class="gtkdoc opt">=</span><span class="number">100</span> <span class="gtkdoc opt">!</span> taginject tags<span class="gtkdoc opt">=</span><span class="string">&quot;title=testsrc,artist=gstreamer&quot;</span> <span class="gtkdoc opt">!</span> vorbisenc <span class="gtkdoc opt">!</span> oggmux <span class="gtkdoc opt">!</span> filesink location<span class="gtkdoc opt">=</span>test<span class="gtkdoc opt">.</span>ogg</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch audiotestsrc num<span class="gtkdoc opt">-</span>buffers<span class="gtkdoc opt">=</span><span class="number">100</span> <span class="gtkdoc opt">!</span> taginject tags<span class="gtkdoc opt">=</span><span class="string">&quot;title=testsrc,artist=gstreamer&quot;</span> <span class="gtkdoc opt">!</span> vorbisenc <span class="gtkdoc opt">!</span> oggmux <span class="gtkdoc opt">!</span> filesink location<span class="gtkdoc opt">=</span>test<span class="gtkdoc opt">.</span>ogg</pre></td>
       </tr>
     </tbody>
   </table>
@@ -87,7 +86,7 @@ unmodified.
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> audiotestsrc num<span class="gtkdoc opt">-</span>buffers<span class="gtkdoc opt">=</span><span class="number">100</span> <span class="gtkdoc opt">!</span> taginject tags<span class="gtkdoc opt">=</span><span class="string">&quot;keywords=\{</span><span class="gtkdoc esc">\&quot;</span><span class="string">testone</span><span class="gtkdoc esc">\&quot;</span><span class="string">,</span><span class="gtkdoc esc">\&quot;</span><span class="string">audio</span><span class="gtkdoc esc">\&quot;</span><span class="string">\},title=</span><span class="gtkdoc esc">\&quot;</span><span class="string">audio testtone</span><span class="gtkdoc esc">\&quot;</span><span class="string">&quot;</span> <span class="gtkdoc opt">!</span> vorbisenc <span class="gtkdoc opt">!</span> oggmux <span class="gtkdoc opt">!</span> filesink location<span class="gtkdoc opt">=</span>test<span class="gtkdoc opt">.</span>ogg</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch audiotestsrc num<span class="gtkdoc opt">-</span>buffers<span class="gtkdoc opt">=</span><span class="number">100</span> <span class="gtkdoc opt">!</span> taginject tags<span class="gtkdoc opt">=</span><span class="string">&quot;keywords=\{</span><span class="gtkdoc esc">\&quot;</span><span class="string">testone</span><span class="gtkdoc esc">\&quot;</span><span class="string">,</span><span class="gtkdoc esc">\&quot;</span><span class="string">audio</span><span class="gtkdoc esc">\&quot;</span><span class="string">\},title=</span><span class="gtkdoc esc">\&quot;</span><span class="string">audio testtone</span><span class="gtkdoc esc">\&quot;</span><span class="string">&quot;</span> <span class="gtkdoc opt">!</span> vorbisenc <span class="gtkdoc opt">!</span> oggmux <span class="gtkdoc opt">!</span> filesink location<span class="gtkdoc opt">=</span>test<span class="gtkdoc opt">.</span>ogg</pre></td>
       </tr>
     </tbody>
   </table>
@@ -99,7 +98,7 @@ unmodified.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp18237888"></a><h3>Element Information</h3>
+<a name="idp21287072"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -122,7 +121,7 @@ unmodified.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp17858080"></a><h3>Element Pads</h3>
+<a name="idp19488016"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>

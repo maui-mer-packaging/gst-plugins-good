@@ -64,7 +64,7 @@ length_add (gpointer test, GstBuffer * buffer)
 {
   LengthTest *t = test;
 
-  t->value += gst_buffer_get_size (buffer);
+  t->value += GST_BUFFER_SIZE (buffer);
 }
 
 static gboolean
@@ -214,11 +214,8 @@ md5_new (const GstTestInfo * info)
 static void
 md5_add (gpointer checksum, GstBuffer * buffer)
 {
-  GstMapInfo map;
-
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
-  g_checksum_update (checksum, map.data, map.size);
-  gst_buffer_unmap (buffer, &map);
+  g_checksum_update (checksum, GST_BUFFER_DATA (buffer),
+      GST_BUFFER_SIZE (buffer));
 }
 
 static gboolean

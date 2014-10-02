@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>imagefreeze</title>
 <meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
-<link rel="home" href="index.html" title="GStreamer Good Plugins 1.0 Plugins Reference Manual">
+<link rel="home" href="index.html" title="GStreamer Good Plugins 0.10 Plugins Reference Manual">
 <link rel="up" href="ch01.html" title="gst-plugins-good Elements">
 <link rel="prev" href="gst-plugins-good-plugins-id3v2mux.html" title="id3v2mux">
 <link rel="next" href="gst-plugins-good-plugins-interleave.html" title="interleave">
@@ -17,7 +17,7 @@
 <td><a accesskey="p" href="gst-plugins-good-plugins-id3v2mux.html"><img src="left.png" width="24" height="24" border="0" alt="Prev"></a></td>
 <td><a accesskey="u" href="ch01.html"><img src="up.png" width="24" height="24" border="0" alt="Up"></a></td>
 <td><a accesskey="h" href="index.html"><img src="home.png" width="24" height="24" border="0" alt="Home"></a></td>
-<th width="100%" align="center">GStreamer Good Plugins 1.0 Plugins Reference Manual</th>
+<th width="100%" align="center">GStreamer Good Plugins 0.10 Plugins Reference Manual</th>
 <td><a accesskey="n" href="gst-plugins-good-plugins-interleave.html"><img src="right.png" width="24" height="24" border="0" alt="Next"></a></td>
 </tr>
 <tr><td colspan="5" class="shortcuts">
@@ -46,10 +46,9 @@
 <a name="gst-plugins-good-plugins-imagefreeze.object-hierarchy"></a><h2>Object Hierarchy</h2>
 <pre class="synopsis">
   <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
-   +----<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GInitiallyUnowned">GInitiallyUnowned</a>
-         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
-               +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
-                     +----GstImageFreeze
+   +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstObject.html">GstObject</a>
+         +----<a href="http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstElement.html">GstElement</a>
+               +----GstImageFreeze
 </pre>
 </div>
 <div class="refsect1">
@@ -62,13 +61,13 @@ by downstream, allows seeking and answers queries.
 <p>
 </p>
 <div class="refsect2">
-<a name="idp5913744"></a><h3>Example launch line</h3>
+<a name="idp12216944"></a><h3>Example launch line</h3>
 <div class="informalexample">
   <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch<span class="gtkdoc opt">-</span><span class="number">1.0</span> <span class="gtkdoc opt">-</span>v filesrc location<span class="gtkdoc opt">=</span>some<span class="gtkdoc opt">.</span>png <span class="gtkdoc opt">!</span> decodebin2 <span class="gtkdoc opt">!</span> imagefreeze <span class="gtkdoc opt">!</span> autovideosink</pre></td>
+        <td class="listing_code"><pre class="programlisting">gst<span class="gtkdoc opt">-</span>launch <span class="gtkdoc opt">-</span>v filesrc location<span class="gtkdoc opt">=</span>some<span class="gtkdoc opt">.</span>png <span class="gtkdoc opt">!</span> decodebin2 <span class="gtkdoc opt">!</span> imagefreeze <span class="gtkdoc opt">!</span> autovideosink</pre></td>
       </tr>
     </tbody>
   </table>
@@ -80,7 +79,7 @@ by downstream, allows seeking and answers queries.
 <div class="refsynopsisdiv">
 <h2>Synopsis</h2>
 <div class="refsect2">
-<a name="idp2698208"></a><h3>Element Information</h3>
+<a name="idp7533424"></a><h3>Element Information</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -103,7 +102,7 @@ by downstream, allows seeking and answers queries.
 </div>
 <hr>
 <div class="refsect2">
-<a name="idp2771920"></a><h3>Element Pads</h3>
+<a name="idp10723712"></a><h3>Element Pads</h3>
 <div class="variablelist"><table border="0">
 <col align="left" valign="top">
 <tbody>
@@ -121,7 +120,15 @@ by downstream, allows seeking and answers queries.
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw</td>
+<td>video/x-raw-yuv</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-gray</td>
 </tr>
 </tbody>
 </table></div>
@@ -142,7 +149,15 @@ by downstream, allows seeking and answers queries.
 </tr>
 <tr>
 <td><p><span class="term">details</span></p></td>
-<td>video/x-raw</td>
+<td>video/x-raw-yuv</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-rgb</td>
+</tr>
+<tr>
+<td><p><span class="term"></span></p></td>
+<td> video/x-raw-gray</td>
 </tr>
 </tbody>
 </table></div>

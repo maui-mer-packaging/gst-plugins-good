@@ -31,8 +31,8 @@
  */
 
 #include <gst/gst.h>
+#include <gst/controller/gstcontroller.h>
 #include <gst/controller/gstinterpolationcontrolsource.h>
-#include <gst/controller/gstdirectcontrolbinding.h>
 
 static void
 event_loop (GstElement * bin)
@@ -69,18 +69,21 @@ event_loop (GstElement * bin)
 }
 
 static void
-set_program (GstObject * elem, GstStructure * prog)
+set_program (GstController * ctrl, GstStructure * prog)
 {
   const GstStructure *s;
-  GstControlSource *cs;
+  GstInterpolationControlSource *cs;
   GstClockTime ts, dur;
-  gdouble v;
+  GValue val = { 0, };
+  gint v;
   const GValue *frame;
   GHashTable *css;
   gint i, j;
   const gchar *name;
 
   css = g_hash_table_new (g_str_hash, g_str_equal);
+
+  g_value_init (&val, G_TYPE_INT);
 
   ts = 0;
   dur = gst_util_uint64_scale_int (GST_SECOND, 1, 15);
@@ -97,19 +100,21 @@ set_program (GstObject * elem, GstStructure * prog)
       cs = g_hash_table_lookup (css, name);
       if (!cs) {
         cs = gst_interpolation_control_source_new ();
-        gst_object_add_control_binding (elem,
-            gst_direct_control_binding_new (elem, name, cs));
-        g_object_set (cs, "mode", GST_INTERPOLATION_MODE_NONE, NULL);
+        gst_controller_set_control_source (ctrl, name, GST_CONTROL_SOURCE (cs));
+        gst_interpolation_control_source_set_interpolation_mode (cs,
+            GST_INTERPOLATE_NONE);
         g_hash_table_insert (css, (gpointer) name, cs);
-        gst_object_unref (cs);
+        g_object_unref (cs);
       }
-      gst_structure_get_double (s, name, &v);
-      gst_timed_value_control_source_set ((GstTimedValueControlSource *) cs, ts,
-          v);
-      GST_DEBUG ("  %s = %lf", name, v);
+      gst_structure_get_int (s, name, &v);
+      g_value_set_int (&val, v);
+      gst_interpolation_control_source_set (cs, ts, &val);
+      GST_DEBUG ("  %s = %d", name, v);
     }
     ts += dur;
   }
+
+  g_value_unset (&val);
 
   g_hash_table_unref (css);
 }
@@ -120,10 +125,12 @@ main (gint argc, gchar ** argv)
   GstElement *bin;
   GstElement *src, *fmt, *enc, *sink;
   GstCaps *caps;
+  GstController *ctrl;
   GstStructure *prog;
 
   /* init gstreamer */
   gst_init (&argc, &argv);
+  gst_controller_init (&argc, &argv);
 
   /* create a new bin to hold the elements */
   bin = gst_pipeline_new ("camera");
@@ -146,7 +153,7 @@ main (gint argc, gchar ** argv)
   }
   caps =
       gst_caps_from_string
-      ("video/x-raw, width=640, height=480, framerate=(fraction)15/1");
+      ("video/x-raw-yuv, width=640, height=480, framerate=(fraction)15/1");
   g_object_set (fmt, "caps", caps, NULL);
 
   if (!(src = gst_element_factory_make ("v4l2src", NULL))) {
@@ -164,23 +171,30 @@ main (gint argc, gchar ** argv)
     return -1;
   }
 
+  /* get the controller */
+  if (!(ctrl = gst_controller_new (G_OBJECT (src), "brightness", "contrast",
+              "saturation", NULL))) {
+    GST_WARNING ("can't control source element");
+    return -1;
+  }
+
   /* programm a pattern of events */
 #if 0
   prog = gst_structure_from_string ("program"
-      ", image00=(structure)\"image\\,contrast\\=0.0\\;\""
-      ", image01=(structure)\"image\\,contrast\\=0.3\\;\""
-      ", image02=(structure)\"image\\,contrast\\=1.0\\;\""
-      ", image03=(structure)\"image\\,contrast\\=0.05\\;\";", NULL);
+      ", image00=(structure)\"image\\,contrast\\=0\\;\""
+      ", image01=(structure)\"image\\,contrast\\=79\\;\""
+      ", image02=(structure)\"image\\,contrast\\=255\\;\""
+      ", image03=(structure)\"image\\,contrast\\=15\\;\";", NULL);
 #endif
 #if 1
   prog = gst_structure_from_string ("program"
-      ", image00=(structure)\"image\\,brightness\\=1.0\\,contrast\\=0.0\\;\""
-      ", image01=(structure)\"image\\,brightness\\=0.5\\,contrast\\=0.3\\;\""
-      ", image02=(structure)\"image\\,brightness\\=0.25\\,contrast\\=1.0\\;\""
-      ", image03=(structure)\"image\\,brightness\\=0.0\\,contrast\\=0.05\\;\";",
+      ", image00=(structure)\"image\\,brightness\\=255\\,contrast\\=0\\;\""
+      ", image01=(structure)\"image\\,brightness\\=127\\,contrast\\=79\\;\""
+      ", image02=(structure)\"image\\,brightness\\=64\\,contrast\\=255\\;\""
+      ", image03=(structure)\"image\\,brightness\\=0\\,contrast\\=15\\;\";",
       NULL);
 #endif
-  set_program (GST_OBJECT (src), prog);
+  set_program (ctrl, prog);
   g_object_set (src, "num-buffers", gst_structure_n_fields (prog), NULL);
 
   /* prepare playback */

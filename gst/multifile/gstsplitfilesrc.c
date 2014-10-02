@@ -30,16 +30,17 @@
  * directories). The results will be sorted.
  *
  * <refsect2>
- * <title>Example launch lines</title>
+ * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 splitfilesrc location="/path/to/part-*.mpg" ! decodebin ! ...
+ * gst-launch splitfilesrc location="/path/to/part-*.mpg" ! decodebin ! ... \
  * ]| Plays the different parts as if they were one single MPEG file.
- * |[
- * gst-launch-1.0 playbin uri="splitfile://path/to/foo.avi.*"
- * ]| Plays the different parts as if they were one single AVI file.
  * </refsect2>
  *
  * Since: 0.10.31
+ */
+
+/* TODO:
+ *  - implement splitfile:// URI handler?
  */
 
 #ifdef HAVE_CONFIG_H
@@ -64,8 +65,6 @@ enum
 
 #define DEFAULT_LOCATION NULL
 
-static void gst_split_file_src_uri_handler_init (gpointer g_iface,
-    gpointer iface_data);
 static void gst_split_file_src_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_split_file_src_get_property (GObject * object, guint prop_id,
@@ -75,6 +74,7 @@ static void gst_split_file_src_finalize (GObject * obj);
 static gboolean gst_split_file_src_start (GstBaseSrc * basesrc);
 static gboolean gst_split_file_src_stop (GstBaseSrc * basesrc);
 static gboolean gst_split_file_src_can_seek (GstBaseSrc * basesrc);
+static gboolean gst_split_file_src_check_get_range (GstBaseSrc * basesrc);
 static gboolean gst_split_file_src_get_size (GstBaseSrc * basesrc, guint64 * s);
 static gboolean gst_split_file_src_unlock (GstBaseSrc * basesrc);
 static GstFlowReturn gst_split_file_src_create (GstBaseSrc * basesrc,
@@ -89,10 +89,25 @@ GST_STATIC_PAD_TEMPLATE ("src",
 GST_DEBUG_CATEGORY_STATIC (splitfilesrc_debug);
 #define GST_CAT_DEFAULT splitfilesrc_debug
 
+GST_BOILERPLATE (GstSplitFileSrc, gst_split_file_src, GstBaseSrc,
+    GST_TYPE_BASE_SRC);
 
-G_DEFINE_TYPE_WITH_CODE (GstSplitFileSrc, gst_split_file_src, GST_TYPE_BASE_SRC,
-    G_IMPLEMENT_INTERFACE (GST_TYPE_URI_HANDLER,
-        gst_split_file_src_uri_handler_init));
+static void
+gst_split_file_src_base_init (gpointer g_class)
+{
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (g_class);
+
+  GST_DEBUG_CATEGORY_INIT (splitfilesrc_debug, "splitfilesrc", 0,
+      "splitfilesrc element");
+
+  gst_element_class_add_pad_template (gstelement_class,
+      gst_static_pad_template_get (&gst_split_file_src_pad_template));
+
+  gst_element_class_set_details_simple (gstelement_class, "Split-File Source",
+      "Source/File",
+      "Read a sequentially named set of files as if it was one large file",
+      "Tim-Philipp Müller <tim.muller@collabora.co.uk>");
+}
 
 #ifdef G_OS_WIN32
 #define WIN32_BLURB " Location string must be in UTF-8 encoding (on Windows)."
@@ -104,7 +119,6 @@ static void
 gst_split_file_src_class_init (GstSplitFileSrcClass * klass)
 {
   GstBaseSrcClass *gstbasesrc_class = GST_BASE_SRC_CLASS (klass);
-  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   gobject_class->set_property = gst_split_file_src_set_property;
@@ -126,21 +140,13 @@ gst_split_file_src_class_init (GstSplitFileSrcClass * klass)
   gstbasesrc_class->unlock = GST_DEBUG_FUNCPTR (gst_split_file_src_unlock);
   gstbasesrc_class->is_seekable =
       GST_DEBUG_FUNCPTR (gst_split_file_src_can_seek);
-
-  GST_DEBUG_CATEGORY_INIT (splitfilesrc_debug, "splitfilesrc", 0,
-      "splitfilesrc element");
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_split_file_src_pad_template));
-
-  gst_element_class_set_static_metadata (gstelement_class, "Split-File Source",
-      "Source/File",
-      "Read a sequentially named set of files as if it was one large file",
-      "Tim-Philipp Müller <tim.muller@collabora.co.uk>");
+  gstbasesrc_class->check_get_range =
+      GST_DEBUG_FUNCPTR (gst_split_file_src_check_get_range);
 }
 
 static void
-gst_split_file_src_init (GstSplitFileSrc * splitfilesrc)
+gst_split_file_src_init (GstSplitFileSrc * splitfilesrc,
+    GstSplitFileSrcClass * g_class)
 {
 }
 
@@ -152,11 +158,17 @@ gst_split_file_src_finalize (GObject * obj)
   g_free (src->location);
   src->location = NULL;
 
-  G_OBJECT_CLASS (gst_split_file_src_parent_class)->finalize (obj);
+  G_OBJECT_CLASS (parent_class)->finalize (obj);
 }
 
 static gboolean
 gst_split_file_src_can_seek (GstBaseSrc * basesrc)
+{
+  return TRUE;
+}
+
+static gboolean
+gst_split_file_src_check_get_range (GstBaseSrc * basesrc)
 {
   return TRUE;
 }
@@ -187,25 +199,6 @@ gst_split_file_src_get_size (GstBaseSrc * basesrc, guint64 * size)
 }
 
 static void
-gst_split_file_src_set_location (GstSplitFileSrc * src, const char *location)
-{
-  GST_OBJECT_LOCK (src);
-  g_free (src->location);
-
-  if (location != NULL && g_str_has_prefix (location, "splitfile://"))
-    src->location = gst_uri_get_location (location);
-  else
-    src->location = g_strdup (location);
-#ifdef G_OS_WIN32
-  if (!g_utf8_validate (src->location, -1, NULL)) {
-    g_warning ("splitfilesrc 'location' property must be in UTF-8 "
-        "encoding on Windows");
-  }
-#endif
-  GST_OBJECT_UNLOCK (src);
-}
-
-static void
 gst_split_file_src_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
@@ -213,7 +206,16 @@ gst_split_file_src_set_property (GObject * object, guint prop_id,
 
   switch (prop_id) {
     case PROP_LOCATION:
-      gst_split_file_src_set_location (src, g_value_get_string (value));
+      GST_OBJECT_LOCK (src);
+      g_free (src->location);
+      src->location = g_value_dup_string (value);
+#ifdef G_OS_WIN32
+      if (!g_utf8_validate (src->location, -1, NULL)) {
+        g_warning ("splitfilesrc 'location' property must be in UTF-8 "
+            "encoding on Windows");
+      }
+#endif
+      GST_OBJECT_UNLOCK (src);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -486,14 +488,13 @@ gst_split_file_src_create (GstBaseSrc * basesrc, guint64 offset, guint size,
   GstBuffer *buf;
   GError *err = NULL;
   guint64 read_offset;
-  GstMapInfo map;
   guint8 *data;
   guint to_read;
 
   cur_part = src->parts[src->cur_part];
   if (offset < cur_part.start || offset > cur_part.stop) {
     if (!gst_split_file_src_find_part_for_offset (src, offset, &src->cur_part))
-      return GST_FLOW_EOS;
+      return GST_FLOW_UNEXPECTED;
     cur_part = src->parts[src->cur_part];
   }
 
@@ -501,12 +502,11 @@ gst_split_file_src_create (GstBaseSrc * basesrc, guint64 offset, guint size,
       "%" G_GUINT64_FORMAT ", %s)", src->cur_part, cur_part.start,
       cur_part.stop, cur_part.path);
 
-  buf = gst_buffer_new_allocate (NULL, size, NULL);
+  buf = gst_buffer_new_and_alloc (size);
 
   GST_BUFFER_OFFSET (buf) = offset;
 
-  gst_buffer_map (buf, &map, GST_MAP_WRITE);
-  data = map.data;
+  data = GST_BUFFER_DATA (buf);
 
   cancel = src->cancellable;
 
@@ -556,7 +556,7 @@ gst_split_file_src_create (GstBaseSrc * basesrc, guint64 offset, guint size,
     if (read < to_read) {
       if (src->cur_part == src->num_parts - 1) {
         /* last file part, stop reading and truncate buffer */
-        gst_buffer_set_size (buf, offset - GST_BUFFER_OFFSET (buf));
+        GST_BUFFER_SIZE (buf) = offset - GST_BUFFER_OFFSET (buf);
         break;
       } else {
         goto file_part_changed;
@@ -569,11 +569,8 @@ gst_split_file_src_create (GstBaseSrc * basesrc, guint64 offset, guint size,
 
   GST_BUFFER_OFFSET_END (buf) = offset;
 
-  gst_buffer_unmap (buf, &map);
-
   *buffer = buf;
-  GST_LOG_OBJECT (src, "read %" G_GSIZE_FORMAT " bytes into buf %p",
-      gst_buffer_get_size (buf), buf);
+  GST_LOG_OBJECT (src, "read %u bytes into buf %p", GST_BUFFER_SIZE (buf), buf);
   return GST_FLOW_OK;
 
 /* ERRORS */
@@ -614,58 +611,6 @@ cancelled:
     GST_DEBUG_OBJECT (src, "I/O operation cancelled from another thread");
     g_error_free (err);
     gst_buffer_unref (buf);
-    return GST_FLOW_FLUSHING;
+    return GST_FLOW_WRONG_STATE;
   }
-}
-
-static guint
-gst_split_file_src_uri_get_type (GType type)
-{
-  return GST_URI_SRC;
-}
-
-static const gchar *const *
-gst_split_file_src_uri_get_protocols (GType type)
-{
-  static const gchar *protocols[] = { "splitfile", NULL };
-
-  return (const gchar * const *) protocols;
-}
-
-static gchar *
-gst_split_file_src_uri_get_uri (GstURIHandler * handler)
-{
-  GstSplitFileSrc *src = GST_SPLIT_FILE_SRC (handler);
-  gchar *ret;
-
-  GST_OBJECT_LOCK (src);
-  if (src->location != NULL)
-    ret = g_strdup_printf ("splitfile://%s", src->location);
-  else
-    ret = NULL;
-  GST_OBJECT_UNLOCK (src);
-
-  return ret;
-}
-
-static gboolean
-gst_split_file_src_uri_set_uri (GstURIHandler * handler, const gchar * uri,
-    GError ** error)
-{
-  GstSplitFileSrc *src = GST_SPLIT_FILE_SRC (handler);
-
-  gst_split_file_src_set_location (src, uri);
-
-  return TRUE;
-}
-
-static void
-gst_split_file_src_uri_handler_init (gpointer g_iface, gpointer iface_data)
-{
-  GstURIHandlerInterface *iface = (GstURIHandlerInterface *) g_iface;
-
-  iface->get_type = gst_split_file_src_uri_get_type;
-  iface->get_protocols = gst_split_file_src_uri_get_protocols;
-  iface->get_uri = gst_split_file_src_uri_get_uri;
-  iface->set_uri = gst_split_file_src_uri_set_uri;
 }

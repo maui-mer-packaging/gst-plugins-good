@@ -45,8 +45,8 @@ GST_STATIC_PAD_TEMPLATE ("sink",
         "clock-rate = (int) 90000, " "encoding-name = (string) \"X-GST\"")
     );
 
-#define gst_rtp_gst_depay_parent_class parent_class
-G_DEFINE_TYPE (GstRtpGSTDepay, gst_rtp_gst_depay, GST_TYPE_RTP_BASE_DEPAYLOAD);
+GST_BOILERPLATE (GstRtpGSTDepay, gst_rtp_gst_depay, GstBaseRTPDepayload,
+    GST_TYPE_BASE_RTP_DEPAYLOAD);
 
 static void gst_rtp_gst_depay_finalize (GObject * object);
 
@@ -54,45 +54,52 @@ static GstStateChangeReturn gst_rtp_gst_depay_change_state (GstElement *
     element, GstStateChange transition);
 
 static void gst_rtp_gst_depay_reset (GstRtpGSTDepay * rtpgstdepay);
-static gboolean gst_rtp_gst_depay_setcaps (GstRTPBaseDepayload * depayload,
+static gboolean gst_rtp_gst_depay_setcaps (GstBaseRTPDepayload * depayload,
     GstCaps * caps);
-static GstBuffer *gst_rtp_gst_depay_process (GstRTPBaseDepayload * depayload,
+static GstBuffer *gst_rtp_gst_depay_process (GstBaseRTPDepayload * depayload,
     GstBuffer * buf);
+
+static void
+gst_rtp_gst_depay_base_init (gpointer klass)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_gst_depay_src_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &gst_rtp_gst_depay_sink_template);
+
+  gst_element_class_set_details_simple (element_class,
+      "GStreamer depayloader", "Codec/Depayloader/Network",
+      "Extracts GStreamer buffers from RTP packets",
+      "Wim Taymans <wim.taymans@gmail.com>");
+}
 
 static void
 gst_rtp_gst_depay_class_init (GstRtpGSTDepayClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
-  GstRTPBaseDepayloadClass *gstrtpbasedepayload_class;
-
-  GST_DEBUG_CATEGORY_INIT (rtpgstdepay_debug, "rtpgstdepay", 0,
-      "Gstreamer RTP Depayloader");
+  GstBaseRTPDepayloadClass *gstbasertpdepayload_class;
 
   gobject_class = (GObjectClass *) klass;
   gstelement_class = (GstElementClass *) klass;
-  gstrtpbasedepayload_class = (GstRTPBaseDepayloadClass *) klass;
+  gstbasertpdepayload_class = (GstBaseRTPDepayloadClass *) klass;
 
   gobject_class->finalize = gst_rtp_gst_depay_finalize;
 
   gstelement_class->change_state = gst_rtp_gst_depay_change_state;
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_gst_depay_src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&gst_rtp_gst_depay_sink_template));
+  gstbasertpdepayload_class->set_caps = gst_rtp_gst_depay_setcaps;
+  gstbasertpdepayload_class->process = gst_rtp_gst_depay_process;
 
-  gst_element_class_set_static_metadata (gstelement_class,
-      "GStreamer depayloader", "Codec/Depayloader/Network",
-      "Extracts GStreamer buffers from RTP packets",
-      "Wim Taymans <wim.taymans@gmail.com>");
-
-  gstrtpbasedepayload_class->set_caps = gst_rtp_gst_depay_setcaps;
-  gstrtpbasedepayload_class->process = gst_rtp_gst_depay_process;
+  GST_DEBUG_CATEGORY_INIT (rtpgstdepay_debug, "rtpgstdepay", 0,
+      "Gstreamer RTP Depayloader");
 }
 
 static void
-gst_rtp_gst_depay_init (GstRtpGSTDepay * rtpgstdepay)
+gst_rtp_gst_depay_init (GstRtpGSTDepay * rtpgstdepay,
+    GstRtpGSTDepayClass * klass)
 {
   rtpgstdepay->adapter = gst_adapter_new ();
 }
@@ -130,7 +137,7 @@ gst_rtp_gst_depay_reset (GstRtpGSTDepay * rtpgstdepay)
 }
 
 static gboolean
-gst_rtp_gst_depay_setcaps (GstRTPBaseDepayload * depayload, GstCaps * caps)
+gst_rtp_gst_depay_setcaps (GstBaseRTPDepayload * depayload, GstCaps * caps)
 {
   GstRtpGSTDepay *rtpgstdepay;
   GstStructure *structure;
@@ -170,20 +177,17 @@ gst_rtp_gst_depay_setcaps (GstRTPBaseDepayload * depayload, GstCaps * caps)
 }
 
 static GstBuffer *
-gst_rtp_gst_depay_process (GstRTPBaseDepayload * depayload, GstBuffer * buf)
+gst_rtp_gst_depay_process (GstBaseRTPDepayload * depayload, GstBuffer * buf)
 {
   GstRtpGSTDepay *rtpgstdepay;
   GstBuffer *subbuf, *outbuf = NULL;
   gint payload_len;
   guint8 *payload;
   guint CV;
-  GstRTPBuffer rtp = { NULL };
 
   rtpgstdepay = GST_RTP_GST_DEPAY (depayload);
 
-  gst_rtp_buffer_map (buf, GST_MAP_READ, &rtp);
-
-  payload_len = gst_rtp_buffer_get_payload_len (&rtp);
+  payload_len = gst_rtp_buffer_get_payload_len (buf);
 
   if (payload_len <= 8)
     goto empty_packet;
@@ -193,14 +197,14 @@ gst_rtp_gst_depay_process (GstRTPBaseDepayload * depayload, GstBuffer * buf)
     gst_adapter_clear (rtpgstdepay->adapter);
   }
 
-  payload = gst_rtp_buffer_get_payload (&rtp);
+  payload = gst_rtp_buffer_get_payload (buf);
 
   /* strip off header
    *
    *  0                   1                   2                   3
    *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   * |C| CV  |D|0|0|0|                  MBZ                          |
+   * |C| CV  |D|X|Y|Z|                  MBZ                          |
    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    * |                          Frag_offset                          |
    * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -210,10 +214,10 @@ gst_rtp_gst_depay_process (GstRTPBaseDepayload * depayload, GstBuffer * buf)
    */
 
   /* subbuffer skipping the 8 header bytes */
-  subbuf = gst_rtp_buffer_get_payload_subbuffer (&rtp, 8, -1);
+  subbuf = gst_rtp_buffer_get_payload_subbuffer (buf, 8, -1);
   gst_adapter_push (rtpgstdepay->adapter, subbuf);
 
-  if (gst_rtp_buffer_get_marker (&rtp)) {
+  if (gst_rtp_buffer_get_marker (buf)) {
     guint avail;
     GstCaps *outcaps;
 
@@ -224,49 +228,43 @@ gst_rtp_gst_depay_process (GstRTPBaseDepayload * depayload, GstBuffer * buf)
     CV = (payload[0] >> 4) & 0x7;
 
     if (payload[0] & 0x80) {
-      guint b, csize, left, offset;
-      GstMapInfo map;
+      guint b, csize, size, offset;
+      guint8 *data;
       GstBuffer *subbuf;
 
       /* C bit, we have inline caps */
-      gst_buffer_map (outbuf, &map, GST_MAP_READ);
+      data = GST_BUFFER_DATA (outbuf);
+      size = GST_BUFFER_SIZE (outbuf);
 
       /* start reading the length, we need this to skip to the data later */
       csize = offset = 0;
-      left = map.size;
       do {
-        if (offset >= left) {
-          gst_buffer_unmap (outbuf, &map);
+        if (offset >= size)
           goto too_small;
-        }
-        b = map.data[offset++];
+        b = data[offset++];
         csize = (csize << 7) | (b & 0x7f);
       } while (b & 0x80);
 
-      if (left < csize) {
-        gst_buffer_unmap (outbuf, &map);
+      if (size < csize)
         goto too_small;
-      }
 
       /* parse and store in cache */
-      outcaps = gst_caps_from_string ((gchar *) & map.data[offset]);
+      outcaps = gst_caps_from_string ((gchar *) & data[offset]);
       store_cache (rtpgstdepay, CV, outcaps);
 
       /* skip caps */
       offset += csize;
-      left -= csize;
+      size -= csize;
 
       GST_DEBUG_OBJECT (rtpgstdepay,
           "inline caps %u, length %u, %" GST_PTR_FORMAT, CV, csize, outcaps);
 
       /* create real data buffer when needed */
-      if (map.size)
-        subbuf =
-            gst_buffer_copy_region (outbuf, GST_BUFFER_COPY_ALL, offset, left);
+      if (size)
+        subbuf = gst_buffer_create_sub (outbuf, offset, size);
       else
         subbuf = NULL;
 
-      gst_buffer_unmap (outbuf, &map);
       gst_buffer_unref (outbuf);
       outbuf = subbuf;
     }
@@ -289,6 +287,12 @@ gst_rtp_gst_depay_process (GstRTPBaseDepayload * depayload, GstBuffer * buf)
     if (outbuf) {
       if (payload[0] & 0x8)
         GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_DELTA_UNIT);
+      if (payload[0] & 0x4)
+        GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_MEDIA1);
+      if (payload[0] & 0x2)
+        GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_MEDIA2);
+      if (payload[0] & 0x1)
+        GST_BUFFER_FLAG_SET (outbuf, GST_BUFFER_FLAG_MEDIA3);
     }
   }
   return outbuf;
@@ -298,7 +302,6 @@ empty_packet:
   {
     GST_ELEMENT_WARNING (rtpgstdepay, STREAM, DECODE,
         ("Empty Payload."), (NULL));
-    gst_rtp_buffer_unmap (&rtp);
     return NULL;
   }
 too_small:
@@ -307,7 +310,6 @@ too_small:
         ("Buffer too small."), (NULL));
     if (outbuf)
       gst_buffer_unref (outbuf);
-    gst_rtp_buffer_unmap (&rtp);
     return NULL;
   }
 missing_caps:
@@ -316,7 +318,6 @@ missing_caps:
         ("Missing caps %u.", CV), (NULL));
     if (outbuf)
       gst_buffer_unref (outbuf);
-    gst_rtp_buffer_unmap (&rtp);
     return NULL;
   }
 }

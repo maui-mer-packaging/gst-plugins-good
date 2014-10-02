@@ -76,7 +76,7 @@ gst_rtsp_ext_list_init (void)
   GST_DEBUG_CATEGORY_INIT (rtspext_debug, "rtspext", 0, "RTSP extension");
 
   /* get a list of all extensions */
-  extensions = gst_registry_feature_filter (gst_registry_get (),
+  extensions = gst_registry_feature_filter (gst_registry_get_default (),
       (GstPluginFeatureFilter) gst_rtsp_ext_list_filter, FALSE, NULL);
 }
 

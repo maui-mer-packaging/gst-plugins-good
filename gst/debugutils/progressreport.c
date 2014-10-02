@@ -56,10 +56,10 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -m filesrc location=foo.ogg ! decodebin ! progressreport update-freq=1 ! audioconvert ! audioresample ! autoaudiosink
+ * gst-launch -m filesrc location=foo.ogg ! decodebin ! progressreport update-freq=1 ! audioconvert ! audioresample ! autoaudiosink
  * ]| This shows a progress query where a duration is available.
  * |[
- * gst-launch-1.0 -m audiotestsrc ! progressreport update-freq=1 ! audioconvert ! autoaudiosink
+ * gst-launch -m audiotestsrc ! progressreport update-freq=1 ! audioconvert ! autoaudiosink
  * ]| This shows a progress query where no duration is available.
  * </refsect2>
  */
@@ -107,7 +107,7 @@ static void gst_progress_report_set_property (GObject * object, guint prop_id,
 static void gst_progress_report_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-static gboolean gst_progress_report_sink_event (GstBaseTransform * trans,
+static gboolean gst_progress_report_event (GstBaseTransform * trans,
     GstEvent * event);
 static GstFlowReturn gst_progress_report_transform_ip (GstBaseTransform * trans,
     GstBuffer * buf);
@@ -115,8 +115,24 @@ static GstFlowReturn gst_progress_report_transform_ip (GstBaseTransform * trans,
 static gboolean gst_progress_report_start (GstBaseTransform * trans);
 static gboolean gst_progress_report_stop (GstBaseTransform * trans);
 
-#define gst_progress_report_parent_class parent_class
-G_DEFINE_TYPE (GstProgressReport, gst_progress_report, GST_TYPE_BASE_TRANSFORM);
+GST_BOILERPLATE (GstProgressReport, gst_progress_report, GstBaseTransform,
+    GST_TYPE_BASE_TRANSFORM);
+
+static void
+gst_progress_report_base_init (gpointer g_class)
+{
+  GstElementClass *element_class = GST_ELEMENT_CLASS (g_class);
+
+  gst_element_class_add_static_pad_template (element_class,
+      &progress_report_sink_template);
+  gst_element_class_add_static_pad_template (element_class,
+      &progress_report_src_template);
+
+  gst_element_class_set_details_simple (element_class, "Progress report",
+      "Testing",
+      "Periodically query and report on processing progress",
+      "Jan Schmidt <thaytan@mad.scientist.com>");
+}
 
 static void
 gst_progress_report_finalize (GObject * obj)
@@ -133,11 +149,9 @@ static void
 gst_progress_report_class_init (GstProgressReportClass * g_class)
 {
   GstBaseTransformClass *gstbasetrans_class;
-  GstElementClass *element_class;
   GObjectClass *gobject_class;
 
   gobject_class = G_OBJECT_CLASS (g_class);
-  element_class = GST_ELEMENT_CLASS (g_class);
   gstbasetrans_class = GST_BASE_TRANSFORM_CLASS (g_class);
 
   gobject_class->finalize = gst_progress_report_finalize;
@@ -165,18 +179,7 @@ gst_progress_report_class_init (GstProgressReportClass * g_class)
           "Format to use for the querying", DEFAULT_FORMAT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&progress_report_sink_template));
-  gst_element_class_add_pad_template (element_class,
-      gst_static_pad_template_get (&progress_report_src_template));
-
-  gst_element_class_set_static_metadata (element_class, "Progress report",
-      "Testing",
-      "Periodically query and report on processing progress",
-      "Jan Schmidt <thaytan@mad.scientist.com>");
-
-  gstbasetrans_class->sink_event =
-      GST_DEBUG_FUNCPTR (gst_progress_report_sink_event);
+  gstbasetrans_class->event = GST_DEBUG_FUNCPTR (gst_progress_report_event);
   gstbasetrans_class->transform_ip =
       GST_DEBUG_FUNCPTR (gst_progress_report_transform_ip);
   gstbasetrans_class->start = GST_DEBUG_FUNCPTR (gst_progress_report_start);
@@ -184,7 +187,8 @@ gst_progress_report_class_init (GstProgressReportClass * g_class)
 }
 
 static void
-gst_progress_report_init (GstProgressReport * report)
+gst_progress_report_init (GstProgressReport * report,
+    GstProgressReportClass * g_class)
 {
   gst_base_transform_set_passthrough (GST_BASE_TRANSFORM (report), TRUE);
 
@@ -240,15 +244,16 @@ gst_progress_report_do_query (GstProgressReport * filter, GstFormat format,
 
   if (filter->do_query || !buf) {
     GST_LOG_OBJECT (filter, "using upstream query");
-    if (!gst_pad_peer_query_position (sink_pad, format, &cur) ||
-        !gst_pad_peer_query_duration (sink_pad, format, &total)) {
+    if (!gst_pad_query_peer_position (sink_pad, &format, &cur) ||
+        !gst_pad_query_peer_duration (sink_pad, &format, &total)) {
       return FALSE;
     }
   } else {
     GstBaseTransform *base = GST_BASE_TRANSFORM (filter);
 
     GST_LOG_OBJECT (filter, "using buffer metadata");
-    if (format == GST_FORMAT_TIME && base->segment.format == GST_FORMAT_TIME) {
+    if (format == GST_FORMAT_TIME && base->have_newsegment &&
+        base->segment.format == GST_FORMAT_TIME) {
       cur = gst_segment_to_stream_time (&base->segment, format,
           GST_BUFFER_TIMESTAMP (buf));
       total = base->segment.duration;
@@ -276,20 +281,17 @@ gst_progress_report_do_query (GstProgressReport * filter, GstFormat format,
       GstCaps *caps;
 
       format_name = "bogounits";
-      caps = gst_pad_get_current_caps (GST_BASE_TRANSFORM (filter)->sinkpad);
-      if (caps) {
-        if (gst_caps_is_fixed (caps) && !gst_caps_is_any (caps)) {
-          GstStructure *s = gst_caps_get_structure (caps, 0);
-          const gchar *mime_type = gst_structure_get_name (s);
+      caps = GST_PAD_CAPS (GST_BASE_TRANSFORM (filter)->sinkpad);
+      if (caps && gst_caps_is_fixed (caps) && !gst_caps_is_any (caps)) {
+        GstStructure *s = gst_caps_get_structure (caps, 0);
+        const gchar *mime_type = gst_structure_get_name (s);
 
-          if (g_str_has_prefix (mime_type, "video/") ||
-              g_str_has_prefix (mime_type, "image/")) {
-            format_name = "frames";
-          } else if (g_str_has_prefix (mime_type, "audio/")) {
-            format_name = "samples";
-          }
+        if (g_str_has_prefix (mime_type, "video/") ||
+            g_str_has_prefix (mime_type, "image/")) {
+          format_name = "frames";
+        } else if (g_str_has_prefix (mime_type, "audio/")) {
+          format_name = "samples";
         }
-        gst_caps_unref (caps);
       }
       break;
     }
@@ -375,25 +377,19 @@ gst_progress_report_report (GstProgressReport * filter, GTimeVal cur_time,
 }
 
 static gboolean
-gst_progress_report_sink_event (GstBaseTransform * trans, GstEvent * event)
+gst_progress_report_event (GstBaseTransform * trans, GstEvent * event)
 {
   GstProgressReport *filter;
 
   filter = GST_PROGRESS_REPORT (trans);
 
-  switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_EOS:
-    {
-      GTimeVal cur_time;
+  if (GST_EVENT_TYPE (event) == GST_EVENT_EOS) {
+    GTimeVal cur_time;
 
-      g_get_current_time (&cur_time);
-      gst_progress_report_report (filter, cur_time, NULL);
-      break;
-    }
-    default:
-      break;
+    g_get_current_time (&cur_time);
+    gst_progress_report_report (filter, cur_time, NULL);
   }
-  return GST_BASE_TRANSFORM_CLASS (parent_class)->sink_event (trans, event);
+  return GST_BASE_TRANSFORM_CLASS (parent_class)->event (trans, event);
 }
 
 static GstFlowReturn

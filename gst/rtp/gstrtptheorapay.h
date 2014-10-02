@@ -21,7 +21,7 @@
 #define __GST_RTP_THEORA_PAY_H__
 
 #include <gst/gst.h>
-#include <gst/rtp/gstrtpbasepayload.h>
+#include <gst/rtp/gstbasertppayload.h>
 #include <gst/base/gstadapter.h>
 
 G_BEGIN_DECLS
@@ -42,7 +42,7 @@ typedef struct _GstRtpTheoraPayClass GstRtpTheoraPayClass;
 
 struct _GstRtpTheoraPay
 {
-  GstRTPBasePayload payload;
+  GstBaseRTPPayload payload;
 
   /* the headers */
   gboolean      need_headers;
@@ -72,7 +72,7 @@ struct _GstRtpTheoraPay
 
 struct _GstRtpTheoraPayClass
 {
-  GstRTPBasePayloadClass parent_class;
+  GstBaseRTPPayloadClass parent_class;
 };
 
 GType gst_rtp_theora_pay_get_type (void);

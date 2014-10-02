@@ -3,7 +3,7 @@
   <description>multipart stream manipulation</description>
   <filename>../../gst/multipart/.libs/libgstmultipart.so</filename>
   <basename>libgstmultipart.so</basename>
-  <version>0.11.99</version>
+  <version>0.10.31</version>
   <license>LGPL</license>
   <source>gst-plugins-good</source>
   <package>GStreamer Good Plug-ins source release</package>
@@ -23,7 +23,7 @@
           <details>multipart/x-mixed-replace</details>
         </caps>
         <caps>
-          <name>src_%u</name>
+          <name>src_%d</name>
           <direction>source</direction>
           <presence>sometimes</presence>
           <details>ANY</details>
@@ -38,7 +38,7 @@
       <author>Wim Taymans &lt;wim@fluendo.com&gt;</author>
       <pads>
         <caps>
-          <name>sink_%u</name>
+          <name>sink_%d</name>
           <direction>sink</direction>
           <presence>request</presence>
           <details>ANY</details>

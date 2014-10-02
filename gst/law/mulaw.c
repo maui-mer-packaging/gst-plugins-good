@@ -22,19 +22,14 @@
 #include "mulaw-encode.h"
 #include "mulaw-decode.h"
 
-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
-#define INT_FORMAT "S16LE"
-#else
-#define INT_FORMAT "S16BE"
-#endif
-
 GstStaticPadTemplate mulaw_dec_src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("audio/x-raw, "
-        "format = (string) " INT_FORMAT ", "
-        "layout = (string) interleaved, "
-        "rate = (int) [ 8000, 192000 ], " "channels = (int) [ 1, 2 ]")
+    GST_STATIC_CAPS ("audio/x-raw-int, "
+        "rate = (int) [ 8000, 192000 ], "
+        "channels = (int) [ 1, 2 ], "
+        "endianness = (int) BYTE_ORDER, "
+        "width = (int) 16, " "depth = (int) 16, " "signed = (boolean) True")
     );
 
 GstStaticPadTemplate mulaw_dec_sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
@@ -47,10 +42,11 @@ GstStaticPadTemplate mulaw_dec_sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
 GstStaticPadTemplate mulaw_enc_sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("audio/x-raw, "
-        "format = (string) " INT_FORMAT ", "
-        "layout = (string) interleaved, "
-        "rate = (int) [ 8000, 192000 ], " "channels = (int) [ 1, 2 ]")
+    GST_STATIC_CAPS ("audio/x-raw-int, "
+        "rate = (int) [ 8000, 192000 ], "
+        "channels = (int) [ 1, 2 ], "
+        "endianness = (int) BYTE_ORDER, "
+        "width = (int) 16, " "depth = (int) 16, " "signed = (boolean) True")
     );
 
 GstStaticPadTemplate mulaw_enc_src_factory = GST_STATIC_PAD_TEMPLATE ("src",
@@ -74,6 +70,6 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    mulaw,
+    "mulaw",
     "MuLaw audio conversion routines",
     plugin_init, VERSION, GST_LICENSE, GST_PACKAGE_NAME, GST_PACKAGE_ORIGIN)

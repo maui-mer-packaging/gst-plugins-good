@@ -22,7 +22,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstadapter.h>
-#include <gst/rtp/gstrtpbasedepayload.h>
+#include <gst/rtp/gstbasertpdepayload.h>
 
 G_BEGIN_DECLS
 
@@ -42,7 +42,7 @@ typedef struct _GstRtpJ2KDepayClass GstRtpJ2KDepayClass;
 
 struct _GstRtpJ2KDepay
 {
-  GstRTPBaseDepayload depayload;
+  GstBaseRTPDepayload depayload;
 
   guint64 last_rtptime;
   guint last_mh_id;
@@ -58,12 +58,13 @@ struct _GstRtpJ2KDepay
   guint next_frag;
   gboolean have_sync;
 
+  gboolean buffer_list;
   gint width, height;
 };
 
 struct _GstRtpJ2KDepayClass
 {
-  GstRTPBaseDepayloadClass parent_class;
+  GstBaseRTPDepayloadClass parent_class;
 };
 
 GType gst_rtp_j2k_depay_get_type (void);

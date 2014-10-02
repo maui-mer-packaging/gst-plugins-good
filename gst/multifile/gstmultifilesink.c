@@ -99,8 +99,8 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 audiotestsrc ! multifilesink
- * gst-launch-1.0 videotestsrc ! multifilesink post-messages=true filename="frame%d"
+ * gst-launch audiotestsrc ! multifilesink
+ * gst-launch videotestsrc ! multifilesink post-messages=true filename="frame%d"
  * ]|
  * </refsect2>
  *
@@ -192,14 +192,28 @@ gst_multi_file_sink_next_get_type (void)
   return multi_file_sync_next_type;
 }
 
-#define gst_multi_file_sink_parent_class parent_class
-G_DEFINE_TYPE (GstMultiFileSink, gst_multi_file_sink, GST_TYPE_BASE_SINK);
+GST_BOILERPLATE (GstMultiFileSink, gst_multi_file_sink, GstBaseSink,
+    GST_TYPE_BASE_SINK);
+
+static void
+gst_multi_file_sink_base_init (gpointer g_class)
+{
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (g_class);
+
+  GST_DEBUG_CATEGORY_INIT (gst_multi_file_sink_debug, "multifilesink", 0,
+      "multifilesink element");
+
+  gst_element_class_add_static_pad_template (gstelement_class, &sinktemplate);
+  gst_element_class_set_details_simple (gstelement_class, "Multi-File Sink",
+      "Sink/File",
+      "Write buffers to a sequentially named set of files",
+      "David Schleef <ds@schleef.org>");
+}
 
 static void
 gst_multi_file_sink_class_init (GstMultiFileSinkClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstBaseSinkClass *gstbasesink_class = GST_BASE_SINK_CLASS (klass);
 
   gobject_class->set_property = gst_multi_file_sink_set_property;
@@ -279,20 +293,11 @@ gst_multi_file_sink_class_init (GstMultiFileSinkClass * klass)
   gstbasesink_class->set_caps =
       GST_DEBUG_FUNCPTR (gst_multi_file_sink_set_caps);
   gstbasesink_class->event = GST_DEBUG_FUNCPTR (gst_multi_file_sink_event);
-
-  GST_DEBUG_CATEGORY_INIT (gst_multi_file_sink_debug, "multifilesink", 0,
-      "multifilesink element");
-
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sinktemplate));
-  gst_element_class_set_static_metadata (gstelement_class, "Multi-File Sink",
-      "Sink/File",
-      "Write buffers to a sequentially named set of files",
-      "David Schleef <ds@schleef.org>");
 }
 
 static void
-gst_multi_file_sink_init (GstMultiFileSink * multifilesink)
+gst_multi_file_sink_init (GstMultiFileSink * multifilesink,
+    GstMultiFileSinkClass * g_class)
 {
   multifilesink->filename = g_strdup (DEFAULT_LOCATION);
   multifilesink->index = DEFAULT_INDEX;
@@ -487,18 +492,16 @@ gst_multi_file_sink_write_stream_headers (GstMultiFileSink * sink)
 
   for (i = 0; i < sink->n_streamheaders; i++) {
     GstBuffer *hdr;
-    GstMapInfo map;
     int ret;
 
     hdr = sink->streamheaders[i];
-    gst_buffer_map (hdr, &map, GST_MAP_READ);
-    ret = fwrite (map.data, map.size, 1, sink->file);
-    gst_buffer_unmap (hdr, &map);
+
+    ret = fwrite (GST_BUFFER_DATA (hdr), GST_BUFFER_SIZE (hdr), 1, sink->file);
 
     if (ret != 1)
       return FALSE;
 
-    sink->cur_file_size += map.size;
+    sink->cur_file_size += GST_BUFFER_SIZE (hdr);
   }
 
   return TRUE;
@@ -508,13 +511,14 @@ static GstFlowReturn
 gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
 {
   GstMultiFileSink *multifilesink;
-  GstMapInfo map;
+  guint size;
+  guint8 *data;
   gchar *filename;
   gboolean ret;
   GError *error = NULL;
-  gboolean first_file = TRUE;
 
-  gst_buffer_map (buffer, &map, GST_MAP_READ);
+  size = GST_BUFFER_SIZE (buffer);
+  data = GST_BUFFER_DATA (buffer);
 
   multifilesink = GST_MULTI_FILE_SINK (sink);
 
@@ -524,7 +528,7 @@ gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
 
       filename = g_strdup_printf (multifilesink->filename,
           multifilesink->index);
-      ret = g_file_set_contents (filename, (char *) map.data, map.size, &error);
+      ret = g_file_set_contents (filename, (char *) data, size, &error);
       if (!ret)
         goto write_error;
 
@@ -546,7 +550,8 @@ gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
           goto stdio_write_error;
       }
 
-      ret = fwrite (map.data, map.size, 1, multifilesink->file);
+      ret = fwrite (GST_BUFFER_DATA (buffer), GST_BUFFER_SIZE (buffer), 1,
+          multifilesink->file);
       if (ret != 1)
         goto stdio_write_error;
 
@@ -562,10 +567,9 @@ gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
       if (GST_BUFFER_TIMESTAMP_IS_VALID (buffer) &&
           GST_BUFFER_TIMESTAMP (buffer) >= multifilesink->next_segment &&
           !GST_BUFFER_FLAG_IS_SET (buffer, GST_BUFFER_FLAG_DELTA_UNIT)) {
-        if (multifilesink->file) {
-          first_file = FALSE;
+        if (multifilesink->file)
           gst_multi_file_sink_close_file (multifilesink, buffer);
-        }
+
         multifilesink->next_segment += 10 * GST_SECOND;
       }
 
@@ -573,11 +577,11 @@ gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
         if (!gst_multi_file_sink_open_next_file (multifilesink))
           goto stdio_write_error;
 
-        if (!first_file)
-          gst_multi_file_sink_write_stream_headers (multifilesink);
+        gst_multi_file_sink_write_stream_headers (multifilesink);
       }
 
-      ret = fwrite (map.data, map.size, 1, multifilesink->file);
+      ret = fwrite (GST_BUFFER_DATA (buffer), GST_BUFFER_SIZE (buffer), 1,
+          multifilesink->file);
       if (ret != 1)
         goto stdio_write_error;
 
@@ -588,11 +592,8 @@ gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
           goto stdio_write_error;
       }
 
-      if (!gst_multi_file_sink_write_stream_headers (multifilesink))
-        goto stdio_write_error;
-
-      ret = fwrite (map.data, map.size, 1, multifilesink->file);
-
+      ret = fwrite (GST_BUFFER_DATA (buffer), GST_BUFFER_SIZE (buffer), 1,
+          multifilesink->file);
       if (ret != 1)
         goto stdio_write_error;
 
@@ -600,7 +601,7 @@ gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
     case GST_MULTI_FILE_SINK_NEXT_MAX_SIZE:{
       guint64 new_size;
 
-      new_size = multifilesink->cur_file_size + map.size;
+      new_size = multifilesink->cur_file_size + GST_BUFFER_SIZE (buffer);
       if (new_size > multifilesink->max_file_size) {
 
         GST_INFO_OBJECT (multifilesink, "current size: %" G_GUINT64_FORMAT
@@ -608,33 +609,30 @@ gst_multi_file_sink_render (GstBaseSink * sink, GstBuffer * buffer)
             multifilesink->cur_file_size, new_size,
             multifilesink->max_file_size);
 
-        if (multifilesink->file != NULL) {
-          first_file = FALSE;
+        if (multifilesink->file != NULL)
           gst_multi_file_sink_close_file (multifilesink, NULL);
-        }
       }
 
       if (multifilesink->file == NULL) {
         if (!gst_multi_file_sink_open_next_file (multifilesink))
           goto stdio_write_error;
 
-        if (!first_file)
-          gst_multi_file_sink_write_stream_headers (multifilesink);
+        gst_multi_file_sink_write_stream_headers (multifilesink);
       }
 
-      ret = fwrite (map.data, map.size, 1, multifilesink->file);
+      ret = fwrite (GST_BUFFER_DATA (buffer), GST_BUFFER_SIZE (buffer), 1,
+          multifilesink->file);
 
       if (ret != 1)
         goto stdio_write_error;
 
-      multifilesink->cur_file_size += map.size;
+      multifilesink->cur_file_size += GST_BUFFER_SIZE (buffer);
       break;
     }
     default:
       g_assert_not_reached ();
   }
 
-  gst_buffer_unmap (buffer, &map);
   return GST_FLOW_OK;
 
   /* ERRORS */
@@ -655,7 +653,6 @@ write_error:
     g_error_free (error);
     g_free (filename);
 
-    gst_buffer_unmap (buffer, &map);
     return GST_FLOW_ERROR;
   }
 stdio_write_error:
@@ -668,41 +665,35 @@ stdio_write_error:
       GST_ELEMENT_ERROR (multifilesink, RESOURCE, WRITE,
           ("Error while writing to file."), ("%s", g_strerror (errno)));
   }
-  gst_buffer_unmap (buffer, &map);
   return GST_FLOW_ERROR;
 }
 
-static gboolean
-buffer_list_calc_size (GstBuffer ** buf, guint idx, gpointer data)
+static GstBufferListItem
+buffer_list_calc_size (GstBuffer ** buf, guint group, guint idx, gpointer data)
 {
   guint *p_size = data;
-  gsize buf_size;
+  guint buf_size;
 
-  buf_size = gst_buffer_get_size (*buf);
-  GST_TRACE ("buffer %u has size %" G_GSIZE_FORMAT, idx, buf_size);
+  buf_size = GST_BUFFER_SIZE (*buf);
+  GST_TRACE ("buffer %u in group %u has size %u", idx, group, buf_size);
   *p_size += buf_size;
 
-  return TRUE;
+  return GST_BUFFER_LIST_CONTINUE;
 }
 
-static gboolean
-buffer_list_copy_data (GstBuffer ** buf, guint idx, gpointer data)
+static GstBufferListItem
+buffer_list_copy_data (GstBuffer ** buf, guint group, guint idx, gpointer data)
 {
   GstBuffer *dest = data;
-  guint num, i;
 
-  if (idx == 0)
-    gst_buffer_copy_into (dest, *buf, GST_BUFFER_COPY_METADATA, 0, -1);
+  if (group == 0 && idx == 0)
+    gst_buffer_copy_metadata (dest, *buf, GST_BUFFER_COPY_ALL);
 
-  num = gst_buffer_n_memory (*buf);
-  for (i = 0; i < num; ++i) {
-    GstMemory *mem;
+  memcpy (GST_BUFFER_DATA (dest) + GST_BUFFER_SIZE (dest),
+      GST_BUFFER_DATA (*buf), GST_BUFFER_SIZE (*buf));
+  GST_BUFFER_SIZE (dest) += GST_BUFFER_SIZE (*buf);
 
-    mem = gst_buffer_get_memory (*buf, i);
-    gst_buffer_append_memory (dest, mem);
-  }
-
-  return TRUE;
+  return GST_BUFFER_LIST_CONTINUE;
 }
 
 /* Our assumption for now is that the buffers in a buffer list should always
@@ -712,16 +703,17 @@ static GstFlowReturn
 gst_multi_file_sink_render_list (GstBaseSink * sink, GstBufferList * list)
 {
   GstBuffer *buf;
-  guint size = 0;
+  guint size;
 
   gst_buffer_list_foreach (list, buffer_list_calc_size, &size);
   GST_LOG_OBJECT (sink, "total size of buffer list %p: %u", list, size);
 
   /* copy all buffers in the list into one single buffer, so we can use
    * the normal render function (FIXME: optimise to avoid the memcpy) */
-  buf = gst_buffer_new ();
+  buf = gst_buffer_new_and_alloc (size);
+  GST_BUFFER_SIZE (buf) = 0;
   gst_buffer_list_foreach (list, buffer_list_copy_data, buf);
-  g_assert (gst_buffer_get_size (buf) == size);
+  g_assert (GST_BUFFER_SIZE (buf) == size);
 
   gst_multi_file_sink_render (sink, buf);
   gst_buffer_unref (buf);
@@ -789,6 +781,7 @@ gst_multi_file_sink_event (GstBaseSink * sink, GstEvent * event)
 {
   GstMultiFileSink *multifilesink;
   gchar *filename;
+  gboolean res = TRUE;
 
   multifilesink = GST_MULTI_FILE_SINK (sink);
 
@@ -840,16 +833,12 @@ gst_multi_file_sink_event (GstBaseSink * sink, GstEvent * event)
   }
 
 out:
-  return GST_BASE_SINK_CLASS (parent_class)->event (sink, event);
+  return res;
 
-  /* ERRORS */
 stdio_write_error:
-  {
-    GST_ELEMENT_ERROR (multifilesink, RESOURCE, WRITE,
-        ("Error while writing to file."), (NULL));
-    gst_event_unref (event);
-    return FALSE;
-  }
+  GST_ELEMENT_ERROR (multifilesink, RESOURCE, WRITE,
+      ("Error while writing to file."), (NULL));
+  return FALSE;
 }
 
 static gboolean

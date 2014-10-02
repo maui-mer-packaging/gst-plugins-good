@@ -24,7 +24,7 @@
 #include <gst/gst.h>
 #include <gst/video/video.h>
 
-#include <gst/base/gstcollectpads.h>
+#include <gst/base/gstcollectpads2.h>
 
 G_BEGIN_DECLS
 
@@ -54,7 +54,9 @@ struct _GstVideoMixer2Pad
   /* < private > */
 
   /* caps */
-  GstVideoInfo info;
+  gint width, height;
+  gint fps_n;
+  gint fps_d;
 
   /* properties */
   gint xpos, ypos;
